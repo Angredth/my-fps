@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -11,6 +12,7 @@
   font-family: sans-serif;
   background-color: #000;
   }
+
 
   #blocker {
   position: absolute;
@@ -30,6 +32,7 @@
   box-sizing: border-box;
   }
 
+
   #crosshair {
   position: absolute;
   top: 50%;
@@ -44,6 +47,7 @@
   z-index: 4;
   }
 
+
   #minimap {
   position: absolute;
   top: 20px;
@@ -56,6 +60,7 @@
   z-index: 5;
   pointer-events: none;
   }
+
 
   #weapon-ui {
   position: absolute;
@@ -83,6 +88,7 @@
   <canvas id="minimap"></canvas>
   <div id="weapon-ui">WEAPON: M4A1</div>
 
+
   <script type="importmap">
   {
   "imports": {
@@ -92,18 +98,22 @@
   }
   </script>
 
+
   <script type="module">
   import * as THREE from 'three';
   import * as CANNON from 'cannon-es';
 
+
   const scene = new THREE.Scene();
+
 
   // Physics World Setup
   const physicsWorld = new CANNON.World();
   physicsWorld.gravity.set(0, -9.82, 0);
   physicsWorld.defaultContactMaterial.friction = 0.4;
   physicsWorld.defaultContactMaterial.restitution = 0.3;
-  const ragdollBodies = []; // Track ragdoll bodies for updates
+  const ragdollBodies = [];  // Track ragdoll bodies for updates
+
 
   const vertexShader = `
   varying vec3 vWorldPosition;
@@ -113,6 +123,7 @@
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
   }
   `;
+
 
   const fragmentShader = `
   uniform vec3 topColor;
@@ -125,6 +136,7 @@
   gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
   }
   `;
+
 
   const skyGeo = new THREE.SphereGeometry(450, 32, 15);
   const skyMat = new THREE.ShaderMaterial({
@@ -141,26 +153,32 @@
   const sky = new THREE.Mesh(skyGeo, skyMat);
   scene.add(sky);
 
+
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(0, 2, 5);
+
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   document.body.appendChild(renderer.domElement);
 
+
   const light = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(light);
+
 
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(40, 80, 40);
   dirLight.castShadow = true;
   scene.add(dirLight);
 
+
   const worldSize = 200;
   const segments = 60;
   const floorGeo = new THREE.PlaneGeometry(worldSize, worldSize, segments, segments);
   floorGeo.rotateX(-Math.PI / 2);
+
 
   const posAttribute = floorGeo.attributes.position;
   for (let i = 0; i < posAttribute.count; i++) {
@@ -171,50 +189,60 @@
   }
   floorGeo.computeVertexNormals();
 
+
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x4d7c2a, roughness: 0.9, flatShading: true });
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.receiveShadow = true;
   scene.add(floor);
   floor.updateMatrixWorld(true);
 
+
   // Physics body for terrain floor
   const posAttr = floorGeo.attributes.position;
   const indices = floorGeo.index ? Array.from(floorGeo.index.array) :
-  Array.from({length: posAttr.count}, (_, i) => i);
-
+    Array.from({length: posAttr.count}, (_, i) => i);
+ 
   const vertices = [];
   for (let i = 0; i < posAttr.count; i++) {
-  vertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+    vertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
   }
-
+ 
   const terrainShape = new CANNON.Trimesh(vertices, indices);
   const terrainBody = new CANNON.Body({ mass: 0, shape: terrainShape });
   physicsWorld.addBody(terrainBody);
+
 
   const terrainRaycaster = new THREE.Raycaster();
   const terrainRayOrigin = new THREE.Vector3();
   const terrainRayDirection = new THREE.Vector3(0, -1, 0);
 
+
   function getTerrainHeight(x, z) {
   if (Math.abs(x) > worldSize / 2 || Math.abs(z) > worldSize / 2) return 0;
+
 
   terrainRayOrigin.set(x, 120, z);
   terrainRaycaster.set(terrainRayOrigin, terrainRayDirection);
   terrainRaycaster.far = 260;
 
+
   const floorHit = terrainRaycaster.intersectObject(floor, false)[0];
   if (floorHit) return floorHit.point.y;
+
 
   return Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2.5 + Math.sin(x * 0.2) * 0.5;
   }
 
+
   camera.position.y = getTerrainHeight(camera.position.x, camera.position.z) + 1.8;
+
 
   const collidableObjects = [];
   const visionBlockers = [floor];
   const buildingsData = [];
   const treesData = [];
   const targets = [];
+
 
   const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7, metalness: 0.2 });
   const accessoryMaterial = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.8, metalness: 0.1 });
@@ -223,26 +251,32 @@
   const metalGray = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.3 });
   const darkPlasticMaterial = new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0.2, roughness: 0.5 });
 
+
   function createM4A1Model() {
   const m4a1 = new THREE.Group();
+
 
   const receiver = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.25), bodyMaterial);
   receiver.position.set(0, 0.2, 0);
   m4a1.add(receiver);
 
+
   const magWell = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.25), bodyMaterial);
   magWell.position.set(0.4, -0.1, 0);
   m4a1.add(magWell);
+
 
   const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.2), accessoryMaterial);
   magazine.position.set(0.45, -0.5, 0);
   magazine.rotation.z = 0.2;
   m4a1.add(magazine);
 
+
   const grip = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.2), accessoryMaterial);
   grip.position.set(-0.5, -0.3, 0);
   grip.rotation.z = -0.3;
   m4a1.add(grip);
+
 
   const handguardGeom = new THREE.CylinderGeometry(0.2, 0.2, 1.8, 8);
   handguardGeom.rotateZ(Math.PI / 2);
@@ -250,11 +284,13 @@
   handguard.position.set(1.8, 0.25, 0);
   m4a1.add(handguard);
 
+
   const barrelGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8);
   barrelGeom.rotateZ(Math.PI / 2);
   const barrel = new THREE.Mesh(barrelGeom, steelMaterial);
   barrel.position.set(3.1, 0.25, 0);
   m4a1.add(barrel);
+
 
   const hiderGeom = new THREE.CylinderGeometry(0.1, 0.09, 0.25, 8);
   hiderGeom.rotateZ(Math.PI / 2);
@@ -262,9 +298,11 @@
   hider.position.set(3.75, 0.25, 0);
   m4a1.add(hider);
 
+
   const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), bodyMaterial);
   frontSight.position.set(3.5, 0.55, 0);
   m4a1.add(frontSight);
+
 
   const tubeGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8);
   tubeGeom.rotateZ(Math.PI / 2);
@@ -272,23 +310,28 @@
   tube.position.set(-1.3, 0.25, 0);
   m4a1.add(tube);
 
+
   const stock = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.25), accessoryMaterial);
   stock.position.set(-1.8, 0.15, 0);
   m4a1.add(stock);
+
 
   const stockPad = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.25), accessoryMaterial);
   stockPad.position.set(-2.3, 0.1, 0);
   m4a1.add(stockPad);
 
+
   const handle = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.15), bodyMaterial);
   handle.position.set(-0.1, 0.5, 0);
   m4a1.add(handle);
+
 
   const handlePost1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.15), bodyMaterial);
   handlePost1.position.set(-0.5, 0.4, 0);
   const handlePost2 = handlePost1.clone();
   handlePost2.position.set(0.3, 0.4, 0);
   m4a1.add(handlePost1, handlePost2);
+
 
   m4a1.traverse((child) => {
   if (child instanceof THREE.Mesh) {
@@ -300,16 +343,20 @@
   return m4a1;
   }
 
+
   function createMP153Model() {
   const mp153 = new THREE.Group();
+
 
   const mpReceiver = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.36, 0.22), metalMaterial);
   mpReceiver.position.set(0, 0.2, 0);
   mp153.add(mpReceiver);
 
+
   const ejectionPort = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.01), metalGray);
   ejectionPort.position.set(0.1, 0.22, 0.111);
   mp153.add(ejectionPort);
+
 
   const mpBarrelGeom = new THREE.CylinderGeometry(0.07, 0.07, 2.5, 8);
   mpBarrelGeom.rotateZ(Math.PI / 2);
@@ -317,11 +364,13 @@
   mpBarrel.position.set(2.0, 0.26, 0);
   mp153.add(mpBarrel);
 
+
   const mpTubeGeom = new THREE.CylinderGeometry(0.06, 0.06, 2.0, 8);
   mpTubeGeom.rotateZ(Math.PI / 2);
   const mpTube = new THREE.Mesh(mpTubeGeom, metalMaterial);
   mpTube.position.set(1.75, 0.14, 0);
   mp153.add(mpTube);
+
 
   const mpHandguardGeom = new THREE.CylinderGeometry(0.13, 0.13, 1.4, 8);
   mpHandguardGeom.rotateZ(Math.PI / 2);
@@ -329,15 +378,18 @@
   mpHandguard.position.set(1.2, 0.14, 0);
   mp153.add(mpHandguard);
 
+
   const mpStock = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.38, 0.2), darkPlasticMaterial);
   mpStock.position.set(-1.4, 0.06, 0);
   mpStock.rotation.z = -0.12;
   mp153.add(mpStock);
 
+
   const mpGrip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.45, 0.18), darkPlasticMaterial);
   mpGrip.position.set(-0.6, -0.15, 0);
   mpGrip.rotation.z = -0.42;
   mp153.add(mpGrip);
+
 
   mp153.traverse((child) => {
   if (child instanceof THREE.Mesh) {
@@ -349,6 +401,7 @@
   return mp153;
   }
 
+
   for (let i = 0; i < 15; i++) {
   const bWidth = 4;
   const bHeight = 12;
@@ -358,9 +411,11 @@
   const boxMat = new THREE.MeshStandardMaterial({ color: finalColor, roughness: 0.6 });
   const box = new THREE.Mesh(boxGeo, boxMat);
 
+
   const bx = (Math.random() - 0.5) * 120;
   const bz = (Math.random() - 0.5) * 120;
   const by = getTerrainHeight(bx, bz) + bHeight / 2;
+
 
   box.position.set(bx, by, bz);
   box.castShadow = true;
@@ -369,17 +424,19 @@
   box.userData.bounds = new THREE.Box3().setFromObject(box);
   scene.add(box);
 
+
   targets.push(box);
   collidableObjects.push(box);
   visionBlockers.push(box);
   buildingsData.push({ x: bx, z: bz, w: bWidth, d: bDepth });
-
+ 
   // Physics body for building
   const buildingShape = new CANNON.Box(new CANNON.Vec3(bWidth / 2, bHeight / 2, bDepth / 2));
   const buildingBody = new CANNON.Body({ mass: 0, shape: buildingShape });
   buildingBody.position.set(bx, by, bz);
   physicsWorld.addBody(buildingBody);
   }
+
 
   for (let i = 0; i < 30; i++) {
   const tree = new THREE.Group();
@@ -394,6 +451,7 @@
   targets.push(trunk);
   visionBlockers.push(trunk);
 
+
   const leavesGeo = new THREE.ConeGeometry(1.9, 4.2, 10);
   const leavesMat = new THREE.MeshStandardMaterial({ color: 0x2e5c1e, roughness: 0.8 });
   const leaves = new THREE.Mesh(leavesGeo, leavesMat);
@@ -402,12 +460,15 @@
   tree.add(leaves);
   visionBlockers.push(leaves);
 
+
   const tx = (Math.random() - 0.5) * 140;
   const tz = (Math.random() - 0.5) * 140;
   const ty = getTerrainHeight(tx, tz);
 
+
   tree.position.set(tx, ty, tz);
   scene.add(tree);
+
 
   const hitProxyGeo = new THREE.CylinderGeometry(0.85, 0.95, trunkHeight, 8);
   const hitProxyMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -415,10 +476,11 @@
   hitProxy.position.set(tx, ty + trunkHeight / 2, tz);
   scene.add(hitProxy);
 
+
   hitProxy.userData.bounds = new THREE.Box3().setFromObject(hitProxy);
   collidableObjects.push(hitProxy);
   treesData.push({ x: tx, z: tz });
-
+ 
   // Physics body for tree trunk
   const trunkShape = new CANNON.Cylinder(0.95, 0.85, trunkHeight, 8);
   const trunkBody = new CANNON.Body({ mass: 0, shape: trunkShape });
@@ -426,115 +488,135 @@
   physicsWorld.addBody(trunkBody);
   }
 
+
   const enemies = [];
 
+
   function createRagdoll(position, isM4Weapon) {
-  const ragdoll = {
-  bodies: [],
-  constraints: [],
-  meshes: []
-  };
+    const ragdoll = {
+      bodies: [],
+      constraints: [],
+      meshes: []
+    };
 
-  const bodyColor = new THREE.Color(0xcc2222);
-  const enemyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5 });
 
-  // Raise spawn position slightly to prevent clipping through terrain
-  const spawnY = position.y + 1.2;
+    const bodyColor = new THREE.Color(0xcc2222);
+    const enemyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5 });
 
-  // Torso (중심 바디)
-  const torsoShape = new CANNON.Sphere(0.35);
-  const torsoBody = new CANNON.Body({ mass: 3, shape: torsoShape, linearDamping: 0.5, angularDamping: 0.5 });
-  torsoBody.position.set(position.x, spawnY + 0.95, position.z);
-  physicsWorld.addBody(torsoBody);
 
-  const torsoGeo = new THREE.CapsuleGeometry(0.45, 1.0, 8, 16);
-  const torsoMesh = new THREE.Mesh(torsoGeo, enemyMat);
-  torsoMesh.castShadow = true;
-  torsoMesh.userData = { ragdollBody: torsoBody };
-  scene.add(torsoMesh);
+    // Raise spawn position slightly to prevent clipping through terrain
+    const spawnY = position.y + 1.2;
 
-  ragdoll.bodies.push(torsoBody);
-  ragdoll.meshes.push({ mesh: torsoMesh, body: torsoBody });
 
-  // Head (머리)
-  const headShape = new CANNON.Sphere(0.35);
-  const headBody = new CANNON.Body({ mass: 1.5, shape: headShape, linearDamping: 0.3, angularDamping: 0.5 });
-  headBody.position.set(position.x, spawnY + 2.15, position.z);
-  physicsWorld.addBody(headBody);
+    // Torso (중심 바디)
+    const torsoShape = new CANNON.Sphere(0.35);
+    const torsoBody = new CANNON.Body({ mass: 3, shape: torsoShape, linearDamping: 0.5, angularDamping: 0.5 });
+    torsoBody.position.set(position.x, spawnY + 0.95, position.z);
+    physicsWorld.addBody(torsoBody);
 
-  const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-  const headMesh = new THREE.Mesh(headGeo, enemyMat);
-  headMesh.castShadow = true;
-  headMesh.userData = { ragdollBody: headBody };
-  scene.add(headMesh);
 
-  ragdoll.bodies.push(headBody);
-  ragdoll.meshes.push({ mesh: headMesh, body: headBody });
+    const torsoGeo = new THREE.CapsuleGeometry(0.45, 1.0, 8, 16);
+    const torsoMesh = new THREE.Mesh(torsoGeo, enemyMat);
+    torsoMesh.castShadow = true;
+    torsoMesh.userData = { ragdollBody: torsoBody };
+    scene.add(torsoMesh);
 
-  // Weapon (무기)
-  const weaponShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.1, 0.8));
-  const weaponBody = new CANNON.Body({ mass: 0.8, shape: weaponShape, linearDamping: 0.7, angularDamping: 0.8 });
-  weaponBody.position.set(position.x - 0.3, spawnY + 1.5, position.z + 0.5);
-  weaponBody.scale.set(0.5,0.5,0.5);
-  physicsWorld.addBody(weaponBody);
 
-  const weaponModel = isM4Weapon ? createM4A1Model() : createMP153Model();
-  weaponModel.position.copy(weaponBody.position);
-  weaponModel.castShadow = true;
-  weaponModel.userData = { ragdollBody: weaponBody };
-  scene.add(weaponModel);
+    ragdoll.bodies.push(torsoBody);
+    ragdoll.meshes.push({ mesh: torsoMesh, body: torsoBody });
 
-  ragdoll.bodies.push(weaponBody);
-  ragdoll.meshes.push({ mesh: weaponModel, body: weaponBody });
 
-  // Head - Torso constraint (머리-몸통 연결)
-  const headTorsoConstraint = new CANNON.PointToPointConstraint(
-  headBody, new CANNON.Vec3(0, -0.4, 0),
-  torsoBody, new CANNON.Vec3(0, 0.5, 0)
-  );
-  physicsWorld.addConstraint(headTorsoConstraint);
-  ragdoll.constraints.push(headTorsoConstraint);
+    // Head (머리)
+    const headShape = new CANNON.Sphere(0.35);
+    const headBody = new CANNON.Body({ mass: 1.5, shape: headShape, linearDamping: 0.3, angularDamping: 0.5 });
+    headBody.position.set(position.x, spawnY + 2.15, position.z);
+    physicsWorld.addBody(headBody);
 
-  // Weapon - Torso constraint (무기-몸통 연결)
-  const weaponTorsoConstraint = new CANNON.PointToPointConstraint(
-  weaponBody, new CANNON.Vec3(0, 0, 0),
-  torsoBody, new CANNON.Vec3(-0.2, 0.2, 0.3)
-  );
-  physicsWorld.addConstraint(weaponTorsoConstraint);
-  ragdoll.constraints.push(weaponTorsoConstraint);
 
-  ragdollBodies.push(ragdoll);
-  return ragdoll;
+    const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
+    const headMesh = new THREE.Mesh(headGeo, enemyMat);
+    headMesh.castShadow = true;
+    headMesh.userData = { ragdollBody: headBody };
+    scene.add(headMesh);
+
+
+    ragdoll.bodies.push(headBody);
+    ragdoll.meshes.push({ mesh: headMesh, body: headBody });
+
+
+    // Weapon (무기)
+    const weaponScale = 0.35;
+    // 무기 모델 크기(0.35배)에 맞춰 물리 히트박스(Box)의 크기 조정 (가로, 세로, 길이의 절반값)
+    const weaponShape = new CANNON.Box(new CANNON.Vec3(0.05, 0.12, 0.7));
+    const weaponBody = new CANNON.Body({ mass: 0.8, shape: weaponShape, linearDamping: 0.7, angularDamping: 0.8 });
+    weaponBody.position.set(position.x - 0.3, spawnY + 1.5, position.z + 0.5);
+    physicsWorld.addBody(weaponBody);
+
+
+    const weaponModel = isM4Weapon ? createM4A1Model() : createMP153Model();
+    weaponModel.scale.set(weaponScale, weaponScale, weaponScale);
+    weaponModel.position.copy(weaponBody.position);
+    weaponModel.userData = { ragdollBody: weaponBody };
+    scene.add(weaponModel);
+
+
+    ragdoll.bodies.push(weaponBody);
+    ragdoll.meshes.push({ mesh: weaponModel, body: weaponBody });
+
+
+    // Head - Torso constraint (머리-몸통 연결)
+    const headTorsoConstraint = new CANNON.PointToPointConstraint(
+      headBody, new CANNON.Vec3(0, -0.4, 0),
+      torsoBody, new CANNON.Vec3(0, 0.5, 0)
+    );
+    physicsWorld.addConstraint(headTorsoConstraint);
+    ragdoll.constraints.push(headTorsoConstraint);
+
+
+    // Weapon - Torso constraint (무기-몸통 연결)
+    const weaponTorsoConstraint = new CANNON.PointToPointConstraint(
+      weaponBody, new CANNON.Vec3(0, 0, 0),
+      torsoBody, new CANNON.Vec3(-0.2, 0.2, 0.3)
+    );
+    physicsWorld.addConstraint(weaponTorsoConstraint);
+    ragdoll.constraints.push(weaponTorsoConstraint);
+
+
+    ragdollBodies.push(ragdoll);
+    return ragdoll;
   }
+
 
   function activateRagdoll(ragdoll) {
-  ragdoll.bodies.forEach((body, index) => {
-  let velocityMagnitude = 12; // 더 강한 초기 속도
-  let verticalVelocity = -3.5; // 아래로 더 빠르게
-
-  // 무기는 더 강하게 떨어지게
-  if (index === 2) {
-  velocityMagnitude = 14;
-  verticalVelocity = -5;
+    ragdoll.bodies.forEach((body, index) => {
+      let velocityMagnitude = 12;  // 더 강한 초기 속도
+      let verticalVelocity = -3.5;  // 아래로 더 빠르게
+     
+      // 무기는 더 강하게 떨어지게
+      if (index === 2) {
+        velocityMagnitude = 14;
+        verticalVelocity = -5;
+      }
+     
+      body.velocity.set(
+        (Math.random() - 0.5) * velocityMagnitude,
+        verticalVelocity,
+        (Math.random() - 0.5) * velocityMagnitude
+      );
+      body.angularVelocity.set(
+        (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 8
+      );
+    });
   }
 
-  body.velocity.set(
-  (Math.random() - 0.5) * velocityMagnitude,
-  verticalVelocity,
-  (Math.random() - 0.5) * velocityMagnitude
-  );
-  body.angularVelocity.set(
-  (Math.random() - 0.5) * 8,
-  (Math.random() - 0.5) * 8,
-  (Math.random() - 0.5) * 8
-  );
-  });
-  }
 
   function spawnEnemy() {
   const enemyGroup = new THREE.Group();
   const bodyColor = new THREE.Color(0xcc2222);
   const enemyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5 });
+
 
   const bodyGeo = new THREE.CapsuleGeometry(0.45, 1.0, 8, 16);
   const body = new THREE.Mesh(bodyGeo, enemyMat);
@@ -542,11 +624,13 @@
   body.castShadow = true;
   enemyGroup.add(body);
 
+
   const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
   const head = new THREE.Mesh(headGeo, enemyMat);
   head.position.y = 2.15;
   head.castShadow = true;
   enemyGroup.add(head);
+
 
   const isM4 = Math.random() < 0.5;
   const enemyWeapon = isM4 ? createM4A1Model() : createMP153Model();
@@ -555,6 +639,7 @@
   enemyWeapon.rotation.y = -Math.PI / 2;
   enemyGroup.add(enemyWeapon);
 
+
   let rx = (Math.random() - 0.5) * 130;
   let rz = (Math.random() - 0.5) * 130;
   while (Math.sqrt(rx * rx + rz * rz) < 20) {
@@ -562,10 +647,12 @@
   rz = (Math.random() - 0.5) * 130;
   }
 
+
   const ry = getTerrainHeight(rx, rz);
   enemyGroup.position.set(rx, ry, rz);
   enemyGroup.rotation.y = Math.PI;
   scene.add(enemyGroup);
+
 
   enemyGroup.userData = {
   type: 'enemy',
@@ -581,38 +668,48 @@
   isRagdoll: false
   };
 
+
   enemies.push(enemyGroup);
+
 
   body.userData = { parentGroup: enemyGroup, part: 'body' };
   head.userData = { parentGroup: enemyGroup, part: 'head' };
   targets.push(body, head);
   }
 
+
   for (let i = 0; i < 8; i++) spawnEnemy();
+
 
   const weaponGroup = new THREE.Group();
 
+
   const m4a1 = createM4A1Model();
   weaponGroup.add(m4a1);
+
 
   const m4MuzzleMarker = new THREE.Object3D();
   m4MuzzleMarker.position.set(3.9, 0.25, 0);
   m4a1.add(m4MuzzleMarker);
 
+
   const mp153 = createMP153Model();
   mp153.visible = false;
   weaponGroup.add(mp153);
+
 
   const mpMuzzleMarker = new THREE.Object3D();
   mpMuzzleMarker.position.set(3.3, 0.7, 0);
   mpMuzzleMarker.scale.set(0.2, 0.2, 0.2);
   mp153.add(mpMuzzleMarker);
 
+
   const renderTargetWidth = 1024;
   const renderTargetHeight = 1024;
   const scopeRenderTarget = new THREE.WebGLRenderTarget(renderTargetWidth, renderTargetHeight);
   const scopeCamera = new THREE.PerspectiveCamera(12, 1, 0.1, 1000);
   scene.add(scopeCamera);
+
 
   const scopeRadius = 0.05;
   const scopeLength = 0.4;
@@ -624,11 +721,13 @@
   scopeRenderTarget.texture.wrapS = THREE.RepeatWrapping;
   scopeRenderTarget.texture.repeat.x = -1;
 
+
   const scopeScreen = new THREE.Mesh(
   new THREE.CircleGeometry(scopeRadius * 0.99, 32),
   new THREE.MeshBasicMaterial({ map: scopeRenderTarget.texture, side: THREE.DoubleSide })
   );
   scopeScreen.position.z = -scopeLength / 2 + 0.03;
+
 
   const reticleGroup = new THREE.Group();
   const lineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2, depthTest: false, depthWrite: false });
@@ -643,6 +742,7 @@
   reticleGroup.position.z = scopeScreen.position.z + 0.005;
   reticleGroup.renderOrder = 2;
 
+
   const redDot = new THREE.Mesh(
   new THREE.CircleGeometry(0.0005, 16),
   new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, depthTest: false, depthWrite: false })
@@ -651,6 +751,7 @@
   redDot.position.z = scopeScreen.position.z + 0.01;
   redDot.renderOrder = 9999;
 
+
   const scopeBorder = new THREE.Mesh(
   new THREE.RingGeometry(scopeRadius * 0.92, scopeRadius * 1.18, 64),
   new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
@@ -658,11 +759,13 @@
   scopeBorder.position.z = scopeScreen.position.z + 0.001;
   scopeBorder.renderOrder = 10;
 
+
   const scopeShadow = new THREE.Mesh(
   new THREE.RingGeometry(scopeRadius * 1.18, scopeRadius * 1.35, 64),
   new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
   );
   scopeShadow.position.z = scopeScreen.position.z + 0.002;
+
 
   const glass = new THREE.Mesh(
   new THREE.CircleGeometry(scopeRadius * 0.97, 32),
@@ -677,15 +780,18 @@
   );
   glass.position.z = scopeScreen.position.z - 0.002;
 
+
   const fullScope = new THREE.Group();
   fullScope.add(scopeBody, scopeScreen, reticleGroup, redDot, scopeBorder, scopeShadow, glass);
   fullScope.scale.set(1.5, 1.5, 1.5);
   fullScope.position.set(0, 0.68, 0.005);
   weaponGroup.add(fullScope);
 
+
   weaponGroup.position.set(0.2, -0.35, -0.5);
   weaponGroup.scale.set(0.5, 0.5, 0.5);
   scene.add(weaponGroup);
+
 
   const WEAPONS = {
   M4A1: {
@@ -714,16 +820,19 @@
   }
   };
 
+
   let currentWeapon = WEAPONS.M4A1;
   let isSwapping = false;
   let swapProgress = 0;
   let swapDirection = -1;
   let pendingWeapon = null;
 
+
   const swapOffsetPos = new THREE.Vector3(0, 0, 0);
   const swapOffsetRot = new THREE.Euler(0, 0, 0);
   const aimOffsetRot = new THREE.Euler(0, 0, 0);
   const shotgunAdsRotation = new THREE.Euler(THREE.MathUtils.degToRad(2.2), THREE.MathUtils.degToRad(-0.35), 0);
+
 
   const Sound = (() => {
   let ctx;
@@ -761,10 +870,13 @@
   let arSampleIndex = 0;
   let activeArSampleSrc = '';
 
+
   function ensureContext() {
   if (ctx) return ctx;
 
+
   ctx = new (window.AudioContext || window.webkitAudioContext)();
+
 
   const compressor = ctx.createDynamicsCompressor();
   compressor.threshold.value = -16;
@@ -773,20 +885,26 @@
   compressor.attack.value = 0.005;
   compressor.release.value = 0.18;
 
+
   master = ctx.createGain();
   master.gain.value = 0.75;
+
 
   sfxBus = ctx.createGain();
   sfxBus.gain.value = 0.88;
 
+
   ambientBus = ctx.createGain();
   ambientBus.gain.value = 0.045;
+
 
   reverbBus = ctx.createGain();
   reverbBus.gain.value = 0.14;
 
+
   const convolver = ctx.createConvolver();
   convolver.buffer = createImpulse(1.15, 2.6);
+
 
   sfxBus.connect(master);
   sfxBus.connect(convolver);
@@ -796,8 +914,10 @@
   master.connect(compressor);
   compressor.connect(ctx.destination);
 
+
   return ctx;
   }
+
 
   function resume() {
   const audio = ensureContext();
@@ -807,13 +927,16 @@
   startAmbience();
   }
 
+
   function preloadShotgunSample() {
   if (shotgunSampleLoadAttempted) return;
   shotgunSampleLoadAttempted = true;
 
+
   SHOTGUN_SAMPLE_SOURCES.forEach((source) => {
   const probe = new Audio(source);
   probe.preload = 'auto';
+
 
   const activateSource = () => {
   if (activeShotgunSampleSrc) return;
@@ -828,6 +951,7 @@
   });
   };
 
+
   probe.addEventListener('loadeddata', activateSource, { once: true });
   probe.addEventListener('canplaythrough', activateSource, { once: true });
   probe.addEventListener('error', () => {}, { once: true });
@@ -835,11 +959,14 @@
   });
   }
 
+
   function playShotgunSample(volumeScale = 1) {
   if (!shotgunSampleReady || shotgunSamplePool.length === 0) return false;
 
+
   const audio = shotgunSamplePool[shotgunSampleIndex % shotgunSamplePool.length];
   shotgunSampleIndex++;
+
 
   try {
   audio.pause();
@@ -853,13 +980,16 @@
   }
   }
 
+
   function preloadArSample() {
   if (arSampleLoadAttempted) return;
   arSampleLoadAttempted = true;
 
+
   AR_SAMPLE_SOURCES.forEach((source) => {
   const probe = new Audio(source);
   probe.preload = 'auto';
+
 
   const activateSource = () => {
   if (activeArSampleSrc) return;
@@ -874,6 +1004,7 @@
   });
   };
 
+
   probe.addEventListener('loadeddata', activateSource, { once: true });
   probe.addEventListener('canplaythrough', activateSource, { once: true });
   probe.addEventListener('error', () => {}, { once: true });
@@ -881,11 +1012,14 @@
   });
   }
 
+
   function playArSample(isAutoFollowUp = false, volumeScale = 1) {
   if (!arSampleReady || arSamplePool.length === 0) return false;
 
+
   const audio = arSamplePool[arSampleIndex % arSamplePool.length];
   arSampleIndex++;
+
 
   try {
   audio.pause();
@@ -900,6 +1034,7 @@
   }
   }
 
+
   function createNoiseBuffer(duration) {
   const sampleRate = ctx.sampleRate;
   const frameCount = Math.max(1, Math.floor(sampleRate * duration));
@@ -907,19 +1042,23 @@
   const data = buffer.getChannelData(0);
   let last = 0;
 
+
   for (let i = 0; i < frameCount; i++) {
   const white = Math.random() * 2 - 1;
   last = last * 0.86 + white * 0.14;
   data[i] = last;
   }
 
+
   return buffer;
   }
+
 
   function createImpulse(duration, decay) {
   const sampleRate = ctx.sampleRate;
   const frameCount = Math.floor(sampleRate * duration);
   const buffer = ctx.createBuffer(2, frameCount, sampleRate);
+
 
   for (let channel = 0; channel < 2; channel++) {
   const data = buffer.getChannelData(channel);
@@ -929,8 +1068,10 @@
   }
   }
 
+
   return buffer;
   }
+
 
   function noiseBurst({
   start = ctx.currentTime,
@@ -944,15 +1085,18 @@
   const source = ctx.createBufferSource();
   source.buffer = createNoiseBuffer(duration);
 
+
   const filter = ctx.createBiquadFilter();
   filter.type = filterType;
   filter.frequency.setValueAtTime(frequency, start);
   filter.Q.value = q;
 
+
   const amp = ctx.createGain();
   amp.gain.setValueAtTime(0.0001, start);
   amp.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain), start + 0.006);
   amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
 
   source.connect(filter);
   filter.connect(amp);
@@ -960,6 +1104,7 @@
   source.start(start);
   source.stop(start + duration + 0.02);
   }
+
 
   function tone({
   start = ctx.currentTime,
@@ -973,13 +1118,16 @@
   const osc = ctx.createOscillator();
   const amp = ctx.createGain();
 
+
   osc.type = type;
   osc.frequency.setValueAtTime(from, start);
   osc.frequency.exponentialRampToValueAtTime(Math.max(1, to), start + duration);
 
+
   amp.gain.setValueAtTime(0.0001, start);
   amp.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain), start + 0.005);
   amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
 
   osc.connect(amp);
   amp.connect(output);
@@ -987,18 +1135,22 @@
   osc.stop(start + duration + 0.02);
   }
 
+
   function startAmbience() {
   if (!ctx || ambienceStarted) return;
   ambienceStarted = true;
+
 
   const wind = ctx.createBufferSource();
   wind.buffer = createNoiseBuffer(2.5);
   wind.loop = true;
 
+
   const windFilter = ctx.createBiquadFilter();
   windFilter.type = 'lowpass';
   windFilter.frequency.value = 760;
   windFilter.Q.value = 0.35;
+
 
   const lfo = ctx.createOscillator();
   const lfoGain = ctx.createGain();
@@ -1007,29 +1159,35 @@
   lfo.connect(lfoGain);
   lfoGain.connect(ambientBus.gain);
 
+
   const lowAir = ctx.createOscillator();
   const lowAirGain = ctx.createGain();
   lowAir.type = 'sine';
   lowAir.frequency.value = 56;
   lowAirGain.gain.value = 0.012;
 
+
   wind.connect(windFilter);
   windFilter.connect(ambientBus);
   lowAir.connect(lowAirGain);
   lowAirGain.connect(ambientBus);
+
 
   wind.start();
   lfo.start();
   lowAir.start();
   }
 
+
   function playM4Shot(isAutoFollowUp, volumeScale = 1) {
   if (!ctx) return;
   if (playArSample(isAutoFollowUp, volumeScale)) return;
 
+
   const t = ctx.currentTime;
   const crackGain = isAutoFollowUp ? 0.31 : 0.42;
   const bodyGain = isAutoFollowUp ? 0.12 : 0.16;
+
 
   noiseBurst({
   start: t,
@@ -1065,11 +1223,14 @@
   });
   }
 
+
   function playShotgunShot(volumeScale = 1) {
   if (!ctx) return;
   if (playShotgunSample(volumeScale)) return;
 
+
   const t = ctx.currentTime;
+
 
   noiseBurst({
   start: t,
@@ -1113,6 +1274,7 @@
   });
   }
 
+
   function playGunshot(weaponName, isAutoFollowUp = false, volumeScale = 1) {
   if (!ctx || ctx.state !== 'running') return;
   if (weaponName === 'MP-153' || weaponName === 'MP153') {
@@ -1122,6 +1284,7 @@
   playM4Shot(isAutoFollowUp, volumeScale);
   }
 
+
   function playEnemyShot(weaponName, distance = 35) {
   if (!ctx || ctx.state !== 'running') return;
   const volumeScale = Math.max(0.2, Math.min(0.78, 1 - distance / 90));
@@ -1129,12 +1292,14 @@
   playGunshot(isShotgun ? 'MP-153' : 'M4A1', true, volumeScale);
   }
 
+
   function playFootstep(volume = 1) {
   if (!ctx || ctx.state !== 'running') return;
   const t = ctx.currentTime;
   const sideOffset = footstepSide === 0 ? -6 : 6;
   footstepSide = 1 - footstepSide;
-  const amplifiedVolume = volume * 4.5; // 4.5배 증폭
+  const amplifiedVolume = volume * 4.5;  // 4.5배 증폭
+
 
   tone({
   start: t,
@@ -1162,22 +1327,27 @@
   });
   }
 
+
   function updateFootsteps(delta, moving, speedMultiplier = 1) {
   if (!ctx || ctx.state !== 'running') return;
+
 
   if (!moving) {
   footstepTimer = 0;
   return;
   }
 
+
   const safeSpeed = Math.max(0.55, speedMultiplier);
   footstepTimer -= delta * safeSpeed;
+
 
   if (footstepTimer <= 0) {
   playFootstep(Math.min(1.25, safeSpeed));
   footstepTimer = 0.38;
   }
   }
+
 
   function playWeaponSwitch() {
   if (!ctx || ctx.state !== 'running') return;
@@ -1200,6 +1370,7 @@
   });
   }
 
+
   function playHit(isHeadshot = false) {
   if (!ctx || ctx.state !== 'running') return;
   const t = ctx.currentTime;
@@ -1213,6 +1384,7 @@
   });
   }
 
+
   function playAimToggle(isAimingNow) {
   if (!ctx || ctx.state !== 'running') return;
   tone({
@@ -1223,6 +1395,7 @@
   to: isAimingNow ? 260 : 420
   });
   }
+
 
   return {
   resume,
@@ -1235,14 +1408,17 @@
   };
   })();
 
+
   const blocker = document.getElementById('blocker');
   const crosshair = document.getElementById('crosshair');
   const weaponUI = document.getElementById('weapon-ui');
+
 
   blocker.addEventListener('click', () => {
   Sound.resume();
   document.body.requestPointerLock();
   });
+
 
   document.addEventListener('pointerlockchange', () => {
   blocker.style.display = document.pointerLockElement === document.body ? 'none' : 'flex';
@@ -1254,8 +1430,10 @@
   }
   });
 
+
   let yaw = 0;
   let pitch = 0;
+
 
   document.addEventListener('mousemove', (event) => {
   if (document.pointerLockElement !== document.body) return;
@@ -1264,15 +1442,21 @@
   pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
   });
 
+
   const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
-  let cameraRollZ = 0; // 카메라 틸트 (Z축 회전)
-  let targetRollZ = 0; // 목표 틸트
+  let cameraRollZ = 0;  // 카메라 틸트 (Z축 회전)
+  let targetRollZ = 0;  // 목표 틸트
+  let currentLeanX = 0; // 상체 좌우 기울기 이동량
+  let currentLeanY = 0; // 기울기에 따른 높이 변화
+
 
   document.addEventListener('keydown', (event) => {
   if (document.pointerLockElement !== document.body) return;
 
+
   const key = event.key.toLowerCase();
   if (key in keys) keys[key] = true;
+
 
   if (!isSwapping) {
   if (event.key === '1' && currentWeapon !== WEAPONS.M4A1) {
@@ -1283,10 +1467,12 @@
   }
   });
 
+
   document.addEventListener('keyup', (event) => {
   const key = event.key.toLowerCase();
   if (key in keys) keys[key] = false;
   });
+
 
   let isAiming = false;
   let isFiring = false;
@@ -1296,6 +1482,7 @@
   let recoilTargetY = 0;
   let recoilCounter = 0;
   let horizontalRecoil = 0;
+
 
   const bullets = [];
   const bulletGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.4, 4);
@@ -1315,14 +1502,18 @@
   const bulletHoles = [];
   const maxBulletHoles = 180;
 
+
   let activeFlash = null;
   let flashDuration = 0;
 
+
   document.addEventListener('contextmenu', (event) => event.preventDefault());
+
 
   document.addEventListener('mousedown', (event) => {
   if (document.pointerLockElement !== document.body) return;
   Sound.resume();
+
 
   if (event.button === 0) {
   isFiring = true;
@@ -1336,12 +1527,14 @@
   }
   });
 
+
   document.addEventListener('mouseup', (event) => {
   if (event.button === 0) {
   isFiring = false;
   shotSequence = 0;
   }
   });
+
 
   function triggerWeaponSwap(targetWeapon) {
   Sound.playWeaponSwitch();
@@ -1353,12 +1546,15 @@
   crosshair.style.opacity = '1';
   }
 
+
   function getSurfaceNormalFromHit(hit) {
   if (!hit.face) return new THREE.Vector3(0, 1, 0);
+
 
   const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
   return hit.face.normal.clone().applyNormalMatrix(normalMatrix).normalize();
   }
+
 
   function getTerrainNormal(x, z) {
   const sampleGap = 0.6;
@@ -1369,16 +1565,19 @@
   return new THREE.Vector3(hL - hR, sampleGap * 2, hD - hU).normalize();
   }
 
-  function createBulletHole(position, normal, size = 0.06) {
+
+  function createBulletHole(position, normal, size = 0.12) {
   const hole = new THREE.Mesh(bulletHoleGeo, bulletHoleMat);
   const surfaceNormal = normal.clone().normalize();
   hole.position.copy(position).addScaledVector(surfaceNormal, 0.018);
   hole.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), surfaceNormal);
 
+
   const finalSize = size * THREE.MathUtils.randFloat(0.82, 1.18);
   hole.scale.set(finalSize, finalSize, finalSize);
   hole.renderOrder = 20;
   scene.add(hole);
+
 
   bulletHoles.push(hole);
   if (bulletHoles.length > maxBulletHoles) {
@@ -1386,48 +1585,61 @@
   }
   }
 
+
   function createBulletHoleFromHit(hit) {
   const objectType = hit.object.userData.type;
   if (objectType !== 'building' && objectType !== 'treeTrunk') return;
 
+
   const size = objectType === 'treeTrunk' ? 0.095 : 0.13;
   createBulletHole(hit.point, getSurfaceNormalFromHit(hit), size);
   }
+
 
   function hasClearLineOfSight(observer, target) {
   const direction = new THREE.Vector3().subVectors(target, observer);
   const distance = direction.length();
   if (distance <= 0.001) return true;
 
+
   direction.normalize();
   raycaster.set(observer, direction);
   raycaster.near = 0.12;
   raycaster.far = distance - 0.25;
 
+
   const blockers = raycaster.intersectObjects(visionBlockers, false);
+
 
   raycaster.near = 0;
   raycaster.far = Infinity;
 
+
   return blockers.length === 0;
   }
 
+
   function shootWeapon() {
   if (isSwapping) return;
+
 
   const isAutoFollowUp = currentWeapon === WEAPONS.M4A1 && shotSequence > 0;
   Sound.playGunshot(currentWeapon.name, isAutoFollowUp);
   shotSequence++;
 
+
   recoilCounter++;
   const baseRecoil = isAiming ? currentWeapon.recoil * 0.6 : currentWeapon.recoil;
+
 
   pitch += baseRecoil;
   if (recoilCounter <= 3) recoilTargetY += baseRecoil;
   horizontalRecoil += (Math.random() - 0.5) * (baseRecoil * 0.3);
 
+
   const muzzleWorldPos = new THREE.Vector3();
   currentWeapon.marker.getWorldPosition(muzzleWorldPos);
+
 
   if (activeFlash) scene.remove(activeFlash);
   const flashSize = currentWeapon === WEAPONS.MP153 ? 0.35 : 0.22;
@@ -1436,6 +1648,7 @@
   const flashMat = new THREE.MeshBasicMaterial({ color: 0xff9900, transparent: true, opacity: 0.95 });
   activeFlash = new THREE.Mesh(flashGeo, flashMat);
 
+
   const muzzleWorldQuat = new THREE.Quaternion();
   currentWeapon.marker.getWorldQuaternion(muzzleWorldQuat);
   activeFlash.position.copy(muzzleWorldPos);
@@ -1443,11 +1656,14 @@
   scene.add(activeFlash);
   flashDuration = 0.05;
 
+
   for (let k = 0; k < currentWeapon.pellets; k++) {
   const bulletMesh = new THREE.Mesh(bulletGeo, bulletMat);
   bulletMesh.position.copy(muzzleWorldPos);
 
+
   const fireDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
 
   if (currentWeapon.spread > 0) {
   fireDirection.x += (Math.random() - 0.5) * currentWeapon.spread;
@@ -1456,8 +1672,10 @@
   }
   fireDirection.normalize();
 
+
   bulletMesh.lookAt(bulletMesh.position.clone().add(fireDirection));
   scene.add(bulletMesh);
+
 
   bullets.push({
   element: bulletMesh,
@@ -1469,56 +1687,67 @@
   }
   }
 
+
   function handleObjectHit(hitObject, bulletDamage = currentWeapon.damage) {
   if (hitObject.userData.type === 'building') return;
+
 
   if (hitObject.userData.parentGroup) {
   const parent = hitObject.userData.parentGroup;
   if (!parent.parent) return;
 
+
   let damage = bulletDamage;
   if (hitObject.userData.part === 'head') damage *= 9;
   Sound.playHit(hitObject.userData.part === 'head');
 
+
   parent.userData.hp -= damage;
 
+
   if (parent.userData.state === 'PATROL') parent.userData.state = 'CHASE';
+
 
   parent.children.forEach((mesh) => {
   if (mesh.material && mesh.material.color) mesh.material.color.setHex(0xffffff);
   });
   parent.userData.hitTimer = 0.1;
 
+
   if (parent.userData.hp <= 0) {
-  if (!parent.userData.isRagdoll) {
-  parent.userData.isRagdoll = true;
-  parent.userData.ragdoll = createRagdoll(parent.position, parent.userData.weaponType === 'M4A1');
-  activateRagdoll(parent.userData.ragdoll);
+    if (!parent.userData.isRagdoll) {
+      parent.userData.isRagdoll = true;
+      parent.userData.ragdoll = createRagdoll(parent.position, parent.userData.weaponType === 'M4A1');
+      activateRagdoll(parent.userData.ragdoll);
+     
+      scene.remove(parent);
+      const index = enemies.indexOf(parent);
+      if (index > -1) enemies.splice(index, 1);
 
-  scene.remove(parent);
-  const index = enemies.indexOf(parent);
-  if (index > -1) enemies.splice(index, 1);
 
-  for (let i = targets.length - 1; i >= 0; i--) {
-  if (targets[i].userData.parentGroup === parent) {
-  targets.splice(i, 1);
+      for (let i = targets.length - 1; i >= 0; i--) {
+      if (targets[i].userData.parentGroup === parent) {
+        targets.splice(i, 1);
+      }
+      }
+    }
+    setTimeout(spawnEnemy, 4000);
   }
   }
   }
-  setTimeout(spawnEnemy, 4000);
-  }
-  }
-  }
+
 
   const minimapCanvas = document.getElementById('minimap');
   const minimapCtx = minimapCanvas.getContext('2d');
   minimapCanvas.width = 180;
   minimapCanvas.height = 180;
 
+
   function drawMinimap() {
   minimapCtx.clearRect(0, 0, 180, 180);
   const center = 90;
   const scale = 1.3;
+
 
   buildingsData.forEach((building) => {
   const screenX = center + (building.x - camera.position.x) * scale;
@@ -1534,6 +1763,7 @@
   }
   });
 
+
   treesData.forEach((tree) => {
   const screenX = center + (tree.x - camera.position.x) * scale;
   const screenZ = center + (tree.z - camera.position.z) * scale;
@@ -1545,17 +1775,21 @@
   }
   });
 
+
   enemies.forEach((enemy) => {
   const worldQuat = new THREE.Quaternion();
   enemy.getWorldQuaternion(worldQuat);
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(worldQuat);
   const enemyWorldAngle = -Math.atan2(forward.x, forward.z);
 
+
   const screenX = center + (enemy.position.x - camera.position.x) * scale;
   const screenZ = center + (enemy.position.z - camera.position.z) * scale;
 
+
   const fov = Math.PI / 3;
   const visionRange = 25 * scale;
+
 
   minimapCtx.fillStyle = 'rgba(255, 50, 50, 0.25)';
   minimapCtx.beginPath();
@@ -1570,11 +1804,13 @@
   minimapCtx.lineTo(screenX, screenZ);
   minimapCtx.fill();
 
+
   minimapCtx.fillStyle = '#ff0000';
   minimapCtx.beginPath();
   minimapCtx.arc(screenX, screenZ, 4, 0, Math.PI * 2);
   minimapCtx.fill();
   });
+
 
   minimapCtx.save();
   minimapCtx.translate(center, center);
@@ -1589,9 +1825,11 @@
   minimapCtx.restore();
   }
 
+
   const clock = new THREE.Clock();
   const moveSpeed = 8.0;
   const playerRadius = 0.8;
+
 
   const currentLocalPos = new THREE.Vector3(0.2, -0.35, -0.5);
   const targetLocalPos = new THREE.Vector3();
@@ -1599,57 +1837,62 @@
   const enemyTracers = [];
   const raycaster = new THREE.Raycaster();
 
+
   function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
 
+
   // Physics simulation step
   physicsWorld.step(1 / 60, delta, 3);
 
+
   // Update ragdoll meshes from physics bodies
   for (let i = ragdollBodies.length - 1; i >= 0; i--) {
-  const ragdoll = ragdollBodies[i];
-  ragdoll.meshes.forEach(({ mesh, body }) => {
-  if (mesh && body) {
-  mesh.position.copy(body.position);
-  mesh.quaternion.copy(body.quaternion);
+    const ragdoll = ragdollBodies[i];
+    ragdoll.meshes.forEach(({ mesh, body }) => {
+      if (mesh && body) {
+        mesh.position.copy(body.position);
+        mesh.quaternion.copy(body.quaternion);
+       
+        // Distance-based optimization: LOD for far away ragdolls
+        const distToCamera = mesh.position.distanceTo(camera.position);
+        if (distToCamera > 60) {
+          mesh.castShadow = false;
+        } else if (distToCamera > 35) {
+          mesh.castShadow = false;
+        } else {
+          mesh.castShadow = true;
+        }
+      }
+    });
+   
+    // Memory management: remove very far ragdolls after 30 seconds
+    if (!ragdoll.createdAt) ragdoll.createdAt = Date.now();
+    const ageMs = Date.now() - ragdoll.createdAt;
+    const distToCamera = ragdoll.meshes[0]?.mesh?.position.distanceTo(camera.position) || 0;
+    if (ageMs > 30000 || (ageMs > 8000 && distToCamera > 80)) {
+      ragdoll.meshes.forEach(({ mesh, body }) => {
+        scene.remove(mesh);
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+        if (physicsWorld.bodies.includes(body)) {
+          physicsWorld.removeBody(body);
+        }
+      });
+      ragdoll.constraints.forEach(constraint => {
+        if (physicsWorld.constraints.includes(constraint)) {
+          physicsWorld.removeConstraint(constraint);
+        }
+      });
+      ragdollBodies.splice(i, 1);
+    }
+  }
 
-  // Distance-based optimization: LOD for far away ragdolls
-  const distToCamera = mesh.position.distanceTo(camera.position);
-  if (distToCamera > 60) {
-  mesh.castShadow = false;
-  } else if (distToCamera > 35) {
-  mesh.castShadow = false;
-  } else {
-  mesh.castShadow = true;
-  }
-  }
-  });
-
-  // Memory management: remove very far ragdolls after 30 seconds
-  if (!ragdoll.createdAt) ragdoll.createdAt = Date.now();
-  const ageMs = Date.now() - ragdoll.createdAt;
-  const distToCamera = ragdoll.meshes[0]?.mesh?.position.distanceTo(camera.position) || 0;
-  if (ageMs > 30000 || (ageMs > 8000 && distToCamera > 80)) {
-  ragdoll.meshes.forEach(({ mesh, body }) => {
-  scene.remove(mesh);
-  mesh.geometry.dispose();
-  mesh.material.dispose();
-  if (physicsWorld.bodies.includes(body)) {
-  physicsWorld.removeBody(body);
-  }
-  });
-  ragdoll.constraints.forEach(constraint => {
-  if (physicsWorld.constraints.includes(constraint)) {
-  physicsWorld.removeConstraint(constraint);
-  }
-  });
-  ragdollBodies.splice(i, 1);
-  }
-  }
 
   enemies.forEach((enemy) => {
   const distToPlayer = enemy.position.distanceTo(camera.position);
+
 
   const enemyEyePos = enemy.position.clone().add(new THREE.Vector3(0, 1.9, 0));
   const playerEyePos = camera.position.clone();
@@ -1662,6 +1905,7 @@
   angleToPlayer < enemyFOV / 2 &&
   hasClearLineOfSight(enemyEyePos, playerEyePos)
   );
+
 
   if (canSeePlayer) {
   enemy.userData.lostSightTimer = 0;
@@ -1681,6 +1925,7 @@
   }
   }
 
+
   if (enemy.userData.state === 'CHASE' && canSeePlayer && distToPlayer <= 50) {
   enemy.userData.state = 'ATTACK';
   } else if (enemy.userData.state === 'ATTACK' && (!canSeePlayer || distToPlayer > 53)) {
@@ -1688,9 +1933,11 @@
   enemy.userData.shootCooldown = 0;
   }
 
+
   if (enemy.userData.state === 'PATROL') {
   const target = enemy.userData.patrolTarget;
   const distToTarget = enemy.position.distanceTo(new THREE.Vector3(target.x, enemy.position.y, target.z));
+
 
   if (distToTarget < 2) {
   enemy.userData.patrolWaitTimer += delta;
@@ -1714,6 +1961,7 @@
   targetPos.y = enemy.position.y;
   enemy.lookAt(targetPos);
 
+
   const chaseDir = new THREE.Vector3().subVectors(camera.position, enemy.position);
   chaseDir.y = 0;
   chaseDir.normalize();
@@ -1723,12 +1971,15 @@
   targetPos.y = enemy.position.y;
   enemy.lookAt(targetPos);
 
+
   const cooldownLimit = enemy.userData.weaponType === 'MP153' ? 1.2 : 0.4;
   enemy.userData.shootCooldown += delta;
+
 
   if (enemy.userData.shootCooldown >= cooldownLimit) {
   const enemyMuzzle = new THREE.Vector3().copy(enemy.position).add(new THREE.Vector3(0, 1.5, 0));
   const playerHead = new THREE.Vector3().copy(camera.position).add(new THREE.Vector3(0, -0.4, 0));
+
 
   if (enemy.userData.weaponType === 'MP153') {
   for (let p = 0; p < 3; p++) {
@@ -1751,12 +2002,15 @@
   enemyTracers.push({ element: eTracerLine, material: eTracerMat, life: 0.05 });
   }
 
+
   Sound.playEnemyShot(enemy.userData.weaponType, distToPlayer);
   enemy.userData.shootCooldown = 0;
   }
   }
 
+
   enemy.position.y = getTerrainHeight(enemy.position.x, enemy.position.z);
+
 
   if (enemy.parent && enemy.userData.hitTimer > 0) {
   enemy.userData.hitTimer -= delta;
@@ -1770,7 +2024,9 @@
   }
   });
 
+
   let playerIsMoving = false;
+
 
   if (document.pointerLockElement === document.body) {
   const moveVector = new THREE.Vector3();
@@ -1778,14 +2034,17 @@
   forward.y = 0;
   forward.normalize();
 
+
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   right.y = 0;
   right.normalize();
+
 
   if (keys.w) moveVector.add(forward);
   if (keys.s) moveVector.add(forward.clone().negate());
   if (keys.d) moveVector.add(right);
   if (keys.a) moveVector.add(right.clone().negate());
+
 
   if (moveVector.lengthSq() > 0) {
   moveVector.normalize().multiplyScalar(moveSpeed * delta);
@@ -1796,6 +2055,7 @@
   new THREE.Vector3(nextPosition.x + playerRadius, nextPosition.y + 1.0, nextPosition.z + playerRadius)
   );
 
+
   // Optimization: Use pre-calculated bounds
   for (let i = 0; i < collidableObjects.length; i++) {
   if (playerBB.intersectsBox(collidableObjects[i].userData.bounds)) {
@@ -1804,12 +2064,14 @@
   }
   }
 
+
   if (!isColliding) {
   camera.position.x = nextPosition.x;
   camera.position.z = nextPosition.z;
   playerIsMoving = true;
   }
   }
+
 
   camera.position.y = THREE.MathUtils.lerp(
   camera.position.y,
@@ -1818,19 +2080,24 @@
   );
   }
 
+
   Sound.updateFootsteps(
   delta,
   document.pointerLockElement === document.body && playerIsMoving,
   isAiming ? 0.72 : 1.0
   );
 
+
   drawMinimap();
+
 
   if (isSwapping) {
   swapProgress += delta * 3.5;
 
+
   if (swapProgress >= 1.0) {
   swapProgress = 0;
+
 
   if (swapDirection === -1) {
   currentWeapon.mesh.visible = false;
@@ -1846,6 +2113,7 @@
   }
   }
 
+
   if (isSwapping) {
   const t = swapProgress;
   if (swapDirection === -1) {
@@ -1860,8 +2128,10 @@
   }
   }
 
+
   if (isFiring && document.pointerLockElement === document.body) {
   fireTimer += delta;
+
 
   if (currentWeapon.automatic) {
   if (fireTimer >= currentWeapon.fireRate) {
@@ -1877,6 +2147,7 @@
   recoilCounter = 0;
   }
 
+
   if (activeFlash) {
   flashDuration -= delta;
   if (flashDuration <= 0) {
@@ -1885,25 +2156,31 @@
   }
   }
 
+
   for (let i = bullets.length - 1; i >= 0; i--) {
   const bullet = bullets[i];
   bullet.life -= delta;
+
 
   const currentBulletPos = bullet.element.position.clone();
   const moveStep = bullet.velocity.clone().multiplyScalar(delta);
   const nextBulletPos = currentBulletPos.clone().add(moveStep);
   const distanceThisFrame = moveStep.length();
 
+
   let isHit = false;
+
 
   raycaster.set(currentBulletPos, bullet.dir);
   const intersects = raycaster.intersectObjects(targets);
+
 
   if (intersects.length > 0 && intersects[0].distance <= distanceThisFrame) {
   createBulletHoleFromHit(intersects[0]);
   handleObjectHit(intersects[0].object, bullet.damage);
   isHit = true;
   }
+
 
   if (!isHit) {
   const floorIntersects = raycaster.intersectObject(floor, false);
@@ -1913,6 +2190,7 @@
   }
   }
 
+
   const terrainY = getTerrainHeight(nextBulletPos.x, nextBulletPos.z);
   if (!isHit && nextBulletPos.y <= terrainY) {
   const floorImpactPos = nextBulletPos.clone();
@@ -1920,6 +2198,7 @@
   createBulletHole(floorImpactPos, getTerrainNormal(floorImpactPos.x, floorImpactPos.z), 0.14);
   isHit = true;
   }
+
 
   if (isHit || bullet.life <= 0) {
   scene.remove(bullet.element);
@@ -1930,9 +2209,11 @@
   }
   }
 
+
   for (let i = enemyTracers.length - 1; i >= 0; i--) {
   enemyTracers[i].life -= delta;
   enemyTracers[i].material.opacity = enemyTracers[i].life / 0.05;
+
 
   if (enemyTracers[i].life <= 0) {
   scene.remove(enemyTracers[i].element);
@@ -1942,8 +2223,10 @@
   }
   }
 
+
   horizontalRecoil = THREE.MathUtils.lerp(horizontalRecoil, 0, 0.2);
   yaw += horizontalRecoil;
+
 
   if (recoilTargetY > 0) {
   const nextRecoil = THREE.MathUtils.lerp(recoilTargetY, 0, 0.15);
@@ -1951,26 +2234,30 @@
   recoilTargetY = nextRecoil;
   }
 
-  pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
 
+  pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+ 
   // Q/E 카메라 틸트 업데이트
   if (keys.q) {
-  targetRollZ = Math.PI / 9; // 45도 좌측 기울임
+    targetRollZ = Math.PI / 4;  // 45도 좌측 기울임
   } else if (keys.e) {
-  targetRollZ = -Math.PI / 9; // 45도 우측 기울임
+    targetRollZ = -Math.PI / 4;  // 45도 우측 기울임
   } else {
-  targetRollZ = 0; // 기울임 해제
+    targetRollZ = 0;  // 기울임 해제
   }
-  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, targetRollZ, 0.15); // 부드러운 모션
-
+  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, targetRollZ, 0.15);  // 부드러운 모션
+ 
   camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, cameraRollZ, 'YXZ'));
+
 
   scopeCamera.position.copy(camera.position);
   scopeCamera.quaternion.copy(camera.quaternion);
 
+
   if (isAiming) {
   scopeCamera.fov = 12;
   scopeCamera.updateProjectionMatrix();
+
 
   if (currentWeapon === WEAPONS.MP153) {
   targetLocalPos.set(0.018, -0.255, -0.36);
@@ -1984,6 +2271,7 @@
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.24);
   }
 
+
   currentLocalPos.lerp(targetLocalPos, 0.25);
   } else {
   targetLocalPos.set(0.2, -0.35 + recoilTargetY * 0.5, -0.5);
@@ -1993,31 +2281,41 @@
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.2);
   }
 
+
   const finalWeaponWorldPos = currentLocalPos.clone().add(swapOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
   weaponGroup.position.copy(finalWeaponWorldPos);
+
 
   const combinedQuat = camera.quaternion.clone()
   .multiply(new THREE.Quaternion().setFromEuler(swapOffsetRot))
   .multiply(new THREE.Quaternion().setFromEuler(aimOffsetRot));
   weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
 
+
   // Only render scope if current weapon has one (M4A1)
   if (currentWeapon === WEAPONS.M4A1) {
-  weaponGroup.visible = false;
-  renderer.setRenderTarget(scopeRenderTarget);
-  renderer.render(scene, scopeCamera);
+    weaponGroup.visible = false;
+    renderer.setRenderTarget(scopeRenderTarget);
+    renderer.render(scene, scopeCamera);
   }
+
 
   weaponGroup.visible = true;
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
+
+
+  // 렌더링 후 다음 프레임의 이동/충돌 연산을 위해 카메라 위치를 원래 루트 위치로 복구
+  camera.position.copy(playerLogicPos);
   }
+
 
   window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
 
   scene.updateMatrixWorld(true);
   animate();

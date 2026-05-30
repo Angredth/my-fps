@@ -81,7 +81,7 @@
 <body>
   <div id="blocker">
   화면을 클릭하면 시작합니다.<br>
-  이동: WASD, 기울이기: Q/E, 시점: 마우스, 사격: 좌클릭, 정조준: 우클릭 토글, 무기교체: 1번 / 2번<br>
+  이동: WASD, 기울이기: Q/E, 시점: 마우스, 사격: 좌클릭, 정조준: 우클릭 토글, 스코프 배율: Alt+우클릭, 무기교체: 1번 / 2번<br>
   환경음, 발소리, 무기별 격발음이 함께 재생됩니다.
   </div>
   <div id="crosshair"></div>
@@ -983,6 +983,9 @@
 
 
   let currentWeapon = WEAPONS.M4A1;
+  let scopeMagnification = 1;
+  let scopeZoomMotionTimer = 0;
+  const scopeZoomMotionDuration = 0.24;
   let isSwapping = false;
   let swapProgress = 0;
   let swapDirection = -1;
@@ -1575,6 +1578,22 @@
   const weaponUI = document.getElementById('weapon-ui');
 
 
+  function updateWeaponUI() {
+  const scopeText = currentWeapon === WEAPONS.M4A1 ? ` | SCOPE: ${scopeMagnification}x` : '';
+  weaponUI.innerText = `WEAPON: ${currentWeapon.name}${scopeText}`;
+  }
+
+
+  function toggleScopeMagnification() {
+  scopeMagnification = scopeMagnification === 1 ? 4 : 1;
+  scopeZoomMotionTimer = scopeZoomMotionDuration;
+  updateWeaponUI();
+  }
+
+
+  updateWeaponUI();
+
+
   blocker.addEventListener('click', () => {
   Sound.resume();
   document.body.requestPointerLock();
@@ -1682,9 +1701,13 @@
   shotSequence = 0;
   fireTimer = currentWeapon.fireRate;
   } else if (event.button === 2 && !isSwapping) {
+  if (event.altKey && currentWeapon === WEAPONS.M4A1) {
+  toggleScopeMagnification();
+  } else {
   isAiming = !isAiming;
   crosshair.style.opacity = isAiming ? '0' : '1';
   Sound.playAimToggle(isAiming);
+  }
   }
   });
 
@@ -1997,11 +2020,74 @@
   const r180Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   const enemyTracers = [];
   const raycaster = new THREE.Raycaster();
+  const playerBoundsBox = new THREE.Box3();
+
+
+  function isPlayerPositionBlocked(position) {
+  if (!isInsideMap(position.x, position.z, playerRadius + 0.2)) return true;
+
+
+  playerBoundsBox.set(
+  new THREE.Vector3(position.x - playerRadius, position.y - 1.8, position.z - playerRadius),
+  new THREE.Vector3(position.x + playerRadius, position.y + 1.0, position.z + playerRadius)
+  );
+
+
+  for (let i = 0; i < collidableObjects.length; i++) {
+  if (playerBoundsBox.intersectsBox(collidableObjects[i].userData.bounds)) return true;
+  }
+
+
+  return false;
+  }
+
+
+  function tryMovePlayer(moveVector) {
+  const startPosition = camera.position.clone();
+  const fullStepPosition = startPosition.clone().add(moveVector);
+
+
+  if (!isPlayerPositionBlocked(fullStepPosition)) {
+  camera.position.x = fullStepPosition.x;
+  camera.position.z = fullStepPosition.z;
+  return true;
+  }
+
+
+  const axisSteps = Math.abs(moveVector.x) > Math.abs(moveVector.z)
+  ? [new THREE.Vector3(moveVector.x, 0, 0), new THREE.Vector3(0, 0, moveVector.z)]
+  : [new THREE.Vector3(0, 0, moveVector.z), new THREE.Vector3(moveVector.x, 0, 0)];
+  let moved = false;
+
+
+  axisSteps.forEach((axisStep) => {
+  if (axisStep.lengthSq() <= 0) return;
+  const slidePosition = camera.position.clone().add(axisStep);
+  if (!isPlayerPositionBlocked(slidePosition)) {
+  camera.position.x = slidePosition.x;
+  camera.position.z = slidePosition.z;
+  moved = true;
+  }
+  });
+
+
+  return moved;
+  }
+
+
+  function getScopeFov() {
+  const baseFovRadians = THREE.MathUtils.degToRad(camera.fov);
+  return THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(baseFovRadians / 2) / scopeMagnification));
+  }
 
 
   function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
+  const scopeZoomMotionAmount = scopeZoomMotionTimer > 0
+  ? Math.sin((scopeZoomMotionTimer / scopeZoomMotionDuration) * Math.PI)
+  : 0;
+  scopeZoomMotionTimer = Math.max(0, scopeZoomMotionTimer - delta);
 
 
   // Physics simulation step
@@ -2264,7 +2350,7 @@
   currentWeapon.mesh.visible = false;
   currentWeapon = pendingWeapon;
   currentWeapon.mesh.visible = true;
-  weaponUI.innerText = `WEAPON: ${currentWeapon.name}`;
+  updateWeaponUI();
   fullScope.visible = currentWeapon !== WEAPONS.MP153;
   swapDirection = 1;
   } else {
@@ -2413,21 +2499,19 @@
 
   scopeCamera.position.copy(camera.position);
   scopeCamera.quaternion.copy(camera.quaternion);
-
-
-  if (isAiming) {
-  scopeCamera.fov = 12;
+  scopeCamera.fov = currentWeapon === WEAPONS.M4A1 ? getScopeFov() : camera.fov;
   scopeCamera.updateProjectionMatrix();
 
 
+  if (isAiming) {
   if (currentWeapon === WEAPONS.MP153) {
   targetLocalPos.set(0.018, -0.255, -0.36);
   aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, shotgunAdsRotation.x, 0.24);
   aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, shotgunAdsRotation.y, 0.24);
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, shotgunAdsRotation.z, 0.24);
   } else {
-  targetLocalPos.set(0.005, -0.328, -0.23);
-  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, 0, 0.24);
+  targetLocalPos.set(0.005 - scopeZoomMotionAmount * 0.018, -0.328 + scopeZoomMotionAmount * 0.014, -0.23);
+  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, -scopeZoomMotionAmount * 0.015, 0.24);
   aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, 0, 0.24);
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.24);
   }

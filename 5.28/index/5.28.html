@@ -181,7 +181,6 @@
   { gx: 1, gz: 0 },
   { gx: 1, gz: 1 }
   ];
-  const mapTileKeys = new Set(mapTiles.map(({ gx, gz }) => `${gx},${gz}`));
   const mapOriginX = -mapTileSize;
   const mapOriginZ = -mapTileSize;
   const worldSize = mapTileSize * 2;
@@ -192,17 +191,12 @@
   }
 
 
-  function hasMapTile(gx, gz) {
-  return mapTileKeys.has(`${gx},${gz}`);
-  }
-
-
   function isInsideMap(x, z, padding = 0) {
   return mapTiles.some(({ gx, gz }) => {
-  const minX = mapOriginX + gx * mapTileSize + (hasMapTile(gx - 1, gz) ? 0 : padding);
-  const maxX = mapOriginX + (gx + 1) * mapTileSize - (hasMapTile(gx + 1, gz) ? 0 : padding);
-  const minZ = mapOriginZ + gz * mapTileSize + (hasMapTile(gx, gz - 1) ? 0 : padding);
-  const maxZ = mapOriginZ + (gz + 1) * mapTileSize - (hasMapTile(gx, gz + 1) ? 0 : padding);
+  const minX = mapOriginX + gx * mapTileSize + padding;
+  const maxX = minX + mapTileSize - padding * 2;
+  const minZ = mapOriginZ + gz * mapTileSize + padding;
+  const maxZ = minZ + mapTileSize - padding * 2;
   return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
   });
   }
@@ -337,9 +331,15 @@
 
 
   function createBoundaryWalls() {
-  const wallHeight = 4;
+  const wallHeight = 2;
   const wallThickness = 1.2;
   const wallSectionLength = 10;
+  const tileKeys = new Set(mapTiles.map(({ gx, gz }) => `${gx},${gz}`));
+
+
+  function hasTile(gx, gz) {
+  return tileKeys.has(`${gx},${gz}`);
+  }
 
 
   function addWallSection(centerX, centerZ, length, horizontal) {
@@ -356,6 +356,7 @@
   scene.add(wall);
 
 
+  collidableObjects.push(wall);
   visionBlockers.push(wall);
   targets.push(wall);
   buildingsData.push({ x: centerX, z: centerZ, w: horizontal ? length : wallThickness, d: horizontal ? wallThickness : length });
@@ -395,10 +396,10 @@
   const maxZ = minZ + mapTileSize;
 
 
-  if (!hasMapTile(gx, gz - 1)) addEdge(minX, minZ, maxX, minZ);
-  if (!hasMapTile(gx, gz + 1)) addEdge(minX, maxZ, maxX, maxZ);
-  if (!hasMapTile(gx - 1, gz)) addEdge(minX, minZ, minX, maxZ);
-  if (!hasMapTile(gx + 1, gz)) addEdge(maxX, minZ, maxX, maxZ);
+  if (!hasTile(gx, gz - 1)) addEdge(minX, minZ, maxX, minZ);
+  if (!hasTile(gx, gz + 1)) addEdge(minX, maxZ, maxX, maxZ);
+  if (!hasTile(gx - 1, gz)) addEdge(minX, minZ, minX, maxZ);
+  if (!hasTile(gx + 1, gz)) addEdge(maxX, minZ, maxX, maxZ);
   });
   }
 
@@ -2294,7 +2295,28 @@
 
   if (moveVector.lengthSq() > 0) {
   moveVector.normalize().multiplyScalar(moveSpeed * delta);
-  playerIsMoving = tryMovePlayer(moveVector);
+  const nextPosition = camera.position.clone().add(moveVector);
+  let isColliding = !isInsideMap(nextPosition.x, nextPosition.z, playerRadius + 0.2);
+  const playerBB = new THREE.Box3(
+  new THREE.Vector3(nextPosition.x - playerRadius, nextPosition.y - 1.8, nextPosition.z - playerRadius),
+  new THREE.Vector3(nextPosition.x + playerRadius, nextPosition.y + 1.0, nextPosition.z + playerRadius)
+  );
+
+
+  // Optimization: Use pre-calculated bounds
+  for (let i = 0; i < collidableObjects.length; i++) {
+  if (playerBB.intersectsBox(collidableObjects[i].userData.bounds)) {
+  isColliding = true;
+  break;
+  }
+  }
+
+
+  if (!isColliding) {
+  camera.position.x = nextPosition.x;
+  camera.position.z = nextPosition.z;
+  playerIsMoving = true;
+  }
   }
 
 

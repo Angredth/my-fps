@@ -76,7 +76,7 @@
 <body>
   <div id="blocker">
   화면을 클릭하면 시작합니다.<br>
-  이동: WASD, 시점: 마우스, 사격: 좌클릭, 정조준: 우클릭 토글, 무기교체: 1번 / 2번<br>
+  이동: WASD, 기울이기: Q/E, 시점: 마우스, 사격: 좌클릭, 정조준: 우클릭 토글, 무기교체: 1번 / 2번<br>
   환경음, 발소리, 무기별 격발음이 함께 재생됩니다.
   </div>
   <div id="crosshair"></div>
@@ -103,7 +103,7 @@
   physicsWorld.gravity.set(0, -9.82, 0);
   physicsWorld.defaultContactMaterial.friction = 0.4;
   physicsWorld.defaultContactMaterial.restitution = 0.3;
-  const ragdollBodies = [];  // Track ragdoll bodies for updates
+  const ragdollBodies = []; // Track ragdoll bodies for updates
 
   const vertexShader = `
   varying vec3 vWorldPosition;
@@ -178,17 +178,16 @@
   floor.updateMatrixWorld(true);
 
   // Physics body for terrain floor
-  const terrainShape = new CANNON.Trimesh();
   const posAttr = floorGeo.attributes.position;
-  const indices = floorGeo.index ? Array.from(floorGeo.index.array) : 
-    Array.from({length: posAttr.count}, (_, i) => i);
-  
+  const indices = floorGeo.index ? Array.from(floorGeo.index.array) :
+  Array.from({length: posAttr.count}, (_, i) => i);
+
   const vertices = [];
   for (let i = 0; i < posAttr.count; i++) {
-    vertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+  vertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
   }
-  
-  terrainShape.addTriangles(vertices, indices);
+
+  const terrainShape = new CANNON.Trimesh(vertices, indices);
   const terrainBody = new CANNON.Body({ mass: 0, shape: terrainShape });
   physicsWorld.addBody(terrainBody);
 
@@ -367,13 +366,14 @@
   box.castShadow = true;
   box.receiveShadow = true;
   box.userData = { type: 'building' };
+  box.userData.bounds = new THREE.Box3().setFromObject(box);
   scene.add(box);
 
   targets.push(box);
   collidableObjects.push(box);
   visionBlockers.push(box);
   buildingsData.push({ x: bx, z: bz, w: bWidth, d: bDepth });
-  
+
   // Physics body for building
   const buildingShape = new CANNON.Box(new CANNON.Vec3(bWidth / 2, bHeight / 2, bDepth / 2));
   const buildingBody = new CANNON.Body({ mass: 0, shape: buildingShape });
@@ -415,9 +415,10 @@
   hitProxy.position.set(tx, ty + trunkHeight / 2, tz);
   scene.add(hitProxy);
 
+  hitProxy.userData.bounds = new THREE.Box3().setFromObject(hitProxy);
   collidableObjects.push(hitProxy);
   treesData.push({ x: tx, z: tz });
-  
+
   // Physics body for tree trunk
   const trunkShape = new CANNON.Cylinder(0.95, 0.85, trunkHeight, 8);
   const trunkBody = new CANNON.Body({ mass: 0, shape: trunkShape });
@@ -428,105 +429,106 @@
   const enemies = [];
 
   function createRagdoll(position, isM4Weapon) {
-    const ragdoll = {
-      bodies: [],
-      constraints: [],
-      meshes: []
-    };
+  const ragdoll = {
+  bodies: [],
+  constraints: [],
+  meshes: []
+  };
 
-    const bodyColor = new THREE.Color(0xcc2222);
-    const enemyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5 });
+  const bodyColor = new THREE.Color(0xcc2222);
+  const enemyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5 });
 
-    // Raise spawn position slightly to prevent clipping through terrain
-    const spawnY = position.y + 1.2;
+  // Raise spawn position slightly to prevent clipping through terrain
+  const spawnY = position.y + 1.2;
 
-    // Torso (중심 바디)
-    const torsoShape = new CANNON.Sphere(0.35);
-    const torsoBody = new CANNON.Body({ mass: 3, shape: torsoShape, linearDamping: 0.5, angularDamping: 0.5 });
-    torsoBody.position.set(position.x, spawnY + 0.95, position.z);
-    physicsWorld.addBody(torsoBody);
+  // Torso (중심 바디)
+  const torsoShape = new CANNON.Sphere(0.35);
+  const torsoBody = new CANNON.Body({ mass: 3, shape: torsoShape, linearDamping: 0.5, angularDamping: 0.5 });
+  torsoBody.position.set(position.x, spawnY + 0.95, position.z);
+  physicsWorld.addBody(torsoBody);
 
-    const torsoGeo = new THREE.CapsuleGeometry(0.45, 1.0, 8, 16);
-    const torsoMesh = new THREE.Mesh(torsoGeo, enemyMat);
-    torsoMesh.castShadow = true;
-    torsoMesh.userData = { ragdollBody: torsoBody };
-    scene.add(torsoMesh);
+  const torsoGeo = new THREE.CapsuleGeometry(0.45, 1.0, 8, 16);
+  const torsoMesh = new THREE.Mesh(torsoGeo, enemyMat);
+  torsoMesh.castShadow = true;
+  torsoMesh.userData = { ragdollBody: torsoBody };
+  scene.add(torsoMesh);
 
-    ragdoll.bodies.push(torsoBody);
-    ragdoll.meshes.push({ mesh: torsoMesh, body: torsoBody });
+  ragdoll.bodies.push(torsoBody);
+  ragdoll.meshes.push({ mesh: torsoMesh, body: torsoBody });
 
-    // Head (머리)
-    const headShape = new CANNON.Sphere(0.35);
-    const headBody = new CANNON.Body({ mass: 1.5, shape: headShape, linearDamping: 0.3, angularDamping: 0.5 });
-    headBody.position.set(position.x, spawnY + 2.15, position.z);
-    physicsWorld.addBody(headBody);
+  // Head (머리)
+  const headShape = new CANNON.Sphere(0.35);
+  const headBody = new CANNON.Body({ mass: 1.5, shape: headShape, linearDamping: 0.3, angularDamping: 0.5 });
+  headBody.position.set(position.x, spawnY + 2.15, position.z);
+  physicsWorld.addBody(headBody);
 
-    const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-    const headMesh = new THREE.Mesh(headGeo, enemyMat);
-    headMesh.castShadow = true;
-    headMesh.userData = { ragdollBody: headBody };
-    scene.add(headMesh);
+  const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
+  const headMesh = new THREE.Mesh(headGeo, enemyMat);
+  headMesh.castShadow = true;
+  headMesh.userData = { ragdollBody: headBody };
+  scene.add(headMesh);
 
-    ragdoll.bodies.push(headBody);
-    ragdoll.meshes.push({ mesh: headMesh, body: headBody });
+  ragdoll.bodies.push(headBody);
+  ragdoll.meshes.push({ mesh: headMesh, body: headBody });
 
-    // Weapon (무기)
-    const weaponShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.1, 0.8));
-    const weaponBody = new CANNON.Body({ mass: 0.8, shape: weaponShape, linearDamping: 0.7, angularDamping: 0.8 });
-    weaponBody.position.set(position.x - 0.3, spawnY + 1.5, position.z + 0.5);
-    physicsWorld.addBody(weaponBody);
+  // Weapon (무기)
+  const weaponShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.1, 0.8));
+  const weaponBody = new CANNON.Body({ mass: 0.8, shape: weaponShape, linearDamping: 0.7, angularDamping: 0.8 });
+  weaponBody.position.set(position.x - 0.3, spawnY + 1.5, position.z + 0.5);
+  weaponBody.scale.set(0.5,0.5,0.5);
+  physicsWorld.addBody(weaponBody);
 
-    const weaponModel = isM4Weapon ? createM4A1Model() : createMP153Model();
-    weaponModel.position.copy(weaponBody.position);
-    weaponModel.castShadow = true;
-    weaponModel.userData = { ragdollBody: weaponBody };
-    scene.add(weaponModel);
+  const weaponModel = isM4Weapon ? createM4A1Model() : createMP153Model();
+  weaponModel.position.copy(weaponBody.position);
+  weaponModel.castShadow = true;
+  weaponModel.userData = { ragdollBody: weaponBody };
+  scene.add(weaponModel);
 
-    ragdoll.bodies.push(weaponBody);
-    ragdoll.meshes.push({ mesh: weaponModel, body: weaponBody });
+  ragdoll.bodies.push(weaponBody);
+  ragdoll.meshes.push({ mesh: weaponModel, body: weaponBody });
 
-    // Head - Torso constraint (머리-몸통 연결)
-    const headTorsoConstraint = new CANNON.PointToPointConstraint(
-      headBody, new CANNON.Vec3(0, -0.4, 0),
-      torsoBody, new CANNON.Vec3(0, 0.5, 0)
-    );
-    physicsWorld.addConstraint(headTorsoConstraint);
-    ragdoll.constraints.push(headTorsoConstraint);
+  // Head - Torso constraint (머리-몸통 연결)
+  const headTorsoConstraint = new CANNON.PointToPointConstraint(
+  headBody, new CANNON.Vec3(0, -0.4, 0),
+  torsoBody, new CANNON.Vec3(0, 0.5, 0)
+  );
+  physicsWorld.addConstraint(headTorsoConstraint);
+  ragdoll.constraints.push(headTorsoConstraint);
 
-    // Weapon - Torso constraint (무기-몸통 연결)
-    const weaponTorsoConstraint = new CANNON.PointToPointConstraint(
-      weaponBody, new CANNON.Vec3(0, 0, 0),
-      torsoBody, new CANNON.Vec3(-0.2, 0.2, 0.3)
-    );
-    physicsWorld.addConstraint(weaponTorsoConstraint);
-    ragdoll.constraints.push(weaponTorsoConstraint);
+  // Weapon - Torso constraint (무기-몸통 연결)
+  const weaponTorsoConstraint = new CANNON.PointToPointConstraint(
+  weaponBody, new CANNON.Vec3(0, 0, 0),
+  torsoBody, new CANNON.Vec3(-0.2, 0.2, 0.3)
+  );
+  physicsWorld.addConstraint(weaponTorsoConstraint);
+  ragdoll.constraints.push(weaponTorsoConstraint);
 
-    ragdollBodies.push(ragdoll);
-    return ragdoll;
+  ragdollBodies.push(ragdoll);
+  return ragdoll;
   }
 
   function activateRagdoll(ragdoll) {
-    ragdoll.bodies.forEach((body, index) => {
-      let velocityMagnitude = 12;  // 더 강한 초기 속도
-      let verticalVelocity = -3.5;  // 아래로 더 빠르게
-      
-      // 무기는 더 강하게 떨어지게
-      if (index === 2) {
-        velocityMagnitude = 14;
-        verticalVelocity = -5;
-      }
-      
-      body.velocity.set(
-        (Math.random() - 0.5) * velocityMagnitude,
-        verticalVelocity,
-        (Math.random() - 0.5) * velocityMagnitude
-      );
-      body.angularVelocity.set(
-        (Math.random() - 0.5) * 8,
-        (Math.random() - 0.5) * 8,
-        (Math.random() - 0.5) * 8
-      );
-    });
+  ragdoll.bodies.forEach((body, index) => {
+  let velocityMagnitude = 12; // 더 강한 초기 속도
+  let verticalVelocity = -3.5; // 아래로 더 빠르게
+
+  // 무기는 더 강하게 떨어지게
+  if (index === 2) {
+  velocityMagnitude = 14;
+  verticalVelocity = -5;
+  }
+
+  body.velocity.set(
+  (Math.random() - 0.5) * velocityMagnitude,
+  verticalVelocity,
+  (Math.random() - 0.5) * velocityMagnitude
+  );
+  body.angularVelocity.set(
+  (Math.random() - 0.5) * 8,
+  (Math.random() - 0.5) * 8,
+  (Math.random() - 0.5) * 8
+  );
+  });
   }
 
   function spawnEnemy() {
@@ -738,11 +740,6 @@
   'https://raw.githubusercontent.com/Angredth/my-fps/master/shotgun.mp3',
   'https://github.com/Angredth/my-fps/raw/master/shotgun.mp3',
   'https://raw.githubusercontent.com/Angredth/my-fps/blob/main/AR.mp3',
-  'file:///C:/Users/CKIRUser/Videos/shotgun.wav',
-  'file:///C:/Users/CKIRUser/Videos/shotgun.ogg',
-  './shotgun.mp3',
-  './shotgun.wav',
-  './shotgun.ogg'
   ];
   let shotgunSamplePool = [];
   let shotgunSampleReady = false;
@@ -1137,7 +1134,7 @@
   const t = ctx.currentTime;
   const sideOffset = footstepSide === 0 ? -6 : 6;
   footstepSide = 1 - footstepSide;
-  const amplifiedVolume = volume * 4.5;  // 4.5배 증폭
+  const amplifiedVolume = volume * 4.5; // 4.5배 증폭
 
   tone({
   start: t,
@@ -1268,8 +1265,8 @@
   });
 
   const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
-  let cameraRollZ = 0;  // 카메라 틸트 (Z축 회전)
-  let targetRollZ = 0;  // 목표 틸트
+  let cameraRollZ = 0; // 카메라 틸트 (Z축 회전)
+  let targetRollZ = 0; // 목표 틸트
 
   document.addEventListener('keydown', (event) => {
   if (document.pointerLockElement !== document.body) return;
@@ -1372,7 +1369,7 @@
   return new THREE.Vector3(hL - hR, sampleGap * 2, hD - hU).normalize();
   }
 
-  function createBulletHole(position, normal, size = 0.12) {
+  function createBulletHole(position, normal, size = 0.06) {
   const hole = new THREE.Mesh(bulletHoleGeo, bulletHoleMat);
   const surfaceNormal = normal.clone().normalize();
   hole.position.copy(position).addScaledVector(surfaceNormal, 0.018);
@@ -1493,22 +1490,22 @@
   parent.userData.hitTimer = 0.1;
 
   if (parent.userData.hp <= 0) {
-    if (!parent.userData.isRagdoll) {
-      parent.userData.isRagdoll = true;
-      parent.userData.ragdoll = createRagdoll(parent.position, parent.userData.weaponType === 'M4A1');
-      activateRagdoll(parent.userData.ragdoll);
-      
-      scene.remove(parent);
-      const index = enemies.indexOf(parent);
-      if (index > -1) enemies.splice(index, 1);
+  if (!parent.userData.isRagdoll) {
+  parent.userData.isRagdoll = true;
+  parent.userData.ragdoll = createRagdoll(parent.position, parent.userData.weaponType === 'M4A1');
+  activateRagdoll(parent.userData.ragdoll);
 
-      for (let i = targets.length - 1; i >= 0; i--) {
-      if (targets[i].userData.parentGroup === parent) {
-        targets.splice(i, 1);
-      }
-      }
-    }
-    setTimeout(spawnEnemy, 4000);
+  scene.remove(parent);
+  const index = enemies.indexOf(parent);
+  if (index > -1) enemies.splice(index, 1);
+
+  for (let i = targets.length - 1; i >= 0; i--) {
+  if (targets[i].userData.parentGroup === parent) {
+  targets.splice(i, 1);
+  }
+  }
+  }
+  setTimeout(spawnEnemy, 4000);
   }
   }
   }
@@ -1610,45 +1607,46 @@
   physicsWorld.step(1 / 60, delta, 3);
 
   // Update ragdoll meshes from physics bodies
-  ragdollBodies.forEach((ragdoll, ragdollIndex) => {
-    ragdoll.meshes.forEach(({ mesh, body }) => {
-      if (mesh && body) {
-        mesh.position.copy(body.position);
-        mesh.quaternion.copy(body.quaternion);
-        
-        // Distance-based optimization: LOD for far away ragdolls
-        const distToCamera = mesh.position.distanceTo(camera.position);
-        if (distToCamera > 60) {
-          mesh.castShadow = false;
-        } else if (distToCamera > 35) {
-          mesh.castShadow = false;
-        } else {
-          mesh.castShadow = true;
-        }
-      }
-    });
-    
-    // Memory management: remove very far ragdolls after 30 seconds
-    if (!ragdoll.createdAt) ragdoll.createdAt = Date.now();
-    const ageMs = Date.now() - ragdoll.createdAt;
-    const distToCamera = ragdoll.meshes[0]?.mesh?.position.distanceTo(camera.position) || 0;
-    if (ageMs > 30000 || (ageMs > 8000 && distToCamera > 80)) {
-      ragdoll.meshes.forEach(({ mesh, body }) => {
-        scene.remove(mesh);
-        mesh.geometry.dispose();
-        mesh.material.dispose();
-        if (physicsWorld.bodies.includes(body)) {
-          physicsWorld.removeBody(body);
-        }
-      });
-      ragdoll.constraints.forEach(constraint => {
-        if (physicsWorld.constraints.includes(constraint)) {
-          physicsWorld.removeConstraint(constraint);
-        }
-      });
-      ragdollBodies.splice(ragdollIndex, 1);
-    }
+  for (let i = ragdollBodies.length - 1; i >= 0; i--) {
+  const ragdoll = ragdollBodies[i];
+  ragdoll.meshes.forEach(({ mesh, body }) => {
+  if (mesh && body) {
+  mesh.position.copy(body.position);
+  mesh.quaternion.copy(body.quaternion);
+
+  // Distance-based optimization: LOD for far away ragdolls
+  const distToCamera = mesh.position.distanceTo(camera.position);
+  if (distToCamera > 60) {
+  mesh.castShadow = false;
+  } else if (distToCamera > 35) {
+  mesh.castShadow = false;
+  } else {
+  mesh.castShadow = true;
+  }
+  }
   });
+
+  // Memory management: remove very far ragdolls after 30 seconds
+  if (!ragdoll.createdAt) ragdoll.createdAt = Date.now();
+  const ageMs = Date.now() - ragdoll.createdAt;
+  const distToCamera = ragdoll.meshes[0]?.mesh?.position.distanceTo(camera.position) || 0;
+  if (ageMs > 30000 || (ageMs > 8000 && distToCamera > 80)) {
+  ragdoll.meshes.forEach(({ mesh, body }) => {
+  scene.remove(mesh);
+  mesh.geometry.dispose();
+  mesh.material.dispose();
+  if (physicsWorld.bodies.includes(body)) {
+  physicsWorld.removeBody(body);
+  }
+  });
+  ragdoll.constraints.forEach(constraint => {
+  if (physicsWorld.constraints.includes(constraint)) {
+  physicsWorld.removeConstraint(constraint);
+  }
+  });
+  ragdollBodies.splice(i, 1);
+  }
+  }
 
   enemies.forEach((enemy) => {
   const distToPlayer = enemy.position.distanceTo(camera.position);
@@ -1798,8 +1796,9 @@
   new THREE.Vector3(nextPosition.x + playerRadius, nextPosition.y + 1.0, nextPosition.z + playerRadius)
   );
 
+  // Optimization: Use pre-calculated bounds
   for (let i = 0; i < collidableObjects.length; i++) {
-  if (playerBB.intersectsBox(new THREE.Box3().setFromObject(collidableObjects[i]))) {
+  if (playerBB.intersectsBox(collidableObjects[i].userData.bounds)) {
   isColliding = true;
   break;
   }
@@ -1953,17 +1952,17 @@
   }
 
   pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-  
+
   // Q/E 카메라 틸트 업데이트
   if (keys.q) {
-    targetRollZ = Math.PI / 4;  // 45도 좌측 기울임
+  targetRollZ = Math.PI / 9; // 45도 좌측 기울임
   } else if (keys.e) {
-    targetRollZ = -Math.PI / 4;  // 45도 우측 기울임
+  targetRollZ = -Math.PI / 9; // 45도 우측 기울임
   } else {
-    targetRollZ = 0;  // 기울임 해제
+  targetRollZ = 0; // 기울임 해제
   }
-  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, targetRollZ, 0.15);  // 부드러운 모션
-  
+  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, targetRollZ, 0.15); // 부드러운 모션
+
   camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, cameraRollZ, 'YXZ'));
 
   scopeCamera.position.copy(camera.position);
@@ -2002,9 +2001,12 @@
   .multiply(new THREE.Quaternion().setFromEuler(aimOffsetRot));
   weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
 
+  // Only render scope if current weapon has one (M4A1)
+  if (currentWeapon === WEAPONS.M4A1) {
   weaponGroup.visible = false;
   renderer.setRenderTarget(scopeRenderTarget);
   renderer.render(scene, scopeCamera);
+  }
 
   weaponGroup.visible = true;
   renderer.setRenderTarget(null);

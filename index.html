@@ -457,6 +457,7 @@
           <div id="raidInventoryGrid" class="inventory-wrap raid-inventory" aria-label="레이드 가방 인벤토리"></div>
           <div class="item-list" id="raidBag"></div>
           <div id="searchPanel" class="search-card hidden"></div>
+          <div class="item-list" id="raidBag"></div>
           <div id="eventPanel" class="event-card hidden"></div>
         </aside>
       </div>
@@ -521,6 +522,18 @@
       { id: 'ssd', name: 'SSD', rarity: 'Rare', width: 1, height: 1, value: 7500 },
       { id: 'key', name: '기숙사 열쇠', rarity: 'Rare', width: 1, height: 1, value: 12000 },
       { id: 'pistol-parts', name: '권총 부품', rarity: 'Military', width: 2, height: 1, value: 16000 },
+    const COLS = 7;
+    const ROWS = 5;
+    const BASE_RAID_CAPACITY = 6;
+    const STARTING_MONEY = 15000;
+    const SAVE_KEY = 'tarkov-style-web-prototype-state-v2';
+
+    const ITEM_CATALOG = [
+      { id: 'bolts', name: '나사', rarity: 'Common', width: 1, height: 1, value: 500 },
+      { id: 'wire', name: '전선', rarity: 'Common', width: 1, height: 1, value: 900 },
+      { id: 'cpu-fan', name: 'CPU 팬', rarity: 'Rare', width: 1, height: 2, value: 5000 },
+      { id: 'ssd', name: 'SSD', rarity: 'Rare', width: 1, height: 1, value: 7500 },
+      { id: 'key', name: '기숙사 열쇠', rarity: 'Rare', width: 1, height: 1, value: 12000 },
       { id: 'gpu', name: 'GPU', rarity: 'Military', width: 2, height: 2, value: 50000 },
       { id: 'radio', name: '군용 무전기', rarity: 'Military', width: 2, height: 1, value: 22000 }
     ];
@@ -528,6 +541,8 @@
     const GEAR_SHOP = [
       { id: 'smallBag', name: '작은 가방', cost: 8000, type: 'bag', bag: 'small', effect: '소형 백팩 크기 5x6 제공' },
       { id: 'largeBag', name: '큰 가방', cost: 22000, type: 'bag', bag: 'large', minLevel: 2, effect: '군용 백팩 크기 7x8 제공, Lv.2 필요' },
+      { id: 'smallBag', name: '작은 가방', cost: 8000, type: 'bag', bag: 'small', effect: '레이드 가방 +6칸' },
+      { id: 'largeBag', name: '큰 가방', cost: 22000, type: 'bag', bag: 'large', minLevel: 2, effect: '레이드 가방 +12칸, Lv.2 필요' },
       { id: 'bandage', name: '붕대', cost: 2500, type: 'consumable', effect: '위험/사망 확률 감소, 함정 부상 완화' },
       { id: 'pistol', name: '권총', cost: 18000, type: 'weapon', effect: '적 조우와 강행 돌파 성공률 증가' }
     ];
@@ -578,6 +593,18 @@
       { name: '무기 상자', desc: '고가치 아이템 등장', table: 'weapon', rolls: 2, searchTime: 2600 },
       { name: '재킷', desc: '열쇠 및 잡템 등장', table: 'jacket', rolls: 2, searchTime: 1500 },
       { name: '잠긴 캐비닛', desc: '열쇠가 있으면 희귀 확률 상승', table: 'jacket', rolls: 3, searchTime: 2400, locked: true }
+      none: { label: '기본 주머니', capacity: 0 },
+      small: { label: '작은 가방', capacity: 6 },
+      large: { label: '큰 가방', capacity: 12 }
+    };
+
+    const POIS = [
+      { name: '버려진 창고', desc: '공구함과 사무실 책상' },
+      { name: '서버 룸', desc: '전자 부품과 희귀 장비' },
+      { name: '검문소', desc: '군수품 보급 상자' },
+      { name: '폐차장', desc: '저가 잡템이 많은 구역' },
+      { name: '기숙사', desc: '서랍과 잠긴 방' },
+      { name: '변전소', desc: '전선과 고가 부품' }
     ];
 
     const state = loadState();
@@ -597,6 +624,11 @@
       } catch (error) {
         console.warn('저장 데이터를 불러오지 못했습니다.', error);
       }
+        loaded = JSON.parse(localStorage.getItem(SAVE_KEY) || localStorage.getItem('tarkov-style-web-prototype-state-v1'));
+      } catch (error) {
+        console.warn('저장 데이터를 불러오지 못했습니다.', error);
+      }
+
       return normalizeState(loaded || {});
     }
 
@@ -627,6 +659,7 @@
         search: null,
         loadout: defaultEquipment()
       };
+      return { active: false, lootedPoi: new Set(), bag: [], risk: 12, pendingEvent: null, loadout: defaultEquipment() };
     }
 
     function createUid(prefix) {
@@ -657,6 +690,7 @@
     function raidCapacity(loadout = raid.loadout) {
       const size = bagSize(loadout);
       return size.cols * size.rows;
+      return BASE_RAID_CAPACITY + BAG_INFO[loadout.bag].capacity;
     }
 
     function formatMoney(value) {
@@ -697,6 +731,7 @@
       document.getElementById('raidLog').innerHTML = '';
       addLog(`레이드 진입. 장비: ${gearSummary(raid.loadout)}.`);
       addLog('루팅 포인트를 클릭하면 서칭이 시작되고, 발견 아이템은 직접 가져가야 합니다.');
+      addLog('파밍 포인트를 선택하거나 위험이 커지기 전에 탈출하세요.');
     }
 
     function addLog(message) {
@@ -833,6 +868,45 @@
 
     function eventChance() {
       return 0.24 + Math.min(0.16, raid.risk / 520);
+      if (!raid.active || raid.pendingEvent || raid.lootedPoi.has(index)) return;
+
+      raid.lootedPoi.add(index);
+      const roll = Math.random();
+      if (roll < 0.30) {
+        addLog(`${POIS[index].name}: 아무것도 발견하지 못했습니다.`);
+      } else {
+        addRaidItem(cloneItem(pickLoot(roll)), `${POIS[index].name}:`);
+      }
+
+      raid.risk = Math.min(80, raid.risk + 7 + Math.floor(Math.random() * 7));
+      if (Math.random() < eventChance()) triggerRiskEvent();
+      if (!raid.pendingEvent && Math.random() < deathChance(raid.risk / 260)) failRaid('교전 소리에 끌린 적에게 당했습니다. 장비와 전리품을 모두 잃었습니다.', true);
+      render();
+    }
+
+    function pickLoot(roll, bonus = 0) {
+      const military = ITEM_CATALOG.filter((item) => item.rarity === 'Military');
+      const rare = ITEM_CATALOG.filter((item) => item.rarity === 'Rare');
+      const common = ITEM_CATALOG.filter((item) => item.rarity === 'Common');
+      const levelBonus = Math.min(0.10, (state.level - 1) * 0.025) + bonus;
+      const pool = roll > 0.88 - levelBonus ? military : roll > 0.58 - levelBonus ? rare : common;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function addRaidItem(item, prefix = '획득') {
+      const nextUsed = raidUsedCells() + itemCells(item);
+      if (nextUsed > raidCapacity()) {
+        addLog(`${prefix} ${item.name} 발견, 하지만 가방 공간 부족으로 포기했습니다.`);
+        showToast('레이드 가방 공간이 부족합니다. 더 큰 가방을 구매하거나 탈출하세요.');
+        return false;
+      }
+      raid.bag.push(item);
+      addLog(`${prefix} ${item.rarity} ${item.name} 획득! (${item.width}x${item.height})`);
+      return true;
+    }
+
+    function eventChance() {
+      return 0.28 + Math.min(0.16, raid.risk / 500);
     }
 
     function deathChance(base) {
@@ -889,6 +963,7 @@
       if (!raid.active || !raid.pendingEvent) return;
       const type = raid.pendingEvent.type;
       raid.pendingEvent = null;
+
       if (type === 'enemy') resolveEnemy(actionKey);
       if (type === 'trap') resolveTrap(actionKey);
       if (type === 'lockedRoom') resolveLockedRoom(actionKey);
@@ -901,9 +976,11 @@
       const runChance = raid.loadout.bandages > 0 ? 0.82 : 0.68;
       const success = Math.random() < (actionKey === 'fight' ? fightChance : runChance);
       if (!success) return failRaid(actionKey === 'fight' ? '전투에서 패배했습니다. 장비와 전리품을 모두 잃었습니다.' : '도주 중 사망했습니다. 장비와 전리품을 모두 잃었습니다.', true);
+
       if (actionKey === 'fight') {
         raid.risk = Math.min(85, raid.risk + 12);
-        revealFoundItems([cloneItem(getItemTemplate('radio'))], '교전 보상');
+        addLog('적을 제압했습니다. 고가 전리품을 챙깁니다.');
+        addRaidItem(cloneItem(pickLoot(0.95, 0.05)), '교전 보상:');
       } else {
         raid.risk = Math.min(85, raid.risk + 8);
         addLog('도주에 성공했지만 위험도가 상승했습니다.');
@@ -915,6 +992,7 @@
         raid.risk = Math.min(85, raid.risk + 5);
         return addLog('함정을 우회했습니다. 시간이 지체되어 위험도가 조금 올랐습니다.');
       }
+
       const success = Math.random() < (raid.loadout.bandages > 0 ? 0.75 : 0.55);
       if (success) {
         raid.risk = Math.max(5, raid.risk - 10);
@@ -935,6 +1013,12 @@
         addLog(hasKey() ? '열쇠로 방을 열었습니다. 발견 아이템을 확인하세요.' : '문을 강제로 열었습니다. 소음 때문에 위험도가 올랐습니다.');
         if (!hasKey()) raid.risk = Math.min(85, raid.risk + 10);
         revealFoundItems(rollLootTable({ table: 'weapon', rolls: 2 }), '폐쇄된 방');
+      const hasKey = raid.bag.some((item) => item.id === 'key') || state.stash.some((item) => item.id === 'key');
+      const successChance = hasKey ? 0.92 : raid.loadout.pistol ? 0.62 : 0.42;
+      if (Math.random() < successChance) {
+        addLog(hasKey ? '열쇠로 방을 열었습니다. 희귀 전리품 확률이 증가합니다.' : '문을 강제로 열었습니다. 소음 때문에 위험도가 올랐습니다.');
+        if (!hasKey) raid.risk = Math.min(85, raid.risk + 10);
+        addRaidItem(cloneItem(pickLoot(0.93, 0.08)), '폐쇄된 방:');
       } else {
         raid.risk = Math.min(90, raid.risk + 18);
         addLog('문을 여는 데 실패했습니다. 소음 때문에 위험도가 크게 올랐습니다.');
@@ -961,6 +1045,16 @@
 
     function extractRaid() {
       if (!raid.active || raid.pendingEvent || raid.search) return;
+      if (Math.random() < 0.68) {
+        raid.loadout.bandages += 1;
+        addLog('의료 상자에서 붕대 1개를 확보했습니다. 탈출 성공 시 유지됩니다.');
+      } else {
+        addRaidItem(cloneItem(pickLoot(0.60)), '의료 상자:');
+      }
+    }
+
+    function extractRaid() {
+      if (!raid.active || raid.pendingEvent) return;
       if (Math.random() < deathChance(raid.risk / 190)) {
         failRaid('탈출로 이동 중 사망했습니다. 장비와 획득한 아이템은 모두 손실됩니다.', true);
         return;
@@ -969,6 +1063,11 @@
       const lost = [];
       raid.bag.forEach((item) => {
         const spot = findFreeSpotIn(item, state.stash, STASH_COLS, STASH_ROWS);
+
+      const stored = [];
+      const lost = [];
+      raid.bag.forEach((item) => {
+        const spot = findFreeSpot(item, state.stash);
         if (spot) {
           state.stash.push({ ...item, x: spot.x, y: spot.y });
           stored.push(item.name);
@@ -976,6 +1075,7 @@
           lost.push(item.name);
         }
       });
+
       raid.active = false;
       state.equipment = { ...raid.loadout };
       addExperience(45 + stored.length * 12);
@@ -990,6 +1090,8 @@
       raid.bag = [];
       raid.found = [];
       raid.search = null;
+      raid.active = false;
+      raid.bag = [];
       raid.pendingEvent = null;
       if (loseGear) {
         state.equipment = defaultEquipment();
@@ -1014,6 +1116,7 @@
       if (!gear) return;
       if (gear.minLevel && state.level < gear.minLevel) return showToast(`${gear.name}은(는) Lv.${gear.minLevel}부터 구매할 수 있습니다.`);
       if (state.money < gear.cost) return showToast('자금이 부족합니다. 레이드 후 전리품을 판매하세요.');
+
       state.money -= gear.cost;
       if (gear.type === 'bag') state.equipment.bag = gear.bag;
       if (gear.id === 'bandage') state.equipment.bandages += 1;
@@ -1023,17 +1126,17 @@
       showToast(`${gear.name} 구매 완료. 사망 시 장비는 손실됩니다.`);
     }
 
-    function findFreeSpotIn(item, items, cols, rows) {
-      for (let y = 0; y <= rows - item.height; y++) {
-        for (let x = 0; x <= cols - item.width; x++) {
-          if (canPlaceIn(item, x, y, items, cols, rows, item.uid)) return { x, y };
+    function findFreeSpot(item, items) {
+      for (let y = 0; y <= ROWS - item.height; y++) {
+        for (let x = 0; x <= COLS - item.width; x++) {
+          if (canPlace(item, x, y, items, item.uid)) return { x, y };
         }
       }
       return null;
     }
 
-    function canPlaceIn(item, x, y, items, cols, rows, ignoreUid = null) {
-      if (x < 0 || y < 0 || x + item.width > cols || y + item.height > rows) return false;
+    function canPlace(item, x, y, items = state.stash, ignoreUid = null) {
+      if (x < 0 || y < 0 || x + item.width > COLS || y + item.height > ROWS) return false;
       return !items.some((other) => {
         if (other.uid === ignoreUid) return false;
         return x < other.x + other.width && x + item.width > other.x && y < other.y + other.height && y + item.height > other.y;
@@ -1042,7 +1145,7 @@
 
     function moveItem(uid, x, y) {
       const item = state.stash.find((entry) => entry.uid === uid);
-      if (!item || !canPlaceIn(item, x, y, state.stash, STASH_COLS, STASH_ROWS, uid)) return false;
+      if (!item || !canPlace(item, x, y, state.stash, uid)) return false;
       item.x = x;
       item.y = y;
       saveState();
@@ -1097,51 +1200,24 @@
       POIS.forEach((poi, index) => {
         const button = document.createElement('button');
         button.className = 'poi';
-        button.disabled = !raid.active || Boolean(raid.pendingEvent) || Boolean(raid.search) || raid.lootedPoi.has(index);
-        button.innerHTML = `<strong>${poi.name}</strong><span>${raid.lootedPoi.has(index) ? '수색 완료' : `${poi.desc}<br>테이블: ${poi.table} · ${poi.rolls}회`}</span>`;
+        button.disabled = !raid.active || Boolean(raid.pendingEvent) || raid.lootedPoi.has(index);
+        button.innerHTML = `<strong>${poi.name}</strong><span>${raid.lootedPoi.has(index) ? '수색 완료' : poi.desc}</span>`;
         button.addEventListener('click', () => lootPoi(index));
         grid.appendChild(button);
       });
-      const size = bagSize();
-      document.getElementById('raidStatus').textContent = raid.active ? (raid.pendingEvent ? '위험 이벤트 대응 중' : raid.search ? 'Searching...' : '레이드 진행 중') : '레이드 종료';
+      document.getElementById('raidStatus').textContent = raid.active ? (raid.pendingEvent ? '위험 이벤트 대응 중' : '레이드 진행 중') : '레이드 종료';
       document.getElementById('raidLootCount').textContent = `습득: ${raid.bag.length}개`;
       document.getElementById('raidRisk').textContent = `위험도: ${raid.risk}%`;
-      document.getElementById('raidCapacity').textContent = `가방: ${raidUsedCells()}/${raidCapacity()}칸 (${size.cols}x${size.rows})`;
+      document.getElementById('raidCapacity').textContent = `가방: ${raidUsedCells()}/${raidCapacity()}칸`;
       document.getElementById('raidLoadout').textContent = `장비: ${gearSummary(raid.loadout)}`;
-      document.getElementById('extractBtn').disabled = !raid.active || Boolean(raid.pendingEvent) || Boolean(raid.search);
+      document.getElementById('extractBtn').disabled = !raid.active || Boolean(raid.pendingEvent);
       document.getElementById('abandonBtn').disabled = !raid.active;
     }
 
     function renderRaidBag() {
       const bag = document.getElementById('raidBag');
-      bag.innerHTML = raid.bag.length ? '' : '<p class="hint">레이드 인벤토리가 비어 있습니다.</p>';
+      bag.innerHTML = raid.bag.length ? '' : '<p class="hint">아직 획득한 아이템이 없습니다.</p>';
       raid.bag.forEach((item) => bag.appendChild(createItemRow(item)));
-    }
-
-    function renderRaidInventory() {
-      const grid = document.getElementById('raidInventoryGrid');
-      const size = bagSize();
-      renderGrid(grid, size.cols, size.rows, raid.bag, false);
-    }
-
-    function renderSearchPanel() {
-      const panel = document.getElementById('searchPanel');
-      if (!raid.search) {
-        panel.classList.add('hidden');
-        panel.innerHTML = '';
-        return;
-      }
-
-      const poi = raid.search.poiIndex === null ? { name: raid.search.source || '발견 아이템' } : POIS[raid.search.poiIndex];
-      const foundHtml = raid.search.completed
-        ? `<h4>발견</h4>${raid.found.length ? `<div class="found-list">${raid.found.map((item) => `<div class="row"><div><strong>${item.name}</strong><small>${item.rarity} · ${item.width}x${item.height} · ${formatMoney(item.value)}</small></div><button class="primary" data-take="${item.uid}">가져가기</button><button class="danger" data-discard-found="${item.uid}">버리기</button></div>`).join('')}</div>` : '<p class="hint">발견한 아이템이 없습니다.</p><div class="actions"><button data-close-search="true">확인</button></div>'}`
-        : '<p class="hint">컨테이너를 뒤지는 중입니다. 완료 후 발견 아이템을 직접 가져가세요.</p>';
-
-      panel.classList.remove('hidden');
-      panel.innerHTML = `<h3>${raid.search.completed ? '서칭 완료' : 'Searching...'}</h3><p>${poi.name}</p><div class="progress-shell"><div class="progress-fill" style="--progress:${raid.search.progress}%"></div></div>${foundHtml}`;
-      panel.querySelectorAll('[data-take]').forEach((button) => button.addEventListener('click', () => takeFoundItem(button.dataset.take)));
-      panel.querySelectorAll('[data-discard-found]').forEach((button) => button.addEventListener('click', () => discardFoundItem(button.dataset.discardFound)));
-      panel.querySelectorAll('[data-close-search]').forEach((button) => button.addEventListener('click', () => { raid.search = null; render(); }));
     }
 
     function renderEventPanel() {
@@ -1162,33 +1238,27 @@
 
     function renderInventory() {
       const grid = document.getElementById('stashGrid');
-      renderGrid(grid, STASH_COLS, STASH_ROWS, state.stash, true);
-    }
-
-    function renderGrid(grid, cols, rows, items, draggable) {
-      grid.style.setProperty('--cols', cols);
-      grid.style.setProperty('--rows', rows);
+      grid.style.setProperty('--cols', COLS);
+      grid.style.setProperty('--rows', ROWS);
       grid.innerHTML = '';
 
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
           const slot = document.createElement('div');
           slot.className = 'slot';
           slot.dataset.x = x;
           slot.dataset.y = y;
-          if (draggable) {
-            slot.addEventListener('dragover', handleDragOver);
-            slot.addEventListener('dragleave', clearSlotMarks);
-            slot.addEventListener('drop', handleDrop);
-          }
+          slot.addEventListener('dragover', handleDragOver);
+          slot.addEventListener('dragleave', clearSlotMarks);
+          slot.addEventListener('drop', handleDrop);
           grid.appendChild(slot);
         }
       }
 
-      items.forEach((item) => {
+      state.stash.forEach((item) => {
         const node = document.createElement('div');
         node.className = `item ${item.rarity}`;
-        node.draggable = draggable;
+        node.draggable = true;
         node.dataset.uid = item.uid;
         node.style.left = `calc(${item.x} * (var(--slot) + var(--gap)) + var(--gap))`;
         node.style.top = `calc(${item.y} * (var(--slot) + var(--gap)) + var(--gap))`;
@@ -1196,18 +1266,16 @@
         node.style.height = `calc(${item.height} * var(--slot) + ${item.height - 1} * var(--gap))`;
         node.textContent = item.name;
         node.title = `${item.rarity} / ${item.width}x${item.height} / ${formatMoney(item.value)}`;
-        if (draggable) {
-          node.addEventListener('dragstart', (event) => {
-            draggingId = item.uid;
-            event.dataTransfer.setData('text/plain', item.uid);
-            node.classList.add('dragging');
-          });
-          node.addEventListener('dragend', () => {
-            draggingId = null;
-            node.classList.remove('dragging');
-            clearSlotMarks();
-          });
-        }
+        node.addEventListener('dragstart', (event) => {
+          draggingId = item.uid;
+          event.dataTransfer.setData('text/plain', item.uid);
+          node.classList.add('dragging');
+        });
+        node.addEventListener('dragend', () => {
+          draggingId = null;
+          node.classList.remove('dragging');
+          clearSlotMarks();
+        });
         grid.appendChild(node);
       });
     }
@@ -1274,7 +1342,7 @@
       if (!item) return;
       const x = Number(event.currentTarget.dataset.x);
       const y = Number(event.currentTarget.dataset.y);
-      markSlots(x, y, item, canPlaceIn(item, x, y, state.stash, STASH_COLS, STASH_ROWS, item.uid));
+      markSlots(x, y, item, canPlace(item, x, y, state.stash, item.uid));
     }
 
     function handleDrop(event) {
@@ -1290,7 +1358,7 @@
       clearSlotMarks();
       for (let yy = y; yy < y + item.height; yy++) {
         for (let xx = x; xx < x + item.width; xx++) {
-          const slot = document.querySelector(`#stashGrid .slot[data-x="${xx}"][data-y="${yy}"]`);
+          const slot = document.querySelector(`.slot[data-x="${xx}"][data-y="${yy}"]`);
           if (slot) slot.classList.add(valid ? 'valid' : 'invalid');
         }
       }

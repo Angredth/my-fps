@@ -81,7 +81,7 @@
 <body>
   <div id="blocker">
   화면을 클릭하면 시작합니다.<br>
-  이동: WASD, 기울이기: Q/E, 시점: 마우스, 사격: 좌클릭, 정조준: 우클릭 토글, 무기교체: 1번 / 2번<br>
+  이동: WASD, 기울이기: Q/E, 시점: 마우스, 사격: 좌클릭, 정조준: 우클릭 토글, 스코프 배율: Alt+우클릭, 무기교체: 1번 / 2번<br>
   환경음, 발소리, 무기별 격발음이 함께 재생됩니다.
   </div>
   <div id="crosshair"></div>
@@ -174,20 +174,97 @@
   scene.add(dirLight);
 
 
-  const worldSize = 200;
-  const segments = 60;
-  const floorGeo = new THREE.PlaneGeometry(worldSize, worldSize, segments, segments);
-  floorGeo.rotateX(-Math.PI / 2);
+  const mapTileSize = 70;
+  const mapTileSegments = 24;
+  const mapTiles = [
+  { gx: 0, gz: 0 },
+  { gx: 1, gz: 0 },
+  { gx: 1, gz: 1 }
+  ];
+  const mapOriginX = -mapTileSize;
+  const mapOriginZ = -mapTileSize;
+  const worldSize = mapTileSize * 2;
 
 
-  const posAttribute = floorGeo.attributes.position;
-  for (let i = 0; i < posAttribute.count; i++) {
-  const x = posAttribute.getX(i);
-  const z = posAttribute.getZ(i);
-  const y = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2.5 + Math.sin(x * 0.2) * 0.5;
-  posAttribute.setY(i, y);
+  function terrainFormula(x, z) {
+  return Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2.5 + Math.sin(x * 0.2) * 0.5;
   }
-  floorGeo.computeVertexNormals();
+
+
+  function isInsideMap(x, z, padding = 0) {
+  return mapTiles.some(({ gx, gz }) => {
+  const minX = mapOriginX + gx * mapTileSize + padding;
+  const maxX = minX + mapTileSize - padding * 2;
+  const minZ = mapOriginZ + gz * mapTileSize + padding;
+  const maxZ = minZ + mapTileSize - padding * 2;
+  return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
+  });
+  }
+
+
+  function randomMapPoint(padding = 4) {
+  const tile = mapTiles[Math.floor(Math.random() * mapTiles.length)];
+  const minX = mapOriginX + tile.gx * mapTileSize + padding;
+  const minZ = mapOriginZ + tile.gz * mapTileSize + padding;
+  return {
+  x: minX + Math.random() * (mapTileSize - padding * 2),
+  z: minZ + Math.random() * (mapTileSize - padding * 2)
+  };
+  }
+
+
+  function getRandomPatrolTarget(originX, originZ, radius = 24, padding = 3) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+  const x = originX + (Math.random() - 0.5) * radius;
+  const z = originZ + (Math.random() - 0.5) * radius;
+  if (isInsideMap(x, z, padding)) return new THREE.Vector3(x, 0, z);
+  }
+  const fallback = randomMapPoint(padding);
+  return new THREE.Vector3(fallback.x, 0, fallback.z);
+  }
+
+
+  function createLShapedFloorGeometry() {
+  const vertices = [];
+  const indices = [];
+
+
+  mapTiles.forEach(({ gx, gz }) => {
+  const startIndex = vertices.length / 3;
+  const minX = mapOriginX + gx * mapTileSize;
+  const minZ = mapOriginZ + gz * mapTileSize;
+
+
+  for (let zIndex = 0; zIndex <= mapTileSegments; zIndex++) {
+  for (let xIndex = 0; xIndex <= mapTileSegments; xIndex++) {
+  const x = minX + (xIndex / mapTileSegments) * mapTileSize;
+  const z = minZ + (zIndex / mapTileSegments) * mapTileSize;
+  vertices.push(x, terrainFormula(x, z), z);
+  }
+  }
+
+
+  for (let zIndex = 0; zIndex < mapTileSegments; zIndex++) {
+  for (let xIndex = 0; xIndex < mapTileSegments; xIndex++) {
+  const a = startIndex + zIndex * (mapTileSegments + 1) + xIndex;
+  const b = a + 1;
+  const c = a + (mapTileSegments + 1);
+  const d = c + 1;
+  indices.push(a, c, b, b, c, d);
+  }
+  }
+  });
+
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+  }
+
+
+  const floorGeo = createLShapedFloorGeometry();
 
 
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x4d7c2a, roughness: 0.9, flatShading: true });
@@ -218,7 +295,7 @@
 
 
   function getTerrainHeight(x, z) {
-  if (Math.abs(x) > worldSize / 2 || Math.abs(z) > worldSize / 2) return 0;
+  if (!isInsideMap(x, z)) return 0;
 
 
   terrainRayOrigin.set(x, 120, z);
@@ -230,11 +307,11 @@
   if (floorHit) return floorHit.point.y;
 
 
-  return Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2.5 + Math.sin(x * 0.2) * 0.5;
+  return terrainFormula(x, z);
   }
 
 
-  camera.position.y = getTerrainHeight(camera.position.x, camera.position.z) + 1.8;
+  camera.position.set(35, getTerrainHeight(35, -35) + 1.8, -35);
 
 
   const collidableObjects = [];
@@ -250,6 +327,84 @@
   const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.3 });
   const metalGray = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.3 });
   const darkPlasticMaterial = new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0.2, roughness: 0.5 });
+  const concreteWallMaterial = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.85, metalness: 0.05 });
+
+
+  function createBoundaryWalls() {
+  const wallHeight = 2;
+  const wallThickness = 1.2;
+  const wallSectionLength = 10;
+  const tileKeys = new Set(mapTiles.map(({ gx, gz }) => `${gx},${gz}`));
+
+
+  function hasTile(gx, gz) {
+  return tileKeys.has(`${gx},${gz}`);
+  }
+
+
+  function addWallSection(centerX, centerZ, length, horizontal) {
+  const y = (getTerrainHeight(centerX, centerZ) || terrainFormula(centerX, centerZ)) + wallHeight / 2;
+  const geometry = horizontal
+  ? new THREE.BoxGeometry(length, wallHeight, wallThickness)
+  : new THREE.BoxGeometry(wallThickness, wallHeight, length);
+  const wall = new THREE.Mesh(geometry, concreteWallMaterial);
+  wall.position.set(centerX, y, centerZ);
+  wall.castShadow = true;
+  wall.receiveShadow = true;
+  wall.userData = { type: 'building' };
+  wall.userData.bounds = new THREE.Box3().setFromObject(wall);
+  scene.add(wall);
+
+
+  collidableObjects.push(wall);
+  visionBlockers.push(wall);
+  targets.push(wall);
+  buildingsData.push({ x: centerX, z: centerZ, w: horizontal ? length : wallThickness, d: horizontal ? wallThickness : length });
+
+
+  const wallShape = new CANNON.Box(new CANNON.Vec3(
+  (horizontal ? length : wallThickness) / 2,
+  wallHeight / 2,
+  (horizontal ? wallThickness : length) / 2
+  ));
+  const wallBody = new CANNON.Body({ mass: 0, shape: wallShape });
+  wallBody.position.set(centerX, y, centerZ);
+  physicsWorld.addBody(wallBody);
+  }
+
+
+  function addEdge(startX, startZ, endX, endZ) {
+  const horizontal = Math.abs(endX - startX) >= Math.abs(endZ - startZ);
+  const length = horizontal ? Math.abs(endX - startX) : Math.abs(endZ - startZ);
+  const sections = Math.max(1, Math.ceil(length / wallSectionLength));
+
+
+  for (let i = 0; i < sections; i++) {
+  const t0 = i / sections;
+  const t1 = (i + 1) / sections;
+  const centerX = THREE.MathUtils.lerp(startX, endX, (t0 + t1) / 2);
+  const centerZ = THREE.MathUtils.lerp(startZ, endZ, (t0 + t1) / 2);
+  addWallSection(centerX, centerZ, length / sections + wallThickness, horizontal);
+  }
+  }
+
+
+  mapTiles.forEach(({ gx, gz }) => {
+  const minX = mapOriginX + gx * mapTileSize;
+  const maxX = minX + mapTileSize;
+  const minZ = mapOriginZ + gz * mapTileSize;
+  const maxZ = minZ + mapTileSize;
+
+
+  if (!hasTile(gx, gz - 1)) addEdge(minX, minZ, maxX, minZ);
+  if (!hasTile(gx, gz + 1)) addEdge(minX, maxZ, maxX, maxZ);
+  if (!hasTile(gx - 1, gz)) addEdge(minX, minZ, minX, maxZ);
+  if (!hasTile(gx + 1, gz)) addEdge(maxX, minZ, maxX, maxZ);
+  });
+  }
+
+
+  createBoundaryWalls();
 
 
   function createM4A1Model() {
@@ -412,8 +567,9 @@
   const box = new THREE.Mesh(boxGeo, boxMat);
 
 
-  const bx = (Math.random() - 0.5) * 120;
-  const bz = (Math.random() - 0.5) * 120;
+  const buildingPoint = randomMapPoint(8);
+  const bx = buildingPoint.x;
+  const bz = buildingPoint.z;
   const by = getTerrainHeight(bx, bz) + bHeight / 2;
 
 
@@ -461,8 +617,9 @@
   visionBlockers.push(leaves);
 
 
-  const tx = (Math.random() - 0.5) * 140;
-  const tz = (Math.random() - 0.5) * 140;
+  const treePoint = randomMapPoint(5);
+  const tx = treePoint.x;
+  const tz = treePoint.z;
   const ty = getTerrainHeight(tx, tz);
 
 
@@ -640,11 +797,15 @@
   enemyGroup.add(enemyWeapon);
 
 
-  let rx = (Math.random() - 0.5) * 130;
-  let rz = (Math.random() - 0.5) * 130;
-  while (Math.sqrt(rx * rx + rz * rz) < 20) {
-  rx = (Math.random() - 0.5) * 130;
-  rz = (Math.random() - 0.5) * 130;
+  let spawnPoint = randomMapPoint(6);
+  let rx = spawnPoint.x;
+  let rz = spawnPoint.z;
+  let attempts = 0;
+  while (new THREE.Vector3(rx, 0, rz).distanceTo(new THREE.Vector3(camera.position.x, 0, camera.position.z)) < 20 && attempts < 40) {
+  spawnPoint = randomMapPoint(6);
+  rx = spawnPoint.x;
+  rz = spawnPoint.z;
+  attempts++;
   }
 
 
@@ -659,7 +820,7 @@
   hp: 440,
   hitTimer: 0,
   state: 'PATROL',
-  patrolTarget: new THREE.Vector3(rx + (Math.random() - 0.5) * 30, 0, rz + (Math.random() - 0.5) * 30),
+  patrolTarget: getRandomPatrolTarget(rx, rz, 30),
   patrolWaitTimer: 0,
   lostSightTimer: 0,
   shootCooldown: 0,
@@ -822,6 +983,9 @@
 
 
   let currentWeapon = WEAPONS.M4A1;
+  let scopeMagnification = 1;
+  let scopeZoomMotionTimer = 0;
+  const scopeZoomMotionDuration = 0.24;
   let isSwapping = false;
   let swapProgress = 0;
   let swapDirection = -1;
@@ -1414,6 +1578,22 @@
   const weaponUI = document.getElementById('weapon-ui');
 
 
+  function updateWeaponUI() {
+  const scopeText = currentWeapon === WEAPONS.M4A1 ? ` | SCOPE: ${scopeMagnification}x` : '';
+  weaponUI.innerText = `WEAPON: ${currentWeapon.name}${scopeText}`;
+  }
+
+
+  function toggleScopeMagnification() {
+  scopeMagnification = scopeMagnification === 1 ? 4 : 1;
+  scopeZoomMotionTimer = scopeZoomMotionDuration;
+  updateWeaponUI();
+  }
+
+
+  updateWeaponUI();
+
+
   blocker.addEventListener('click', () => {
   Sound.resume();
   document.body.requestPointerLock();
@@ -1521,9 +1701,13 @@
   shotSequence = 0;
   fireTimer = currentWeapon.fireRate;
   } else if (event.button === 2 && !isSwapping) {
+  if (event.altKey && currentWeapon === WEAPONS.M4A1) {
+  toggleScopeMagnification();
+  } else {
   isAiming = !isAiming;
   crosshair.style.opacity = isAiming ? '0' : '1';
   Sound.playAimToggle(isAiming);
+  }
   }
   });
 
@@ -1836,11 +2020,74 @@
   const r180Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   const enemyTracers = [];
   const raycaster = new THREE.Raycaster();
+  const playerBoundsBox = new THREE.Box3();
+
+
+  function isPlayerPositionBlocked(position) {
+  if (!isInsideMap(position.x, position.z, playerRadius + 0.2)) return true;
+
+
+  playerBoundsBox.set(
+  new THREE.Vector3(position.x - playerRadius, position.y - 1.8, position.z - playerRadius),
+  new THREE.Vector3(position.x + playerRadius, position.y + 1.0, position.z + playerRadius)
+  );
+
+
+  for (let i = 0; i < collidableObjects.length; i++) {
+  if (playerBoundsBox.intersectsBox(collidableObjects[i].userData.bounds)) return true;
+  }
+
+
+  return false;
+  }
+
+
+  function tryMovePlayer(moveVector) {
+  const startPosition = camera.position.clone();
+  const fullStepPosition = startPosition.clone().add(moveVector);
+
+
+  if (!isPlayerPositionBlocked(fullStepPosition)) {
+  camera.position.x = fullStepPosition.x;
+  camera.position.z = fullStepPosition.z;
+  return true;
+  }
+
+
+  const axisSteps = Math.abs(moveVector.x) > Math.abs(moveVector.z)
+  ? [new THREE.Vector3(moveVector.x, 0, 0), new THREE.Vector3(0, 0, moveVector.z)]
+  : [new THREE.Vector3(0, 0, moveVector.z), new THREE.Vector3(moveVector.x, 0, 0)];
+  let moved = false;
+
+
+  axisSteps.forEach((axisStep) => {
+  if (axisStep.lengthSq() <= 0) return;
+  const slidePosition = camera.position.clone().add(axisStep);
+  if (!isPlayerPositionBlocked(slidePosition)) {
+  camera.position.x = slidePosition.x;
+  camera.position.z = slidePosition.z;
+  moved = true;
+  }
+  });
+
+
+  return moved;
+  }
+
+
+  function getScopeFov() {
+  const baseFovRadians = THREE.MathUtils.degToRad(camera.fov);
+  return THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(baseFovRadians / 2) / scopeMagnification));
+  }
 
 
   function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
+  const scopeZoomMotionAmount = scopeZoomMotionTimer > 0
+  ? Math.sin((scopeZoomMotionTimer / scopeZoomMotionDuration) * Math.PI)
+  : 0;
+  scopeZoomMotionTimer = Math.max(0, scopeZoomMotionTimer - delta);
 
 
   // Physics simulation step
@@ -1892,6 +2139,7 @@
 
   enemies.forEach((enemy) => {
   const distToPlayer = enemy.position.distanceTo(camera.position);
+  const enemyPreviousPosition = enemy.position.clone();
 
 
   const enemyEyePos = enemy.position.clone().add(new THREE.Vector3(0, 1.9, 0));
@@ -1917,11 +2165,7 @@
   if (enemy.userData.lostSightTimer > 0.65) {
   enemy.userData.state = 'PATROL';
   enemy.userData.shootCooldown = 0;
-  enemy.userData.patrolTarget.set(
-  enemy.position.x + (Math.random() - 0.5) * 24,
-  0,
-  enemy.position.z + (Math.random() - 0.5) * 24
-  );
+  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 24));
   }
   }
 
@@ -1942,11 +2186,7 @@
   if (distToTarget < 2) {
   enemy.userData.patrolWaitTimer += delta;
   if (enemy.userData.patrolWaitTimer > 2) {
-  enemy.userData.patrolTarget.set(
-  enemy.position.x + (Math.random() - 0.5) * 40,
-  0,
-  enemy.position.z + (Math.random() - 0.5) * 40
-  );
+  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 40));
   enemy.userData.patrolWaitTimer = 0;
   }
   } else {
@@ -2009,6 +2249,13 @@
   }
 
 
+  if (!isInsideMap(enemy.position.x, enemy.position.z, 1.5)) {
+  enemy.position.copy(enemyPreviousPosition);
+  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 30));
+  enemy.userData.state = 'PATROL';
+  }
+
+
   enemy.position.y = getTerrainHeight(enemy.position.x, enemy.position.z);
 
 
@@ -2049,7 +2296,7 @@
   if (moveVector.lengthSq() > 0) {
   moveVector.normalize().multiplyScalar(moveSpeed * delta);
   const nextPosition = camera.position.clone().add(moveVector);
-  let isColliding = false;
+  let isColliding = !isInsideMap(nextPosition.x, nextPosition.z, playerRadius + 0.2);
   const playerBB = new THREE.Box3(
   new THREE.Vector3(nextPosition.x - playerRadius, nextPosition.y - 1.8, nextPosition.z - playerRadius),
   new THREE.Vector3(nextPosition.x + playerRadius, nextPosition.y + 1.0, nextPosition.z + playerRadius)
@@ -2103,7 +2350,7 @@
   currentWeapon.mesh.visible = false;
   currentWeapon = pendingWeapon;
   currentWeapon.mesh.visible = true;
-  weaponUI.innerText = `WEAPON: ${currentWeapon.name}`;
+  updateWeaponUI();
   fullScope.visible = currentWeapon !== WEAPONS.MP153;
   swapDirection = 1;
   } else {
@@ -2252,21 +2499,19 @@
 
   scopeCamera.position.copy(camera.position);
   scopeCamera.quaternion.copy(camera.quaternion);
-
-
-  if (isAiming) {
-  scopeCamera.fov = 12;
+  scopeCamera.fov = currentWeapon === WEAPONS.M4A1 ? getScopeFov() : camera.fov;
   scopeCamera.updateProjectionMatrix();
 
 
+  if (isAiming) {
   if (currentWeapon === WEAPONS.MP153) {
   targetLocalPos.set(0.018, -0.255, -0.36);
   aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, shotgunAdsRotation.x, 0.24);
   aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, shotgunAdsRotation.y, 0.24);
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, shotgunAdsRotation.z, 0.24);
   } else {
-  targetLocalPos.set(0.005, -0.328, -0.23);
-  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, 0, 0.24);
+  targetLocalPos.set(0.005 - scopeZoomMotionAmount * 0.018, -0.328 + scopeZoomMotionAmount * 0.014, -0.23);
+  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, -scopeZoomMotionAmount * 0.015, 0.24);
   aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, 0, 0.24);
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.24);
   }

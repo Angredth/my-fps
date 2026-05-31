@@ -181,6 +181,7 @@
   { gx: 1, gz: 0 },
   { gx: 1, gz: 1 }
   ];
+  const mapTileKeys = new Set(mapTiles.map(({ gx, gz }) => `${gx},${gz}`));
   const mapOriginX = -mapTileSize;
   const mapOriginZ = -mapTileSize;
   const worldSize = mapTileSize * 2;
@@ -201,6 +202,14 @@
   });
   }
 
+  for (let zIndex = 0; zIndex < mapTileSegments; zIndex++) {
+  for (let xIndex = 0; xIndex < mapTileSegments; xIndex++) {
+  const a = startIndex + zIndex * (mapTileSegments + 1) + xIndex;
+  const b = a + 1;
+  const c = a + (mapTileSegments + 1);
+  const d = c + 1;
+  indices.push(a, c, b, b, c, d);
+  }
 
   function randomMapPoint(padding = 4) {
   const tile = mapTiles[Math.floor(Math.random() * mapTiles.length)];
@@ -653,7 +662,9 @@
     const ragdoll = {
       bodies: [],
       constraints: [],
-      meshes: []
+      meshes: [],
+      createdAt: Date.now(),
+      frozen: false
     };
 
 
@@ -766,6 +777,22 @@
         (Math.random() - 0.5) * 8
       );
     });
+  }
+
+
+  function freezeRagdoll(ragdoll) {
+    ragdoll.bodies.forEach((body) => {
+      body.velocity.set(0, 0, 0);
+      body.angularVelocity.set(0, 0, 0);
+      body.force.set(0, 0, 0);
+      body.torque.set(0, 0, 0);
+      body.mass = 0;
+      body.type = CANNON.Body.STATIC;
+      body.updateMassProperties();
+      body.aabbNeedsUpdate = true;
+      if (typeof body.sleep === 'function') body.sleep();
+    });
+    ragdoll.frozen = true;
   }
 
 
@@ -2114,9 +2141,12 @@
       }
     });
    
-    // Memory management: remove very far ragdolls after 30 seconds
+    // Freeze ragdolls after 10 seconds, then remove old or far-away ragdolls.
     if (!ragdoll.createdAt) ragdoll.createdAt = Date.now();
     const ageMs = Date.now() - ragdoll.createdAt;
+    if (!ragdoll.frozen && ageMs > 10000) freezeRagdoll(ragdoll);
+
+
     const distToCamera = ragdoll.meshes[0]?.mesh?.position.distanceTo(camera.position) || 0;
     if (ageMs > 30000 || (ageMs > 8000 && distToCamera > 80)) {
       ragdoll.meshes.forEach(({ mesh, body }) => {
@@ -2295,6 +2325,7 @@
 
   if (moveVector.lengthSq() > 0) {
   moveVector.normalize().multiplyScalar(moveSpeed * delta);
+  playerIsMoving = tryMovePlayer(moveVector);
   const nextPosition = camera.position.clone().add(moveVector);
   let isColliding = !isInsideMap(nextPosition.x, nextPosition.z, playerRadius + 0.2);
   const playerBB = new THREE.Box3(

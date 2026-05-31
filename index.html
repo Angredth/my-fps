@@ -240,6 +240,46 @@
       align-items: center;
     }
 
+    .search-card {
+      margin: 16px 0;
+      border: 1px solid #5f704f;
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(10, 16, 10, 0.42);
+    }
+
+    .search-card.hidden { display: none; }
+
+    .progress-shell {
+      height: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.35);
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      width: var(--progress, 0%);
+      height: 100%;
+      background: linear-gradient(90deg, #7d995e, var(--accent));
+      transition: width 0.12s linear;
+    }
+
+    .found-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .raid-inventory {
+      --slot: 38px;
+      --gap: 5px;
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
     .log {
       margin-top: 16px;
       height: 170px;
@@ -414,6 +454,9 @@
         <aside class="panel">
           <h3>레이드 가방</h3>
           <p class="hint">레이드 중 획득한 아이템입니다. 탈출에 성공해야 창고에 저장됩니다.</p>
+          <div id="raidInventoryGrid" class="inventory-wrap raid-inventory" aria-label="레이드 가방 인벤토리"></div>
+          <div class="item-list" id="raidBag"></div>
+          <div id="searchPanel" class="search-card hidden"></div>
           <div class="item-list" id="raidBag"></div>
           <div id="eventPanel" class="event-card hidden"></div>
         </aside>
@@ -464,6 +507,21 @@
   <div id="toast" class="toast"></div>
 
   <script>
+    const STASH_COLS = 7;
+    const STASH_ROWS = 5;
+    const STARTING_MONEY = 15000;
+    const SAVE_KEY = 'tarkov-style-web-prototype-state-v3';
+
+    const ITEM_CATALOG = [
+      { id: 'bolts', name: '나사', rarity: 'Common', width: 1, height: 1, value: 500 },
+      { id: 'coin', name: '동전', rarity: 'Common', width: 1, height: 1, value: 750 },
+      { id: 'wire', name: '전선', rarity: 'Common', width: 1, height: 1, value: 900 },
+      { id: 'bandage-loot', name: '붕대', rarity: 'Common', width: 1, height: 1, value: 2500 },
+      { id: 'meds', name: '의약품', rarity: 'Rare', width: 1, height: 1, value: 4200 },
+      { id: 'cpu-fan', name: 'CPU 팬', rarity: 'Rare', width: 1, height: 2, value: 5000 },
+      { id: 'ssd', name: 'SSD', rarity: 'Rare', width: 1, height: 1, value: 7500 },
+      { id: 'key', name: '기숙사 열쇠', rarity: 'Rare', width: 1, height: 1, value: 12000 },
+      { id: 'pistol-parts', name: '권총 부품', rarity: 'Military', width: 2, height: 1, value: 16000 },
     const COLS = 7;
     const ROWS = 5;
     const BASE_RAID_CAPACITY = 6;
@@ -481,6 +539,8 @@
     ];
 
     const GEAR_SHOP = [
+      { id: 'smallBag', name: '작은 가방', cost: 8000, type: 'bag', bag: 'small', effect: '소형 백팩 크기 5x6 제공' },
+      { id: 'largeBag', name: '큰 가방', cost: 22000, type: 'bag', bag: 'large', minLevel: 2, effect: '군용 백팩 크기 7x8 제공, Lv.2 필요' },
       { id: 'smallBag', name: '작은 가방', cost: 8000, type: 'bag', bag: 'small', effect: '레이드 가방 +6칸' },
       { id: 'largeBag', name: '큰 가방', cost: 22000, type: 'bag', bag: 'large', minLevel: 2, effect: '레이드 가방 +12칸, Lv.2 필요' },
       { id: 'bandage', name: '붕대', cost: 2500, type: 'consumable', effect: '위험/사망 확률 감소, 함정 부상 완화' },
@@ -488,6 +548,51 @@
     ];
 
     const BAG_INFO = {
+      none: { label: '기본 주머니', cols: 4, rows: 4 },
+      small: { label: '작은 가방(5x6)', cols: 5, rows: 6 },
+      large: { label: '큰 가방(7x8)', cols: 7, rows: 8 }
+    };
+
+    const LOOT_TABLES = {
+      toolbox: [
+        { itemId: 'bolts', chance: 0.38 },
+        { itemId: 'wire', chance: 0.28 },
+        { itemId: 'pistol-parts', chance: 0.08 },
+        { itemId: null, chance: 0.26 }
+      ],
+      medical: [
+        { itemId: 'bandage-loot', chance: 0.36 },
+        { itemId: 'meds', chance: 0.24 },
+        { itemId: 'wire', chance: 0.10 },
+        { itemId: null, chance: 0.30 }
+      ],
+      computer: [
+        { itemId: 'cpu-fan', chance: 0.40 },
+        { itemId: 'wire', chance: 0.30 },
+        { itemId: 'gpu', chance: 0.05 },
+        { itemId: null, chance: 0.25 }
+      ],
+      weapon: [
+        { itemId: 'pistol-parts', chance: 0.30 },
+        { itemId: 'radio', chance: 0.18 },
+        { itemId: 'gpu', chance: 0.04 },
+        { itemId: null, chance: 0.48 }
+      ],
+      jacket: [
+        { itemId: 'coin', chance: 0.35 },
+        { itemId: 'key', chance: 0.10 },
+        { itemId: 'bandage-loot', chance: 0.25 },
+        { itemId: null, chance: 0.30 }
+      ]
+    };
+
+    const POIS = [
+      { name: '공구 상자', desc: '공업 아이템 등장', table: 'toolbox', rolls: 2, searchTime: 1800 },
+      { name: '의약품 박스', desc: '치료 아이템 등장', table: 'medical', rolls: 2, searchTime: 1700 },
+      { name: '컴퓨터', desc: '전자 부품 등장', table: 'computer', rolls: 2, searchTime: 2200 },
+      { name: '무기 상자', desc: '고가치 아이템 등장', table: 'weapon', rolls: 2, searchTime: 2600 },
+      { name: '재킷', desc: '열쇠 및 잡템 등장', table: 'jacket', rolls: 2, searchTime: 1500 },
+      { name: '잠긴 캐비닛', desc: '열쇠가 있으면 희귀 확률 상승', table: 'jacket', rolls: 3, searchTime: 2400, locked: true }
       none: { label: '기본 주머니', capacity: 0 },
       small: { label: '작은 가방', capacity: 6 },
       large: { label: '큰 가방', capacity: 12 }
@@ -506,6 +611,7 @@
     let currentScreen = 'menu';
     let raid = createEmptyRaid();
     let draggingId = null;
+    let searchTimer = null;
 
     function defaultEquipment() {
       return { bag: 'none', bandages: 0, pistol: false };
@@ -514,6 +620,10 @@
     function loadState() {
       let loaded = null;
       try {
+        loaded = JSON.parse(localStorage.getItem(SAVE_KEY) || localStorage.getItem('tarkov-style-web-prototype-state-v2') || localStorage.getItem('tarkov-style-web-prototype-state-v1'));
+      } catch (error) {
+        console.warn('저장 데이터를 불러오지 못했습니다.', error);
+      }
         loaded = JSON.parse(localStorage.getItem(SAVE_KEY) || localStorage.getItem('tarkov-style-web-prototype-state-v1'));
       } catch (error) {
         console.warn('저장 데이터를 불러오지 못했습니다.', error);
@@ -539,6 +649,16 @@
     }
 
     function createEmptyRaid() {
+      return {
+        active: false,
+        lootedPoi: new Set(),
+        bag: [],
+        found: [],
+        risk: 12,
+        pendingEvent: null,
+        search: null,
+        loadout: defaultEquipment()
+      };
       return { active: false, lootedPoi: new Set(), bag: [], risk: 12, pendingEvent: null, loadout: defaultEquipment() };
     }
 
@@ -551,6 +671,14 @@
       return { ...template, uid: createUid(template.id) };
     }
 
+    function getItemTemplate(itemId) {
+      return ITEM_CATALOG.find((item) => item.id === itemId);
+    }
+
+    function bagSize(loadout = raid.loadout) {
+      return BAG_INFO[loadout.bag] || BAG_INFO.none;
+    }
+
     function itemCells(item) {
       return item.width * item.height;
     }
@@ -560,6 +688,8 @@
     }
 
     function raidCapacity(loadout = raid.loadout) {
+      const size = bagSize(loadout);
+      return size.cols * size.rows;
       return BASE_RAID_CAPACITY + BAG_INFO[loadout.bag].capacity;
     }
 
@@ -594,11 +724,13 @@
     }
 
     function startRaid() {
+      clearSearchTimer();
       raid = createEmptyRaid();
       raid.active = true;
       raid.loadout = { ...state.equipment };
       document.getElementById('raidLog').innerHTML = '';
       addLog(`레이드 진입. 장비: ${gearSummary(raid.loadout)}.`);
+      addLog('루팅 포인트를 클릭하면 서칭이 시작되고, 발견 아이템은 직접 가져가야 합니다.');
       addLog('파밍 포인트를 선택하거나 위험이 커지기 전에 탈출하세요.');
     }
 
@@ -610,6 +742,132 @@
     }
 
     function lootPoi(index) {
+      if (!raid.active || raid.pendingEvent || raid.search || raid.lootedPoi.has(index)) return;
+      startSearch(index);
+    }
+
+    function startSearch(index) {
+      const poi = POIS[index];
+      if (poi.locked && !hasKey()) {
+        addLog(`${poi.name}: 열쇠가 없어 잠긴 캐비닛을 완전히 열 수 없습니다. 일반 재킷처럼 수색합니다.`);
+      }
+
+      raid.lootedPoi.add(index);
+      raid.search = {
+        poiIndex: index,
+        startedAt: Date.now(),
+        duration: poi.searchTime,
+        progress: 0,
+        completed: false
+      };
+      addLog(`${poi.name} 서칭 시작...`);
+      clearSearchTimer();
+      searchTimer = window.setInterval(updateSearchProgress, 100);
+      updateSearchProgress();
+      render();
+    }
+
+    function updateSearchProgress() {
+      if (!raid.search) return clearSearchTimer();
+      const elapsed = Date.now() - raid.search.startedAt;
+      raid.search.progress = Math.min(100, Math.round((elapsed / raid.search.duration) * 100));
+      if (raid.search.progress >= 100) completeSearch();
+      renderSearchPanel();
+      renderPoi();
+    }
+
+    function completeSearch() {
+      if (!raid.search || raid.search.completed) return;
+      clearSearchTimer();
+      raid.search.completed = true;
+      const poi = POIS[raid.search.poiIndex];
+      const found = rollLootTable(poi);
+      raid.found = found;
+      raid.risk = Math.min(85, raid.risk + 6 + Math.floor(Math.random() * 7));
+
+      if (found.length) {
+        addLog(`${poi.name} 수색 완료. ${found.map((item) => item.name).join(', ')} 발견.`);
+      } else {
+        addLog(`${poi.name} 수색 완료. 발견한 아이템이 없습니다.`);
+      }
+
+      if (Math.random() < eventChance()) triggerRiskEvent();
+      if (!raid.pendingEvent && Math.random() < deathChance(raid.risk / 280)) failRaid('수색 소리에 끌린 적에게 당했습니다. 장비와 전리품을 모두 잃었습니다.', true);
+      render();
+    }
+
+    function clearSearchTimer() {
+      if (searchTimer) window.clearInterval(searchTimer);
+      searchTimer = null;
+    }
+
+    function rollLootTable(poi) {
+      const table = LOOT_TABLES[poi.table];
+      const rollCount = poi.locked && hasKey() ? poi.rolls + 1 : poi.rolls;
+      const bonus = poi.locked && hasKey() ? 0.06 : 0;
+      const results = [];
+      for (let i = 0; i < rollCount; i++) {
+        const itemId = weightedRoll(table, bonus);
+        if (!itemId) continue;
+        const template = getItemTemplate(itemId);
+        if (template) results.push(cloneItem(template));
+      }
+      return results;
+    }
+
+    function weightedRoll(table, rareBonus = 0) {
+      const adjusted = table.map((entry) => ({ ...entry }));
+      if (rareBonus) {
+        adjusted.forEach((entry) => {
+          if (!entry.itemId) entry.chance = Math.max(0.05, entry.chance - rareBonus);
+          const template = entry.itemId ? getItemTemplate(entry.itemId) : null;
+          if (template && template.rarity !== 'Common') entry.chance += rareBonus / 2;
+        });
+      }
+      const total = adjusted.reduce((sum, entry) => sum + entry.chance, 0);
+      let roll = Math.random() * total;
+      for (const entry of adjusted) {
+        roll -= entry.chance;
+        if (roll <= 0) return entry.itemId;
+      }
+      return null;
+    }
+
+    function hasKey() {
+      return raid.bag.some((item) => item.id === 'key') || state.stash.some((item) => item.id === 'key');
+    }
+
+    function takeFoundItem(uid) {
+      const item = raid.found.find((entry) => entry.uid === uid);
+      if (!item) return;
+      const size = bagSize();
+      const spot = findFreeSpotIn(item, raid.bag, size.cols, size.rows);
+      if (!spot) {
+        showToast(`${item.name}: 공간이 부족합니다.`);
+        addLog(`${item.name} 획득 실패: 레이드 인벤토리 공간 부족.`);
+        return;
+      }
+      raid.bag.push({ ...item, x: spot.x, y: spot.y });
+      raid.found = raid.found.filter((entry) => entry.uid !== uid);
+      addLog(`${item.name}을(를) 레이드 인벤토리에 넣었습니다.`);
+      closeSearchIfResolved();
+      render();
+    }
+
+    function discardFoundItem(uid) {
+      const item = raid.found.find((entry) => entry.uid === uid);
+      raid.found = raid.found.filter((entry) => entry.uid !== uid);
+      if (item) addLog(`${item.name}을(를) 버렸습니다.`);
+      closeSearchIfResolved();
+      render();
+    }
+
+    function closeSearchIfResolved() {
+      if (raid.search?.completed && raid.found.length === 0) raid.search = null;
+    }
+
+    function eventChance() {
+      return 0.24 + Math.min(0.16, raid.risk / 520);
       if (!raid.active || raid.pendingEvent || raid.lootedPoi.has(index)) return;
 
       raid.lootedPoi.add(index);
@@ -750,6 +1008,11 @@
 
     function resolveLockedRoom(actionKey) {
       if (actionKey === 'skip') return addLog('폐쇄된 방을 무시하고 이동했습니다.');
+      const successChance = hasKey() ? 0.92 : raid.loadout.pistol ? 0.62 : 0.42;
+      if (Math.random() < successChance) {
+        addLog(hasKey() ? '열쇠로 방을 열었습니다. 발견 아이템을 확인하세요.' : '문을 강제로 열었습니다. 소음 때문에 위험도가 올랐습니다.');
+        if (!hasKey()) raid.risk = Math.min(85, raid.risk + 10);
+        revealFoundItems(rollLootTable({ table: 'weapon', rolls: 2 }), '폐쇄된 방');
       const hasKey = raid.bag.some((item) => item.id === 'key') || state.stash.some((item) => item.id === 'key');
       const successChance = hasKey ? 0.92 : raid.loadout.pistol ? 0.62 : 0.42;
       if (Math.random() < successChance) {
@@ -764,6 +1027,24 @@
 
     function resolveMedBox(actionKey) {
       if (actionKey === 'leave') return addLog('의료 상자를 지나쳤습니다.');
+      if (Math.random() < 0.58) {
+        raid.loadout.bandages += 1;
+        addLog('의료 상자에서 장비 붕대 1개를 확보했습니다. 탈출 성공 시 유지됩니다.');
+      } else {
+        revealFoundItems(rollLootTable({ table: 'medical', rolls: 1 }), '의료 상자');
+      }
+    }
+
+    function revealFoundItems(items, source) {
+      const valid = items.filter(Boolean);
+      if (!valid.length) return addLog(`${source}: 발견한 아이템이 없습니다.`);
+      raid.found.push(...valid);
+      raid.search = { poiIndex: null, startedAt: Date.now(), duration: 1, progress: 100, completed: true, source };
+      addLog(`${source}: ${valid.map((item) => item.name).join(', ')} 발견. 직접 가져가세요.`);
+    }
+
+    function extractRaid() {
+      if (!raid.active || raid.pendingEvent || raid.search) return;
       if (Math.random() < 0.68) {
         raid.loadout.bandages += 1;
         addLog('의료 상자에서 붕대 1개를 확보했습니다. 탈출 성공 시 유지됩니다.');
@@ -778,6 +1059,10 @@
         failRaid('탈출로 이동 중 사망했습니다. 장비와 획득한 아이템은 모두 손실됩니다.', true);
         return;
       }
+      const stored = [];
+      const lost = [];
+      raid.bag.forEach((item) => {
+        const spot = findFreeSpotIn(item, state.stash, STASH_COLS, STASH_ROWS);
 
       const stored = [];
       const lost = [];
@@ -800,6 +1085,11 @@
     }
 
     function failRaid(message, loseGear = false) {
+      clearSearchTimer();
+      raid.active = false;
+      raid.bag = [];
+      raid.found = [];
+      raid.search = null;
       raid.active = false;
       raid.bag = [];
       raid.pendingEvent = null;
@@ -896,6 +1186,8 @@
       document.getElementById('levelInfo').textContent = `Lv.${state.level} · XP ${state.xp}/${xpForNextLevel()}`;
       renderPoi();
       renderRaidBag();
+      renderRaidInventory();
+      renderSearchPanel();
       renderEventPanel();
       renderInventory();
       renderLists();

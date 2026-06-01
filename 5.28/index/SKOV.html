@@ -223,8 +223,8 @@
     }
     .raid-loot-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
     .raid-loot-header h2 { margin: 0; font-size: 1.05rem; color: #dce5e8; }
-    .raid-loot-layout { display: grid; grid-template-columns: 300px minmax(460px, 1fr) minmax(360px, 0.9fr); gap: 8px; align-items: start; }
-    .overlay-equipment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .raid-loot-layout { display: grid; grid-template-columns: minmax(330px, 0.9fr) minmax(460px, 1fr) minmax(420px, 0.95fr); gap: 8px; align-items: start; }
+    .overlay-equipment-grid { display: grid; gap: 8px; }
     .overlay-storage-stack { display: grid; gap: 10px; max-height: calc(100vh - 190px); overflow: auto; padding-right: 6px; }
     .loot-search-card { display: grid; gap: 10px; min-height: 190px; align-content: start; }
     .loot-search-card strong { color: #e8eeee; font-size: 1rem; }
@@ -320,10 +320,43 @@
     .corpse-section { border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.2); padding: 10px; }
     .corpse-section h3 { margin: -10px -10px 10px; }
     .corpse-search { display: grid; gap: 8px; align-items: start; }
+    .corpse-layout { display: grid; gap: 10px; }
+    .corpse-equipment-stack { display: grid; gap: 8px; }
+    .corpse-pair { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; align-items: stretch; }
+    .corpse-slot { min-width: 0; border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.22); padding: 8px; }
+    .corpse-slot h4 { margin: -8px -8px 8px; padding: 4px 8px; border-bottom: 1px solid rgba(149, 164, 168, 0.28); background: rgba(16, 21, 23, 0.82); color: #d7e0e3; font-size: 0.8rem; }
+    .corpse-slot .empty-note { min-height: 42px; }
+    .corpse-container-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; align-items: start; }
+    .corpse-container-row + .corpse-container-row { margin-top: 10px; }
+    .corpse-container-row .corpse-slot { min-height: 100px; }
+    .corpse-container-body { min-width: 0; overflow-x: auto; }
+    .corpse-item {
+      min-height: 42px;
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      border: 1px solid rgba(160, 173, 176, 0.3);
+      background: linear-gradient(180deg, rgba(79, 91, 93, 0.22), rgba(4, 6, 7, 0.5));
+      padding: 7px;
+      cursor: grab;
+    }
+    .corpse-item span { color: #e8eeee; font-size: 0.82rem; }
+    .corpse-item small { color: var(--muted); font-size: 0.68rem; line-height: 1.2; }
+    .unknown-cell {
+      width: 100%;
+      min-height: 76px;
+      display: grid;
+      place-items: center;
+      border: 1px dashed rgba(214, 194, 125, 0.64);
+      background: rgba(77, 59, 23, 0.22);
+      color: #ffe7a1;
+      font-weight: 800;
+      cursor: pointer;
+    }
     .loot-help { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
 
     @media (max-width: 1100px) { .three-pane, .raid-layout, .menu-grid { grid-template-columns: 1fr; } .topbar { align-items: flex-start; flex-direction: column; } .wallet { text-align: left; } }
-    @media (max-width: 700px) { :root { --slot: 40px; --gap: 4px; } .equipment-grid { grid-template-columns: 1fr; } .poi-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { :root { --slot: 40px; --gap: 4px; } .equipment-grid { grid-template-columns: 1fr; } .corpse-pair, .corpse-container-row { grid-template-columns: 1fr; } .poi-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -499,7 +532,6 @@
       { key: 'backpack', label: '백팩', accepts: ['backpack'], empty: 'Backpack' },
       { key: 'secure', label: '안전 컨테이너', accepts: ['secure'], empty: '사망해도 유지' }
     ];
-
     const SHOP_ITEMS = [
       { itemId: 'bandage', cost: 3000, stock: '많음', group: 'medical' },
       { itemId: 'painkiller', cost: 6000, stock: '많음', group: 'medical' },
@@ -809,6 +841,14 @@
       if (key === 'backpack') return loot.backpackItem?.containerItems || [];
       return [];
     }
+    function syncActiveCorpseEquipmentRefs() {
+      const loot = activeCorpseLoot();
+      if (!loot) return;
+      loot.rigItem = loot.equipmentItems.find((item) => item.category === 'rig') || null;
+      loot.backpackItem = loot.equipmentItems.find((item) => item.category === 'backpack') || null;
+      if (!loot.rigItem) loot.searched.rig = false;
+      if (!loot.backpackItem) loot.searched.backpack = false;
+    }
 
     function createEnemyCorpseLoot(weaponType = 'M4A1') {
       const primaryId = weaponType === 'MP153' || weaponType === 'MP-153' ? 'mp153' : 'rifle';
@@ -961,6 +1001,7 @@
       if (!canPlaceIn(item, x, y, areaItems(to), spec.cols, spec.rows, uid, to)) return false;
       removeFromArea(from, uid);
       areaItems(to).push({ ...item, x, y });
+      if (from === 'enemy:equipment' || to === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
       if (from !== 'sell' && to !== 'sell') saveState();
       render(); return true;
     }
@@ -977,6 +1018,7 @@
       if (!canEquipTarget(item, slotKey, equipmentTarget)) { showToast('장착 실패: 슬롯 타입이 맞지 않거나 슬롯이 비어 있지 않습니다.'); return false; }
       removeFromArea(from, uid);
       equipmentTarget[slotKey] = { ...item, x: undefined, y: undefined };
+      if (from === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
       if (raid.active && equipmentTarget === raid.loadout && ['rig', 'backpack', 'secure'].includes(slotKey)) raid.inv[slotKey] = equipmentTarget[slotKey].containerItems || [];
       saveState(); render(); showToast(`${item.name} 장착 성공.`); return true;
     }
@@ -1326,30 +1368,123 @@
 
     function renderCorpseLootPanel(root, loot) {
       root.innerHTML = '';
+      syncActiveCorpseEquipmentRefs();
+      const layout = document.createElement('div');
+      layout.className = 'corpse-layout';
+      root.appendChild(layout);
+
       const equipment = document.createElement('section');
       equipment.className = 'corpse-section';
-      equipment.innerHTML = '<h3>적 장비 · 바로 획득 가능</h3><div id="enemy-equipment-grid" class="inventory-wrap compact-grid"></div><p class="loot-help">Ctrl+클릭 또는 드래그로 플레이어 저장공간에 옮깁니다. 빈 장비 슬롯에는 Shift+클릭으로 장착할 수 있습니다.</p>';
-      root.appendChild(equipment);
-      renderGrid(equipment.querySelector('#enemy-equipment-grid'), 8, 4, loot.equipmentItems, { area: 'enemy:equipment', draggable: true, drop: false, onItemDblClick: (item) => quickMoveItem('enemy:equipment', item.uid) });
+      equipment.innerHTML = '<h3>적 시체 장비</h3><div class="corpse-equipment-stack"></div><p class="loot-help">Ctrl+클릭 또는 드래그로 플레이어 저장공간에 옮깁니다. 빈 슬롯은 장착 없음입니다.</p>';
+      layout.appendChild(equipment);
+      const equipmentStack = equipment.querySelector('.corpse-equipment-stack');
+      const equipmentItems = loot.equipmentItems || [];
+      const primaryItems = equipmentItems.filter((item) => item.category === 'primary');
+      const findEquipment = (predicate) => equipmentItems.find(predicate) || null;
+      const slots = {
+        helmet: findEquipment((item) => item.category === 'helmet'),
+        armor: findEquipment((item) => item.category === 'armor'),
+        primary1: primaryItems[0] || null,
+        primary2: primaryItems[1] || null,
+        pistol: findEquipment((item) => item.category === 'pistol'),
+        melee: findEquipment((item) => item.category === 'melee')
+      };
 
+      function createCorpseItemNode(item) {
+        const node = document.createElement('div');
+        node.className = `corpse-item ${item.rarity || ''}`;
+        node.draggable = true;
+        node.dataset.uid = item.uid;
+        node.innerHTML = `<span>${item.name}</span><small>${itemMeta(item)}</small>`;
+        node.title = itemInfo(item);
+        node.addEventListener('click', (event) => {
+          if (event.ctrlKey || event.metaKey) {
+            if (!quickMoveItem('enemy:equipment', item.uid)) showToast('빠른 이동할 공간이 없습니다.');
+            return;
+          }
+          if (event.shiftKey) {
+            if (!quickEquipItem('enemy:equipment', item.uid)) showToast('빠른 장착할 슬롯이 없습니다.');
+            return;
+          }
+          selected = { area: 'enemy:equipment', uid: item.uid };
+          render();
+        });
+        node.addEventListener('dblclick', () => quickMoveItem('enemy:equipment', item.uid));
+        node.addEventListener('dragstart', (event) => {
+          dragData = { area: 'enemy:equipment', uid: item.uid };
+          selected = dragData;
+          event.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+          node.classList.add('dragging');
+        });
+        node.addEventListener('dragend', () => {
+          dragData = null;
+          node.classList.remove('dragging');
+          clearSlotMarks();
+        });
+        return node;
+      }
+
+      function createEmptyCorpseNote(text) {
+        const node = document.createElement('div');
+        node.className = 'empty-note';
+        node.textContent = text;
+        return node;
+      }
+
+      function appendCorpseSlot(parent, title, item) {
+        const slot = document.createElement('div');
+        slot.className = 'corpse-slot';
+        slot.innerHTML = `<h4>${title}</h4>`;
+        slot.appendChild(item ? createCorpseItemNode(item) : createEmptyCorpseNote('장착 없음'));
+        parent.appendChild(slot);
+        return slot;
+      }
+
+      appendCorpseSlot(equipmentStack, '1. 헬멧', slots.helmet);
+      appendCorpseSlot(equipmentStack, '2. 방어구', slots.armor);
+
+      const row1 = document.createElement('div');
+      row1.className = 'corpse-pair';
+      equipmentStack.appendChild(row1);
+      appendCorpseSlot(row1, '3. 주무기 1', slots.primary1);
+      appendCorpseSlot(row1, '권총', slots.pistol);
+
+      const row2 = document.createElement('div');
+      row2.className = 'corpse-pair';
+      equipmentStack.appendChild(row2);
+      appendCorpseSlot(row2, '4. 주무기 2', slots.primary2);
+      appendCorpseSlot(row2, '나이프', slots.melee);
+
+      const containerGrid = document.createElement('div');
+      containerGrid.className = 'corpse-container-grid';
+      layout.appendChild(containerGrid);
       const containers = [
-        ['rig', '리그', loot.rigItem],
-        ['pockets', '주머니', { name: '주머니' }],
-        ['backpack', '가방', loot.backpackItem]
+        ['rig', '5. 리그', loot.rigItem],
+        ['pockets', '6. 주머니', { name: '주머니' }],
+        ['backpack', '7. 가방', loot.backpackItem]
       ];
       containers.forEach(([key, title, source]) => {
-        if (!source) return;
         const section = document.createElement('section');
-        section.className = 'corpse-section';
+        section.className = 'corpse-container-row';
         const searching = raid.enemySearch?.key === key;
         const searched = loot.searched[key];
-        section.innerHTML = `<h3>${title}</h3><div class="corpse-search" id="corpse-${key}"></div>`;
-        root.appendChild(section);
+        section.innerHTML = `<div class="corpse-slot"><h4>${title}</h4></div><div class="corpse-container-body" id="corpse-${key}"></div>`;
+        containerGrid.appendChild(section);
+        const slot = section.querySelector('.corpse-slot');
+        if (key === 'rig' || key === 'backpack') {
+          slot.appendChild(source?.uid ? createCorpseItemNode(source) : createEmptyCorpseNote('장착 없음'));
+        } else {
+          slot.appendChild(createEmptyCorpseNote('기본 4칸'));
+        }
         const body = section.querySelector(`#corpse-${key}`);
+        if ((key === 'rig' || key === 'backpack') && !source) {
+          body.innerHTML = '<div class="empty-note">사용 가능한 공간 없음</div>';
+          return;
+        }
         if (!searched) {
           body.innerHTML = searching
             ? `<strong>Searching...</strong><div class="progress-shell"><div class="progress-fill" style="--progress:${raid.enemySearch.progress}%"></div></div>`
-            : `<button class="primary" data-search-enemy="${key}">서칭</button>`;
+            : `<button class="unknown-cell" data-search-enemy="${key}">미확인</button>`;
           body.querySelector('[data-search-enemy]')?.addEventListener('click', () => startEnemyContainerSearch(key));
           return;
         }

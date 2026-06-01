@@ -92,8 +92,11 @@
     .equip-slot strong { position: absolute; left: 0; right: 0; top: 0; padding: 4px 7px; display: block; background: linear-gradient(180deg, rgba(41,49,53,.96), rgba(11,14,16,.92)); color: #cfd7d9; font-size: 0.78rem; }
     .equip-slot span { display: block; color: #e8eeee; font-size: 0.9rem; }
     .gear-container-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 8px; align-items: start; }
+    .gear-rig-row, .gear-backpack-row { grid-template-columns: 132px minmax(0, 1fr); }
     .gear-container-row + .gear-container-row { margin-top: 10px; }
     .gear-container-row .equip-slot { min-height: 118px; }
+    .gear-rig-row .equip-slot, .gear-backpack-row .equip-slot { min-height: 84px; padding: 24px 7px 7px; }
+    .gear-rig-row .equip-slot span, .gear-backpack-row .equip-slot span { font-size: 0.78rem; }
     .gear-internal { min-width: 0; overflow-x: auto; }
     .gear-internal h3 { margin: 0 0 6px; padding: 4px 8px; border: 1px solid rgba(149, 164, 168, 0.34); background: linear-gradient(180deg, rgba(43, 52, 57, 0.82), rgba(13, 18, 20, 0.72)); font-size: 0.82rem; }
     .equip-slot.valid, .slot.valid { outline: 2px solid var(--ok); }
@@ -323,6 +326,10 @@
     .corpse-layout { display: grid; gap: 10px; }
     .corpse-equipment-stack { display: grid; gap: 8px; }
     .corpse-pair { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; align-items: stretch; }
+    .character-equipment-layout { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .character-equipment-stack { display: grid; gap: 8px; }
+    .character-equipment-layout .equip-slot { min-height: 74px; padding: 24px 8px 8px; }
+    .character-equipment-layout .corpse-pair { grid-template-columns: minmax(0, 1fr) 140px; }
     .corpse-slot { min-width: 0; border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.22); padding: 8px; }
     .corpse-slot h4 { margin: -8px -8px 8px; padding: 4px 8px; border-bottom: 1px solid rgba(149, 164, 168, 0.28); background: rgba(16, 21, 23, 0.82); color: #d7e0e3; font-size: 0.8rem; }
     .corpse-slot .empty-note { min-height: 42px; }
@@ -1020,6 +1027,7 @@
       equipmentTarget[slotKey] = { ...item, x: undefined, y: undefined };
       if (from === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
       if (raid.active && equipmentTarget === raid.loadout && ['rig', 'backpack', 'secure'].includes(slotKey)) raid.inv[slotKey] = equipmentTarget[slotKey].containerItems || [];
+      if (raid.active && equipmentTarget === raid.loadout) window.InventoryBridge?.refreshFpsLoadout?.();
       saveState(); render(); showToast(`${item.name} 장착 성공.`); return true;
     }
     function canEquipTarget(item, slotKey, equipmentTarget = state.equipment) {
@@ -1068,7 +1076,6 @@
       return false;
     }
     function quickMoveItem(area, uid) {
-      if (quickEquipItem(area, uid)) return true;
       const item = areaItems(area).find((entry) => entry.uid === uid);
       if (!item) return false;
       if (area === 'loot' || enemyAreaKey(area)) return quickMoveToAreas(area, uid, ['pockets', 'rig', 'backpack']);
@@ -1084,6 +1091,9 @@
       const item = areaItems(area).find((entry) => entry.uid === uid);
       if (!item) return false;
       removeFromArea(area, uid);
+      if (area === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
+      if (selected?.area === area && selected.uid === uid) selected = null;
+      if (dragData?.area === area && dragData.uid === uid) dragData = null;
       saveState(); render(); showToast(`${item.name}을(를) 버렸습니다.`); return true;
     }
 
@@ -1189,7 +1199,7 @@
     }
 
     function renderEquipmentSlots() {
-      renderSlotGroup(document.getElementById('bodySlots'), BODY_SLOTS);
+      renderCharacterEquipmentLayout(document.getElementById('bodySlots'), state.equipment, true);
     }
     function createEquipSlotNode(slot, equipmentSource = state.equipment, allowDrop = true) {
       const item = equipmentSource?.[slot.key];
@@ -1205,6 +1215,39 @@
       return node;
     }
 
+    function renderCharacterEquipmentLayout(root, equipmentSource = state.equipment, allowDrop = true) {
+      if (!root) return;
+      const slotByKey = (key) => BODY_SLOTS.find((slot) => slot.key === key);
+      const appendLayoutSlot = (parent, key, label) => {
+        const slot = slotByKey(key);
+        if (!slot) return;
+        parent.appendChild(createEquipSlotNode({ ...slot, label }, equipmentSource, allowDrop));
+      };
+
+      root.classList.add('character-equipment-layout');
+      root.innerHTML = '';
+      const stack = document.createElement('div');
+      stack.className = 'character-equipment-stack';
+      root.appendChild(stack);
+
+      appendLayoutSlot(stack, 'helmet', '1. 헬멧');
+      appendLayoutSlot(stack, 'armor', '2. 방어구');
+
+      const row1 = document.createElement('div');
+      row1.className = 'corpse-pair';
+      stack.appendChild(row1);
+      appendLayoutSlot(row1, 'primary1', '3. 주무기 1');
+      appendLayoutSlot(row1, 'pistol', '권총');
+
+      const row2 = document.createElement('div');
+      row2.className = 'corpse-pair';
+      stack.appendChild(row2);
+      appendLayoutSlot(row2, 'primary2', '4. 주무기 2');
+      appendLayoutSlot(row2, 'melee', '나이프');
+
+      root.querySelectorAll('[data-unequip]').forEach((button) => button.addEventListener('click', () => unequip(button.dataset.unequip)));
+    }
+
     function renderSlotGroup(root, slots) {
       if (!root) return;
       root.innerHTML = '';
@@ -1214,7 +1257,7 @@
 
     function renderGearContainerRow(root, slot, area, title, description, equipmentSource = state.equipment, allowDrop = true) {
       const section = document.createElement('section');
-      section.className = 'gear-container-row';
+      section.className = `gear-container-row gear-${area}-row`;
       const slotWrap = createEquipSlotNode(slot, equipmentSource, allowDrop);
       const spec = areaSpec(area);
       const internal = document.createElement('div');
@@ -1324,8 +1367,7 @@
       const activeTitle = corpseLoot?.name || raid.lootContainer?.name || (raid.search ? POIS[raid.search.poiIndex].name : '레이드 인벤토리');
       document.getElementById('raidLootOverlayTitle').textContent = `${activeTitle} · 인벤토리`;
       const equipment = document.getElementById('overlayEquipment');
-      equipment.innerHTML = '';
-      BODY_SLOTS.forEach((slot) => equipment.appendChild(createEquipSlotNode(slot, raid.loadout || {}, true)));
+      renderCharacterEquipmentLayout(equipment, raid.loadout || {}, true);
       const storage = document.getElementById('overlayStorage');
       storage.innerHTML = '';
       renderOverlayStorageArea(storage, 'rig', '리그');
@@ -1398,12 +1440,12 @@
         node.innerHTML = `<span>${item.name}</span><small>${itemMeta(item)}</small>`;
         node.title = itemInfo(item);
         node.addEventListener('click', (event) => {
-          if (event.ctrlKey || event.metaKey) {
-            if (!quickMoveItem('enemy:equipment', item.uid)) showToast('빠른 이동할 공간이 없습니다.');
+          if (event.altKey) {
+            if (!quickEquipItem('enemy:equipment', item.uid)) showToast('빠른 장착할 슬롯이 없습니다.');
             return;
           }
-          if (event.shiftKey) {
-            if (!quickEquipItem('enemy:equipment', item.uid)) showToast('빠른 장착할 슬롯이 없습니다.');
+          if (event.ctrlKey || event.metaKey) {
+            if (!quickMoveItem('enemy:equipment', item.uid)) showToast('빠른 이동할 공간이 없습니다.');
             return;
           }
           selected = { area: 'enemy:equipment', uid: item.uid };
@@ -1553,9 +1595,8 @@
         node.title = item.shopPrice ? `${itemInfo(item)} · 판매가 ${formatMoney(item.shopPrice)} · 재고 ${item.stock || '많음'}` : itemInfo(item);
         node.addEventListener('click', (event) => {
           if (options.onItemClick) return options.onItemClick(item, event);
-          if (event.altKey) return discardFromArea(options.area, item.uid);
+          if (event.altKey) { if (!quickEquipItem(options.area, item.uid)) showToast('빠른 장착할 슬롯이 없습니다.'); return; }
           if (event.ctrlKey || event.metaKey) { if (!quickMoveItem(options.area, item.uid)) showToast('빠른 이동할 공간이 없습니다.'); return; }
-          if (event.shiftKey) { if (!quickEquipItem(options.area, item.uid)) showToast('빠른 장착할 슬롯이 없습니다.'); return; }
           selected = { area: options.area, uid: item.uid }; render();
         });
         if (options.onItemDblClick) node.addEventListener('dblclick', (event) => options.onItemDblClick(item, event));
@@ -1724,6 +1765,13 @@
     window.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); handleEscape(); return; }
       if (event.key === 'Tab') { event.preventDefault(); toggleTabInventory(); return; }
+      if (event.key === 'Delete') {
+        const inventoryContextOpen = currentScreen === 'inventory' || currentScreen === 'trader' || Boolean(raid.active && (raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse));
+        if (!inventoryContextOpen) return;
+        const target = selected;
+        if (target && discardFromArea(target.area, target.uid)) event.preventDefault();
+        return;
+      }
       if (event.key.toLowerCase() !== 'r') return;
       const target = dragData || selected;
       if (target) rotateItem(target.area, target.uid);
@@ -2924,9 +2972,9 @@ function createFN57HighQuality() {
 
 
   const WEAPONS = {
-  M4A1: { name: 'M4A1', mesh: m4a1, marker: m4MuzzleMarker, fireRate: 0.075, automatic: true, recoil: 0.025, damage: 54, pellets: 1, spread: 0.0, range: 150 },
-  MP153: { name: 'MP-153', mesh: mp153, marker: mpMuzzleMarker, fireRate: 0.6, automatic: false, recoil: 0.14, damage: 39, pellets: 6, spread: 0.06, range: 25 },
-  FN57: { name: 'FN 5-7', mesh: fn57, marker: fnMuzzleMarker, fireRate: 0.24, automatic: false, recoil: 0.055, damage: 40, pellets: 1, spread: 0.012, range: 90 },
+  M4A1: { name: 'M4A1', mesh: m4a1, marker: m4MuzzleMarker, fireRate: 0.075, automatic: true, recoil: 0.018, damage: 54, pellets: 1, spread: 0.0, range: 150 },
+  MP153: { name: 'MP-153', mesh: mp153, marker: mpMuzzleMarker, fireRate: 0.6, automatic: false, recoil: 0.1, damage: 39, pellets: 6, spread: 0.04, range: 25 },
+  FN57: { name: 'FN 5-7', mesh: fn57, marker: fnMuzzleMarker, fireRate: 0.24, automatic: false, recoil: 0.035, damage: 40, pellets: 1, spread: 0.004, range: 90 },
   MELEE: { name: '근접무기', mesh: knife, marker: knifeMarker, fireRate: 0.45, automatic: false, recoil: 0.0, damage: 65, pellets: 0, spread: 0, range: 2.2, melee: true },
   EMPTY: { name: '장착 무기 없음', mesh: emptyWeapon, marker: emptyMarker, fireRate: 0.5, automatic: false, recoil: 0, damage: 0, pellets: 0, spread: 0, range: 0, disabled: true }
   };
@@ -3826,6 +3874,93 @@ ${slotText}` : ''}`;
   return blockers.length === 0;
   }
 
+  function getFirstTargetHit(origin, direction, maxDistance) {
+  raycaster.set(origin, direction);
+  raycaster.near = 0.02;
+  raycaster.far = maxDistance;
+  const hit = raycaster.intersectObjects(targets, false).find((entry) => entry.distance <= maxDistance) || null;
+  raycaster.near = 0;
+  raycaster.far = Infinity;
+  return hit;
+  }
+
+  function raySphereHit(origin, direction, center, radius, maxDistance) {
+  const toCenter = new THREE.Vector3().subVectors(center, origin);
+  const projected = toCenter.dot(direction);
+  if (projected < -radius || projected > maxDistance + radius) return null;
+
+
+  const closest = origin.clone().addScaledVector(direction, Math.max(0, projected));
+  const radiusSq = radius * radius;
+  const missDistanceSq = closest.distanceToSquared(center);
+  if (missDistanceSq > radiusSq) return null;
+
+
+  const offset = Math.sqrt(Math.max(0, radiusSq - missDistanceSq));
+  const distance = Math.max(0, projected - offset);
+  if (distance > maxDistance) return null;
+  return { distance, point: origin.clone().addScaledVector(direction, distance) };
+  }
+
+  function findEnemyRayHit(origin, direction, maxDistance) {
+  let best = null;
+  enemies.forEach((enemy) => {
+  if (!enemy.parent || enemy.userData.isRagdoll) return;
+  enemy.updateMatrixWorld(true);
+
+
+  const headHit = raySphereHit(origin, direction, enemy.localToWorld(new THREE.Vector3(0, 2.15, 0)), 0.46, maxDistance);
+  if (headHit && (!best || headHit.distance < best.distance)) best = { ...headHit, enemy, part: 'head' };
+
+
+  const upperBodyHit = raySphereHit(origin, direction, enemy.localToWorld(new THREE.Vector3(0, 1.14, 0)), 0.64, maxDistance);
+  if (upperBodyHit && (!best || upperBodyHit.distance < best.distance)) best = { ...upperBodyHit, enemy, part: 'body' };
+
+
+  const lowerBodyHit = raySphereHit(origin, direction, enemy.localToWorld(new THREE.Vector3(0, 0.68, 0)), 0.54, maxDistance);
+  if (lowerBodyHit && (!best || lowerBodyHit.distance < best.distance)) best = { ...lowerBodyHit, enemy, part: 'body' };
+  });
+  return best;
+  }
+
+  function chooseNearestRayHit(objectHit, enemyHit, maxDistance) {
+  const validObject = objectHit && objectHit.distance <= maxDistance ? { type: 'object', distance: objectHit.distance, point: objectHit.point, hit: objectHit } : null;
+  const validEnemy = enemyHit && enemyHit.distance <= maxDistance ? { type: 'enemy', ...enemyHit } : null;
+  if (validObject?.hit?.object?.userData?.part === 'head' && (!validEnemy || validObject.distance <= validEnemy.distance + 0.4)) return validObject;
+  if (validEnemy && (!validObject || validEnemy.distance <= validObject.distance + 0.02)) return validEnemy;
+  return validObject;
+  }
+
+  function getCameraAimPoint(range) {
+  const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+  const hit = chooseNearestRayHit(
+  getFirstTargetHit(camera.position, cameraDirection, range),
+  findEnemyRayHit(camera.position, cameraDirection, range),
+  range
+  );
+  return hit?.point?.clone() || camera.position.clone().addScaledVector(cameraDirection, range);
+  }
+
+  function applyWeaponSpread(direction, spread) {
+  const spreadAmount = (isAiming ? spread * 0.45 : spread);
+  if (spreadAmount <= 0) return direction.normalize();
+  const up = new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(direction, up);
+  if (right.lengthSq() < 0.0001) right.set(1, 0, 0);
+  right.normalize();
+  const vertical = new THREE.Vector3().crossVectors(right, direction).normalize();
+  direction
+  .addScaledVector(right, (Math.random() - 0.5) * spreadAmount)
+  .addScaledVector(vertical, (Math.random() - 0.5) * spreadAmount)
+  .normalize();
+  return direction;
+  }
+
+  function handleEnemyRayHit(hit, damage) {
+  if (!hit?.enemy) return;
+  handleObjectHit({ userData: { parentGroup: hit.enemy, part: hit.part } }, damage);
+  }
+
 
   function shootWeapon() {
   if (isSwapping || currentWeapon.disabled) return;
@@ -3866,20 +4001,14 @@ ${slotText}` : ''}`;
   flashDuration = 0.05;
 
 
+  const aimPoint = getCameraAimPoint(currentWeapon.range);
   for (let k = 0; k < currentWeapon.pellets; k++) {
   const bulletMesh = new THREE.Mesh(bulletGeo, bulletMat);
   bulletMesh.position.copy(muzzleWorldPos);
 
 
-  const fireDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-
-
-  if (currentWeapon.spread > 0) {
-  fireDirection.x += (Math.random() - 0.5) * currentWeapon.spread;
-  fireDirection.y += (Math.random() - 0.5) * currentWeapon.spread;
-  fireDirection.z += (Math.random() - 0.5) * currentWeapon.spread;
-  }
-  fireDirection.normalize();
+  const fireDirection = new THREE.Vector3().subVectors(aimPoint, muzzleWorldPos).normalize();
+  applyWeaponSpread(fireDirection, currentWeapon.spread);
 
 
   bulletMesh.lookAt(bulletMesh.position.clone().add(fireDirection));
@@ -3902,10 +4031,13 @@ ${slotText}` : ''}`;
   Sound.playWeaponSwitch();
   const origin = camera.position.clone();
   const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
-  raycaster.set(origin, direction);
-  raycaster.far = currentWeapon.range;
-  const hit = raycaster.intersectObjects(targets)[0];
-  if (hit) handleObjectHit(hit.object, currentWeapon.damage);
+  const hit = chooseNearestRayHit(
+  getFirstTargetHit(origin, direction, currentWeapon.range),
+  findEnemyRayHit(origin, direction, currentWeapon.range),
+  currentWeapon.range
+  );
+  if (hit?.type === 'enemy') handleEnemyRayHit(hit, currentWeapon.damage);
+  else if (hit?.hit) handleObjectHit(hit.hit.object, currentWeapon.damage);
   }
 
   function handleObjectHit(hitObject, bulletDamage = currentWeapon.damage) {
@@ -4496,12 +4628,19 @@ ${slotText}` : ''}`;
 
 
   raycaster.set(currentBulletPos, bullet.dir);
-  const intersects = raycaster.intersectObjects(targets);
+  const targetHit = chooseNearestRayHit(
+  getFirstTargetHit(currentBulletPos, bullet.dir, distanceThisFrame),
+  findEnemyRayHit(currentBulletPos, bullet.dir, distanceThisFrame),
+  distanceThisFrame
+  );
 
 
-  if (intersects.length > 0 && intersects[0].distance <= distanceThisFrame) {
-  createBulletHoleFromHit(intersects[0]);
-  handleObjectHit(intersects[0].object, bullet.damage);
+  if (targetHit?.type === 'enemy') {
+  handleEnemyRayHit(targetHit, bullet.damage);
+  isHit = true;
+  } else if (targetHit?.hit) {
+  createBulletHoleFromHit(targetHit.hit);
+  handleObjectHit(targetHit.hit.object, bullet.damage);
   isHit = true;
   }
 

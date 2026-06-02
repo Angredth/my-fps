@@ -10,6 +10,7 @@ function createFN57HighQuality() {
     rubber: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.88, metalness: 0.02 }),
     metal: new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.35, metalness: 0.6 }),
     red: new THREE.MeshStandardMaterial({ color: 0xd90000, roughness: 0.35, metalness: 0.05, emissive: 0x360000 }),
+    sightGreen: new THREE.MeshStandardMaterial({ color: 0x58ff4f, roughness: 0.18, metalness: 0.02, emissive: 0x20ff18, emissiveIntensity: 1.35 }),
     glass: new THREE.MeshStandardMaterial({ color: 0xcfdcff, roughness: 0.1, metalness: 0.05, transparent: true, opacity: 0.65 })
   };
 
@@ -58,8 +59,31 @@ function createFN57HighQuality() {
 
   bevelBox("long_black_slide", [5.65, 0.66, 0.72], [0.3, 1.02, 0], mats.slide, [0, 0, 0], 0.06);
   box("front_muzzle_block", [0.42, 0.78, 0.78], [3.36, 0.98, 0], mats.slideEdge);
-  box("rear_sight_ramp", [0.68, 0.2, 0.58], [-2.47, 1.47, 0], mats.black, [0, 0, -0.18]);
-  box("front_sight", [0.18, 0.18, 0.42], [3.0, 1.48, 0], mats.black, [0, 0, 0.1]);
+
+  // FN 5-7 iron sights: rear notch is split left/right with a carved-looking center channel.
+  const rearSight = new THREE.Group();
+  rearSight.name = "rear_sight_notched_green_dots";
+  gun.add(rearSight);
+  rearSight.position.set(-2.47, 1.47, 0);
+  rearSight.rotation.set(0, 0, -0.18);
+
+  box("rear_sight_base", [0.72, 0.13, 0.62], [0, -0.045, 0], mats.black, [0, 0, 0], rearSight);
+  box("rear_sight_left_ear", [0.28, 0.24, 0.18], [0, 0.055, -0.22], mats.black, [0, 0, 0], rearSight);
+  box("rear_sight_right_ear", [0.28, 0.24, 0.18], [0, 0.055, 0.22], mats.black, [0, 0, 0], rearSight);
+
+  cyl("rear_sight_left_green_dot", 0.055, 0.055, 0.025, [-0.15, 0.115, -0.21], mats.sightGreen, [Math.PI / 2, 0, Math.PI / 2], 24, rearSight);
+  cyl("rear_sight_right_green_dot", 0.055, 0.055, 0.025, [-0.15, 0.115, 0.21], mats.sightGreen, [Math.PI / 2, 0, Math.PI / 2], 24, rearSight);
+
+  const frontSight = new THREE.Group();
+  frontSight.name = "front_sight_green_dot";
+  gun.add(frontSight);
+  frontSight.position.set(3.0, 1.48, 0);
+  frontSight.rotation.set(0, 0, 0.1);
+
+  box("front_sight_body", [0.18, 0.18, 0.42], [0, 0, 0], mats.black, [0, 0, 0], frontSight);
+  box("front_sight_top_bead_holder", [0.13, 0.08, 0.30], [0.02, 0.09, 0], mats.black, [0, 0, 0], frontSight);
+  cyl("front_sight_green_dot", 0.05, 0.05, 0.024, [-0.1, 0.07, 0.01], mats.sightGreen, [Math.PI / 2, 0, Math.PI/2], 24, frontSight);
+  
 
   box("ejection_port_cut_dark", [1.15, 0.16, 0.77], [0.35, 1.37, 0], mats.black);
   box("ejection_port_inner_barrel", [0.75, 0.09, 0.46], [0.28, 1.39, 0], mats.metal);

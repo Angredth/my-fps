@@ -74,7 +74,8 @@
   .panel { padding: 14px; min-width: 0; position: relative; }
   .panel h2, .panel h3, .panel h4, .menu-card h2 { margin: -14px -14px 12px; padding: 5px 10px; min-height: 24px; border-bottom: 1px solid rgba(149, 164, 168, 0.34); color: #d7e0e3; background: linear-gradient(180deg, rgba(43, 52, 57, 0.9), rgba(13, 18, 20, 0.88)); font-size: 0.96rem; letter-spacing: 0.02em; }
 
-  .three-pane { display: grid; grid-template-columns: minmax(420px, 0.95fr) minmax(400px, 0.95fr) minmax(560px, 1.25fr); gap: 6px; align-items: stretch; }
+  .three-pane { display: grid; grid-template-columns: 520px 520px minmax(620px, 1fr); gap: 6px; align-items: stretch; }
+  .three-pane > .panel { min-height: calc(100vh - 92px); max-height: calc(100vh - 32px); overflow: auto; }
   .raid-layout { display: grid; grid-template-columns: 390px minmax(460px, 1fr) 520px; gap: 6px; align-items: start; }
   .stack { display: grid; gap: 14px; }
   .equipment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -91,13 +92,22 @@
   }
   .equip-slot strong { position: absolute; left: 0; right: 0; top: 0; padding: 4px 7px; display: block; background: linear-gradient(180deg, rgba(41,49,53,.96), rgba(11,14,16,.92)); color: #cfd7d9; font-size: 0.78rem; }
   .equip-slot span { display: block; color: #e8eeee; font-size: 0.9rem; }
-  .gear-container-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 8px; align-items: start; }
-  .gear-rig-row, .gear-backpack-row { grid-template-columns: 132px minmax(0, 1fr); }
-  .gear-container-row + .gear-container-row { margin-top: 10px; }
-  .gear-container-row .equip-slot { min-height: 118px; }
-  .gear-rig-row .equip-slot, .gear-backpack-row .equip-slot { min-height: 84px; padding: 24px 7px 7px; }
-  .gear-rig-row .equip-slot span, .gear-backpack-row .equip-slot span { font-size: 0.78rem; }
-  .gear-internal { min-width: 0; overflow-x: auto; }
+  .equip-slot--square { width: 138px; min-width: 138px; height: 138px; min-height: 138px; }
+  .equip-slot--long { min-height: 138px; height: 138px; }
+  .equip-slot.locked { filter: saturate(.45); }
+  .equip-slot.locked::after { content: "LOCKED IN RAID"; position: absolute; z-index: 8; inset: 24px 0 0; display: grid; place-items: center; padding: 8px; color: rgba(220, 225, 226, .72); background: rgba(0, 0, 0, .58); font-size: .7rem; font-weight: 900; letter-spacing: .08em; pointer-events: none; }
+  .equipped-item-card { position: relative; z-index: 2; height: 100%; min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 4px; padding: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,.24); background: linear-gradient(135deg, rgba(117,91,53,.9), rgba(34,25,15,.92)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -22px 32px rgba(0,0,0,.3); cursor: grab; }
+  .equipped-item-card.dragging { opacity: .5; cursor: grabbing; }
+  .equipped-item-card.selected { outline: 2px solid var(--accent); }
+  .equipped-item-card .equip-item-name { color: #f1f4ef; font-size: .76rem; font-weight: 900; line-height: 1.05; overflow-wrap: anywhere; }
+  .equipped-item-card .equip-item-type { align-self: center; color: rgba(235,240,236,.72); font-size: .68rem; line-height: 1.15; text-align: center; overflow: hidden; }
+  .equipped-item-card .equip-item-footer { display: flex; justify-content: space-between; gap: 4px; color: #d9e4d4; font-size: .64rem; font-weight: 800; }
+  .equip-slot .actions { position: absolute; z-index: 9; right: 3px; top: 2px; margin: 0; }
+  .equip-slot .actions button { padding: 3px 5px; border-radius: 0; font-size: .62rem; }
+  .gear-container-row { display: grid; grid-template-columns: 146px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .gear-container-row + .grid-section, .grid-section + .gear-container-row, .gear-container-row + .gear-container-row { margin-top: 14px; }
+  .gear-container-row .equip-slot { width: 138px; min-width: 138px; height: 138px; min-height: 138px; }
+  .gear-internal { min-width: 0; min-height: 138px; overflow: auto; }
   .gear-internal h3 { margin: 0 0 6px; padding: 4px 8px; border: 1px solid rgba(149, 164, 168, 0.34); background: linear-gradient(180deg, rgba(43, 52, 57, 0.82), rgba(13, 18, 20, 0.72)); font-size: 0.82rem; }
   .equip-slot.valid, .slot.valid { outline: 2px solid var(--ok); }
   .equip-slot.invalid, .slot.invalid { outline: 2px solid var(--danger); }
@@ -294,6 +304,15 @@
   z-index: 20;
   transition: opacity 0.12s linear;
   }
+  #damage-vignette {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  background: radial-gradient(circle at center, transparent 36%, rgba(105, 0, 0, 0.06) 58%, rgba(170, 0, 0, 0.52) 82%, rgba(110, 0, 0, 0.82) 100%);
+  transition: opacity 0.18s ease-out;
+  }
   #crosshair {
   position: absolute;
   top: 50%;
@@ -342,10 +361,17 @@
   .corpse-layout { display: grid; gap: 10px; }
   .corpse-equipment-stack { display: grid; gap: 8px; }
   .corpse-pair { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; align-items: stretch; }
-  .character-equipment-layout { display: grid; grid-template-columns: 1fr; gap: 8px; }
-  .character-equipment-stack { display: grid; gap: 8px; }
-  .character-equipment-layout .equip-slot { min-height: 74px; padding: 24px 8px 8px; }
-  .character-equipment-layout .corpse-pair { grid-template-columns: minmax(0, 1fr) 140px; }
+  .character-equipment-layout { display: block; width: 100%; min-width: 476px; overflow-x: auto; }
+  .character-equipment-stage { position: relative; min-height: 692px; display: grid; grid-template-columns: minmax(0, 1fr) 138px; grid-template-rows: repeat(4, 138px); grid-template-areas: "headwear headwear" "armor armor" "sling holster" "back sheath"; gap: 24px 10px; align-content: start; padding: 8px 0 18px; }
+  .character-silhouette { position: absolute; z-index: 0; left: 50%; top: 38px; width: 250px; height: 620px; transform: translateX(-50%); opacity: .2; pointer-events: none; filter: drop-shadow(0 0 18px rgba(190,205,205,.18)); }
+  .character-silhouette svg { width: 100%; height: 100%; }
+  .character-equipment-stage .equip-slot { z-index: 1; justify-self: end; width: 138px; }
+  .character-equipment-stage .equip-slot[data-slot-key="helmet"] { grid-area: headwear; justify-self: center; }
+  .character-equipment-stage .equip-slot[data-slot-key="armor"] { grid-area: armor; justify-self: center; }
+  .character-equipment-stage .equip-slot[data-slot-key="primary1"] { grid-area: sling; justify-self: stretch; width: auto; }
+  .character-equipment-stage .equip-slot[data-slot-key="pistol"] { grid-area: holster; }
+  .character-equipment-stage .equip-slot[data-slot-key="primary2"] { grid-area: back; justify-self: stretch; width: auto; }
+  .character-equipment-stage .equip-slot[data-slot-key="melee"] { grid-area: sheath; }
   .corpse-slot { min-width: 0; border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.22); padding: 8px; }
   .corpse-slot h4 { margin: -8px -8px 8px; padding: 4px 8px; border-bottom: 1px solid rgba(149, 164, 168, 0.28); background: rgba(16, 21, 23, 0.82); color: #d7e0e3; font-size: 0.8rem; }
   .corpse-slot .empty-note { min-height: 42px; }
@@ -378,8 +404,8 @@
   }
   .loot-help { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
 
-  @media (max-width: 1100px) { .three-pane, .raid-layout, .menu-grid { grid-template-columns: 1fr; } .topbar { align-items: flex-start; flex-direction: column; } .wallet { text-align: left; } }
-  @media (max-width: 700px) { :root { --slot: 40px; --gap: 4px; } .equipment-grid { grid-template-columns: 1fr; } .corpse-pair, .corpse-container-row { grid-template-columns: 1fr; } .poi-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .three-pane, .raid-layout, .menu-grid { grid-template-columns: 1fr; } .three-pane > .panel { min-height: 0; max-height: none; } .topbar { align-items: flex-start; flex-direction: column; } .wallet { text-align: left; } }
+  @media (max-width: 700px) { :root { --slot: 40px; --gap: 4px; } .equipment-grid { grid-template-columns: 1fr; } .corpse-pair, .corpse-container-row, .gear-container-row { grid-template-columns: 1fr; } .poi-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -417,12 +443,12 @@
   <div class="three-pane">
   <aside class="panel">
   <h2>캐릭터 장비</h2>
-  <p class="hint">헬멧, 방어구, 무기류는 단순 장착 위치입니다. 아이템 자체 크기는 스태시에서 차지합니다.</p>
+  <p class="hint">장착 아이템을 드래그하거나 Ctrl+클릭해 해제할 수 있습니다.</p>
   <div class="equipment-grid" id="bodySlots"></div>
   </aside>
   <section class="panel">
   <h2>실사용 장비</h2>
-  <p class="hint">리그, 주머니, 백팩, 안전 컨테이너 내부 공간입니다. R 키로 선택/드래그 중인 아이템을 회전합니다.</p>
+  <p class="hint">리그, 주머니, 백팩, 보안 컨테이너 내부 공간입니다. 아이템을 드래그하는 동안 R 키로 회전합니다.</p>
   <div id="usableGear"></div>
   </section>
   <section class="panel">
@@ -439,6 +465,7 @@
   <div id="fpsViewport">
   <div id="blocker" aria-hidden="true"></div>
   <div id="deathFade" aria-hidden="true"></div>
+  <div id="damage-vignette" aria-hidden="true"></div>
   <div id="crosshair"></div>
   <canvas id="minimap"></canvas>
   <div id="weapon-ui">WEAPON: 장착 무기 없음</div>
@@ -517,8 +544,7 @@
   'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Desolated.mp3',
   'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/EFT%20-%20geneburn%20-%20Dark%20Horizon%20%28Escape%20From%20Tarkov%20new%20menu%20music%29.mp3',
   'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Echoes.mp3',
-  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Eclipse.mp3',
-  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Escape%20from%20Tarkov%20OST%20-%20%20Countdown.mp3'
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Eclipse.mp3'
   ];
   const menuMusic = new Audio();
   let currentMenuTrack = null;
@@ -603,8 +629,8 @@
   { id: 'ruble', name: '루블', rarity: 'Currency', category: 'currency', width: 1, height: 1, value: 1, weight: 0.01, description: '기본 화폐' },
   { id: 'dollar', name: '달러', rarity: 'Currency', category: 'currency', width: 1, height: 1, value: 120, weight: 0.01, description: '외화' },
   { id: 'euro', name: '유로', rarity: 'Currency', category: 'currency', width: 1, height: 1, value: 140, weight: 0.01, description: '외화' },
-  { id: 'helmet', name: '헬멧', rarity: 'Equipment', category: 'helmet', equipSlot: 'helmet', width: 2, height: 2, value: 18000, weight: 2.4, description: '머리 보호 장비' },
-  { id: 'armor', name: '방어구', rarity: 'Equipment', category: 'armor', equipSlot: 'armor', width: 3, height: 3, value: 30000, weight: 7.8, description: '몸통 방어 장비' },
+  { id: 'helmet', name: '헬멧', rarity: 'Equipment', category: 'helmet', equipSlot: 'helmet', width: 2, height: 2, durability: 30, maxDurability: 30, value: 18000, weight: 2.4, description: '머리 보호 장비' },
+  { id: 'armor', name: '방어구', rarity: 'Equipment', category: 'armor', equipSlot: 'armor', width: 3, height: 3, durability: 50, maxDurability: 50, value: 30000, weight: 7.8, description: '몸통 방어 장비' },
   { id: 'rifle', name: 'M4A1', rarity: 'Military', category: 'primary', type: 'weapon', equipSlot: 'primary', width: 4, height: 2, value: 42000, weight: 3.1, description: '주무기. 1/2번 슬롯에 장착 가능' },
   { id: 'mp153', name: 'MP-153', rarity: 'Military', category: 'primary', type: 'weapon', equipSlot: 'primary', width: 7, height: 1, value: 36000, weight: 3.4, description: '반자동 산탄총. 차지공간 7x1' },
   { id: 'pistol', name: 'FN 5-7', rarity: 'Equipment', category: 'pistol', type: 'weapon', equipSlot: 'pistol', width: 2, height: 1, value: 15000, weight: 1.1, description: '보조무기. 소음기 장착 가능, 장착 시 3x1' },
@@ -648,6 +674,17 @@
   { key: 'backpack', label: '백팩', accepts: ['backpack'], empty: 'Backpack' },
   { key: 'secure', label: '안전 컨테이너', accepts: ['secure'], empty: '사망해도 유지' }
   ];
+  const EQUIP_SLOT_LABELS = {
+  helmet: 'HEADWEAR',
+  armor: 'BODY ARMOR',
+  primary1: 'ON SLING',
+  primary2: 'ON BACK',
+  pistol: 'HOLSTER',
+  melee: 'SHEATH',
+  rig: 'TACTICAL RIG',
+  backpack: 'BACKPACK',
+  secure: 'POUCH'
+  };
   const SHOP_ITEMS = [
   { itemId: 'bandage', cost: 3000, stock: '많음', group: 'medical' },
   { itemId: 'painkiller', cost: 6000, stock: '많음', group: 'medical' },
@@ -809,6 +846,7 @@
   raid.inv.secure = raid.loadout.secure?.containerItems || [];
   raid.inventoryOpen = false;
   document.body.classList.add('in-fps-raid');
+  updateDamageVignette();
   window.pendingFpsRaidStart = true;
   window.FPSRaid?.start(getRaidWeaponLoadout());
   }
@@ -831,6 +869,34 @@
   function getPlayerHealth() {
   if (!raid.playerHealth) raid.playerHealth = createPlayerHealth();
   return raid.playerHealth;
+  }
+  function applyAimPunch(damage) {
+  window.FPSRaid?.applyAimPunch?.(damage);
+  }
+  function updateDamageVignette() {
+  const vignette = document.getElementById('damage-vignette');
+  if (!vignette) return;
+  if (!raid.active) {
+  vignette.style.opacity = '0';
+  return;
+  }
+
+  const health = getPlayerHealth();
+  const torso = health.parts.torso.current;
+  const leftLeg = health.parts.leftLeg.current;
+  const rightLeg = health.parts.rightLeg.current;
+  const head = health.parts.head.current;
+  const severities = [];
+
+  if (health.total < 300) severities.push((300 - health.total) / 300);
+  if (torso < 250) severities.push((250 - torso) / 250);
+  if (leftLeg < 30) severities.push((30 - leftLeg) / 30);
+  if (rightLeg < 30) severities.push((30 - rightLeg) / 30);
+  if (head < 20) severities.push((20 - head) / 20);
+
+  const severity = severities.length ? Math.max(...severities) : 0;
+  const opacity = severity > 0 ? Math.min(0.75, Math.max(0.18, 0.18 + severity * 0.57)) : 0;
+  vignette.style.opacity = opacity.toFixed(3);
   }
   function isLegInjured() {
   const health = getPlayerHealth();
@@ -866,11 +932,17 @@
   const config = PLAYER_BODY_PARTS[partKey];
   const part = health.parts[partKey];
   if (!config || !part || health.dead) return { dead: health.dead };
-  if (part.current <= 0 && config.lethalWhenHitAtZero) return killPlayer(`${source}: ${config.label} 체력이 0인 상태에서 추가 피격되어 사망했습니다.`);
+  if (part.current <= 0 && config.lethalWhenHitAtZero) {
+  applyAimPunch(damage);
+  updateDamageVignette();
+  return killPlayer(`${source}: ${config.label} 체력이 0인 상태에서 추가 피격되어 사망했습니다.`);
+  }
 
   const wasLegInjured = isLegInjured();
   part.current = Math.max(0, part.current - damage);
   health.total = Math.max(0, health.total - damage);
+  applyAimPunch(damage);
+  updateDamageVignette();
   addLog(`${source}: ${config.shotLabel} ${damage} 피해 (${config.label} ${part.current}/${part.max}, 총 HP ${health.total}/${PLAYER_TOTAL_HP})`);
 
   if (config.lethalOnZero && part.current <= 0) return killPlayer(`${source}: 헤드샷으로 머리 체력이 0이 되어 사망했습니다.`);
@@ -1017,6 +1089,7 @@
   raid.corpse = null;
   openContainers = [];
   document.body.classList.remove('in-fps-raid');
+  updateDamageVignette();
   window.pendingFpsRaidStart = false;
   window.FPSRaid?.stop();
   if (saveProgress) localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -1030,6 +1103,32 @@
 
   function activeCorpseLoot() { return raid.corpse?.id ? raid.corpses[raid.corpse.id] : null; }
   function enemyAreaKey(area) { const match = /^enemy:(equipment|rig|pockets|backpack)$/.exec(area || ''); return match ? match[1] : null; }
+  function equipmentAreaInfo(area) {
+  const match = /^(raid-)?equipment:(helmet|armor|primary1|primary2|pistol|melee|rig|backpack|secure)$/.exec(area || '');
+  if (!match) return null;
+  return { raid: Boolean(match[1]), slotKey: match[2] };
+  }
+  function equipmentArea(slotKey, equipmentSource = state.equipment) {
+  return `${equipmentSource === raid.loadout ? 'raid-' : ''}equipment:${slotKey}`;
+  }
+  function equipmentSourceForArea(area) {
+  const info = equipmentAreaInfo(area);
+  return info ? (info.raid ? raid.loadout : state.equipment) : null;
+  }
+  function isOwnContainerArea(item, area) {
+  if (!item?.container) return false;
+  if (area === `container:${item.uid}`) return true;
+  const info = equipmentAreaInfo(area);
+  if (info) return false;
+  if (!['rig', 'backpack', 'secure'].includes(area)) return false;
+  const equipped = (raid.active ? raid.loadout : state.equipment)?.[area];
+  return equipped?.uid === item.uid;
+  }
+  function canDetachEquipmentToArea(from, to) {
+  const info = equipmentAreaInfo(from);
+  if (!info || info.slotKey !== 'secure') return true;
+  return !info.raid && to === 'stash';
+  }
   function enemyAreaItems(key) {
   const loot = activeCorpseLoot();
   if (!loot) return [];
@@ -1104,6 +1203,11 @@
   }
 
   function areaItems(area) {
+  const equipmentInfo = equipmentAreaInfo(area);
+  if (equipmentInfo) {
+  const item = equipmentSourceForArea(area)?.[equipmentInfo.slotKey];
+  return item ? [item] : [];
+  }
   const enemyKey = enemyAreaKey(area);
   if (enemyKey) return enemyAreaItems(enemyKey);
   if (area === 'stash') return state.stash;
@@ -1132,6 +1236,7 @@
   return rest;
   }
   function areaSpec(area) {
+  if (equipmentAreaInfo(area)) return { cols: 0, rows: 0 };
   const enemyKey = enemyAreaKey(area);
   if (enemyKey) {
   const loot = activeCorpseLoot();
@@ -1190,11 +1295,30 @@
   });
   }
   function findFreeSpotIn(item, items, cols, rows, area = null) { for (let y = 0; y <= rows - effectiveSize(item).height; y++) for (let x = 0; x <= cols - effectiveSize(item).width; x++) if (canPlaceIn(item, x, y, items, cols, rows, item.uid, area)) return { x, y }; return null; }
-  function removeFromArea(area, uid) { const items = areaItems(area); const index = items.findIndex((item) => item.uid === uid); return index >= 0 ? items.splice(index, 1)[0] : null; }
+  function syncEquipmentContainerArea(slotKey, equipmentTarget) {
+  if (!raid.active || equipmentTarget !== raid.loadout || !['rig', 'backpack', 'secure'].includes(slotKey)) return;
+  raid.inv[slotKey] = equipmentTarget[slotKey]?.containerItems || [];
+  }
+  function removeFromArea(area, uid) {
+  const equipmentInfo = equipmentAreaInfo(area);
+  if (equipmentInfo) {
+  const equipmentTarget = equipmentSourceForArea(area);
+  const item = equipmentTarget?.[equipmentInfo.slotKey];
+  if (!item || item.uid !== uid) return null;
+  equipmentTarget[equipmentInfo.slotKey] = null;
+  syncEquipmentContainerArea(equipmentInfo.slotKey, equipmentTarget);
+  return item;
+  }
+  const items = areaItems(area);
+  const index = items.findIndex((item) => item.uid === uid);
+  return index >= 0 ? items.splice(index, 1)[0] : null;
+  }
   function moveBetweenAreas(from, to, uid, x, y) {
   if (from === to && selected?.uid === uid) selected = { area: to, uid };
   const item = areaItems(from).find((entry) => entry.uid === uid);
   if (!item) return false;
+  if (!canDetachEquipmentToArea(from, to)) return false;
+  if (isOwnContainerArea(item, to)) return false;
   const spec = areaSpec(to);
   if (!canPlaceIn(item, x, y, areaItems(to), spec.cols, spec.rows, uid, to)) return false;
   removeFromArea(from, uid);
@@ -1204,10 +1328,10 @@
   render(); return true;
   }
 
-  function canEquip(slotKey) {
+  function canEquip(slotKey, equipmentTarget = raid.active ? raid.loadout : state.equipment) {
   if (!dragData) return false;
   const item = areaItems(dragData.area).find((entry) => entry.uid === dragData.uid);
-  return canEquipTarget(item, slotKey, raid.active ? raid.loadout : state.equipment);
+  return canEquipTarget(item, slotKey, equipmentTarget);
   }
   function equipFromStash(uid, slotKey) { return equipFromArea('stash', uid, slotKey, state.equipment); }
   function equipFromArea(from, uid, slotKey, equipmentTarget = state.equipment) {
@@ -1217,7 +1341,7 @@
   removeFromArea(from, uid);
   equipmentTarget[slotKey] = { ...item, x: undefined, y: undefined };
   if (from === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
-  if (raid.active && equipmentTarget === raid.loadout && ['rig', 'backpack', 'secure'].includes(slotKey)) raid.inv[slotKey] = equipmentTarget[slotKey].containerItems || [];
+  syncEquipmentContainerArea(slotKey, equipmentTarget);
   if (raid.active && equipmentTarget === raid.loadout) window.InventoryBridge?.refreshFpsLoadout?.();
   saveState(); render(); showToast(`${item.name} 장착 성공.`); return true;
   }
@@ -1226,14 +1350,21 @@
   if (!item || !slot || equipmentTarget?.[slotKey]) return false;
   return slot.accepts.includes(item.category) || item.equipSlot === slotKey || (slotKey.startsWith('primary') && item.equipSlot === 'primary');
   }
-  function unequip(slotKey) {
-  const item = state.equipment[slotKey];
-  if (!item) return;
-  const spot = findFreeSpotIn(item, state.stash, STASH_COLS, STASH_ROWS, 'stash');
-  if (!spot) return showToast('공간 부족: 장비 해제 불가능.');
-  state.equipment[slotKey] = null;
-  state.stash.push({ ...item, x: spot.x, y: spot.y });
-  saveState(); render(); showToast(`${item.name}을(를) 스태시로 옮겼습니다.`);
+  function unequip(slotKey, equipmentTarget = state.equipment) {
+  const area = equipmentArea(slotKey, equipmentTarget);
+  const item = areaItems(area)[0];
+  if (!item) return false;
+  if (equipmentTarget === raid.loadout && slotKey === 'secure') {
+  showToast('레이드 중에는 POUCH를 해제할 수 없습니다.');
+  return false;
+  }
+  const destinations = equipmentTarget === raid.loadout ? ['backpack', 'rig', 'pockets', 'secure'] : ['stash'];
+  if (!quickMoveToAreas(area, item.uid, destinations)) {
+  showToast('공간 부족: 장비 해제 불가능.');
+  return false;
+  }
+  showToast(`${item.name}을(를) 장비 슬롯에서 옮겼습니다.`);
+  return true;
   }
 
   function insertIntoContainer(from, uid, targetUid) {
@@ -1241,6 +1372,7 @@
   const target = findItemEverywhere(targetUid);
   if (!item || !target?.container || uid === targetUid || findNested(item.containerItems || [], targetUid)) return false;
   const area = `container:${targetUid}`;
+  if (!canDetachEquipmentToArea(from, area)) return false;
   const spot = findFreeSpotIn(item, target.containerItems || [], target.container.cols, target.container.rows, area);
   if (!spot) return false;
   removeFromArea(from, uid);
@@ -1260,6 +1392,7 @@
   if (!item) return false;
   for (const area of areas) {
   if (area === from) continue;
+  if (isOwnContainerArea(item, area)) continue;
   const spec = areaSpec(area);
   const spot = findFreeSpotIn(item, areaItems(area), spec.cols, spec.rows, area);
   if (spot && moveBetweenAreas(from, area, uid, spot.x, spot.y)) return true;
@@ -1269,6 +1402,11 @@
   function quickMoveItem(area, uid) {
   const item = areaItems(area).find((entry) => entry.uid === uid);
   if (!item) return false;
+  const equipmentInfo = equipmentAreaInfo(area);
+  if (equipmentInfo) {
+  if (equipmentInfo.raid && equipmentInfo.slotKey === 'secure') return false;
+  return quickMoveToAreas(area, uid, equipmentInfo.raid ? ['backpack', 'rig', 'pockets', 'secure'] : ['stash']);
+  }
   if (area === 'loot' || enemyAreaKey(area)) return quickMoveToAreas(area, uid, ['pockets', 'rig', 'backpack']);
   if (area === 'stash') {
   if (currentScreen === 'trader') return registerSaleFromStash(uid);
@@ -1279,6 +1417,7 @@
   return quickMoveToAreas(area, uid, ['pockets', 'rig', 'backpack', 'secure']);
   }
   function discardFromArea(area, uid) {
+  if (equipmentAreaInfo(area)) return false;
   const item = areaItems(area).find((entry) => entry.uid === uid);
   if (!item) return false;
   removeFromArea(area, uid);
@@ -1322,17 +1461,12 @@
   saveState(); render(); showToast('FN 5-7에 소음기를 장착했습니다.'); return true;
   }
 
-  function rotateItem(area, uid) {
+  function rotateDraggedItem(area, uid) {
   const item = areaItems(area).find((entry) => entry.uid === uid);
   if (!item || item.width === item.height) return false;
   item.rotated = !item.rotated;
-  const spec = areaSpec(area);
-  if (!canPlaceIn(item, item.x || 0, item.y || 0, areaItems(area), spec.cols, spec.rows, uid, area)) {
-  item.rotated = !item.rotated;
-  showToast('회전할 공간이 부족합니다.');
-  return false;
-  }
-  saveState(); render(); showToast(`${item.name} 회전: ${effectiveSize(item).width}x${effectiveSize(item).height}`); return true;
+  showToast(`${item.name} 회전: ${effectiveSize(item).width}x${effectiveSize(item).height}`);
+  return true;
   }
 
   function buyItem(itemId = trade.selected) {
@@ -1392,14 +1526,67 @@
   function renderEquipmentSlots() {
   renderCharacterEquipmentLayout(document.getElementById('bodySlots'), state.equipment, true);
   }
+  function equippedItemStatus(item) {
+  if (item.durability != null) return `${item.durability}/${item.maxDurability ?? item.durability}`;
+  if (item.quantity != null) return `수량 ${item.quantity}`;
+  if (item.count != null) return `수량 ${item.count}`;
+  if (item.container) return `내부 ${item.containerItems?.length || 0}개`;
+  return '수량 1';
+  }
   function createEquipSlotNode(slot, equipmentSource = state.equipment, allowDrop = true) {
   const item = equipmentSource?.[slot.key];
   const node = document.createElement('div');
-  node.className = 'equip-slot';
-  const canUnequip = allowDrop && item && equipmentSource === state.equipment && !raid.active;
-  node.innerHTML = `<strong>${slot.label}</strong>${item ? `<span>${item.name}</span><small>${itemInfo(item)}</small>${canUnequip ? `<div class="actions"><button data-unequip="${slot.key}">해제</button></div>` : ''}` : `<span>${slot.empty}</span><small>${allowDrop ? '아이템 드래그 장착' : '장착 없음'}</small>`}`;
+  const area = equipmentArea(slot.key, equipmentSource);
+  const secureLocked = Boolean(raid.active && equipmentSource === raid.loadout && slot.key === 'secure');
+  const detachable = Boolean(allowDrop && item && !secureLocked && (equipmentSource === state.equipment || equipmentSource === raid.loadout));
+  const square = ['helmet', 'armor', 'pistol', 'melee', 'rig', 'backpack', 'secure'].includes(slot.key);
+  const long = ['primary1', 'primary2'].includes(slot.key);
+  node.className = `equip-slot${square ? ' equip-slot--square' : ''}${long ? ' equip-slot--long' : ''}${secureLocked ? ' locked' : ''}`;
+  node.dataset.slotKey = slot.key;
+  node.innerHTML = `<strong>${EQUIP_SLOT_LABELS[slot.key] || slot.label}</strong>`;
+  if (item) {
+  const card = document.createElement('div');
+  card.className = `equipped-item-card ${item.rarity || ''}${selected?.area === area && selected.uid === item.uid ? ' selected' : ''}`;
+  card.draggable = detachable;
+  card.dataset.uid = item.uid;
+  card.innerHTML = `<span class="equip-item-name">${item.name}</span><span class="equip-item-type">${item.description || item.category}</span><span class="equip-item-footer"><em>${effectiveSize(item).width}x${effectiveSize(item).height}</em><em>${equippedItemStatus(item)}</em></span>`;
+  card.title = itemInfo(item);
+  card.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (event.ctrlKey || event.metaKey) {
+  if (!quickMoveItem(area, item.uid)) showToast(secureLocked ? '레이드 중에는 POUCH를 해제할 수 없습니다.' : '공간 부족');
+  return;
+  }
+  selected = { area, uid: item.uid };
+  render();
+  });
+  if (detachable) {
+  card.addEventListener('dragstart', (event) => {
+  dragData = { area, uid: item.uid, originalRotated: Boolean(item.rotated) };
+  selected = dragData;
+  event.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+  card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', () => {
+  dragData = null;
+  card.classList.remove('dragging');
+  clearSlotMarks();
+  saveState();
+  render();
+  });
+  }
+  node.appendChild(card);
+  if (detachable) {
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.innerHTML = `<button data-unequip-area="${area}">해제</button>`;
+  node.appendChild(actions);
+  }
+  } else {
+  node.insertAdjacentHTML('beforeend', `<span>${slot.empty}</span><small>${allowDrop ? '아이템 드래그 장착' : '장착 없음'}</small>`);
+  }
   if (allowDrop) {
-  node.addEventListener('dragover', (event) => { event.preventDefault(); const ok = canEquip(slot.key); node.classList.toggle('valid', ok); node.classList.toggle('invalid', !ok); });
+  node.addEventListener('dragover', (event) => { event.preventDefault(); const ok = canEquip(slot.key, equipmentSource); node.classList.toggle('valid', ok); node.classList.toggle('invalid', !ok); });
   node.addEventListener('dragleave', () => node.classList.remove('valid', 'invalid'));
   node.addEventListener('drop', (event) => { event.preventDefault(); node.classList.remove('valid', 'invalid'); if (!dragData) return; equipFromArea(dragData.area, dragData.uid, slot.key, equipmentSource); });
   }
@@ -1409,56 +1596,53 @@
   function renderCharacterEquipmentLayout(root, equipmentSource = state.equipment, allowDrop = true) {
   if (!root) return;
   const slotByKey = (key) => BODY_SLOTS.find((slot) => slot.key === key);
-  const appendLayoutSlot = (parent, key, label) => {
+  const appendLayoutSlot = (parent, key) => {
   const slot = slotByKey(key);
   if (!slot) return;
-  parent.appendChild(createEquipSlotNode({ ...slot, label }, equipmentSource, allowDrop));
+  parent.appendChild(createEquipSlotNode(slot, equipmentSource, allowDrop));
   };
 
   root.classList.add('character-equipment-layout');
   root.innerHTML = '';
-  const stack = document.createElement('div');
-  stack.className = 'character-equipment-stack';
-  root.appendChild(stack);
-
-  appendLayoutSlot(stack, 'helmet', '1. 헬멧');
-  appendLayoutSlot(stack, 'armor', '2. 방어구');
-
-  const row1 = document.createElement('div');
-  row1.className = 'corpse-pair';
-  stack.appendChild(row1);
-  appendLayoutSlot(row1, 'primary1', '3. 주무기 1');
-  appendLayoutSlot(row1, 'pistol', '권총');
-
-  const row2 = document.createElement('div');
-  row2.className = 'corpse-pair';
-  stack.appendChild(row2);
-  appendLayoutSlot(row2, 'primary2', '4. 주무기 2');
-  appendLayoutSlot(row2, 'melee', '나이프');
-
-  root.querySelectorAll('[data-unequip]').forEach((button) => button.addEventListener('click', () => unequip(button.dataset.unequip)));
+  const stage = document.createElement('div');
+  stage.className = 'character-equipment-stage';
+  stage.innerHTML = `<div class="character-silhouette" aria-hidden="true"><svg viewBox="0 0 220 620" xmlns="http://www.w3.org/2000/svg"><g fill="#c9d1d2"><circle cx="110" cy="48" r="38"/><path d="M75 92c-19 13-30 48-31 94l-4 136c-1 27 16 43 32 32l10-122 8 132-18 211c-2 24 14 35 31 18l18-174 16 174c18 17 34 6 32-18l-17-211 8-132 10 122c16 11 33-5 32-32l-4-136c-1-46-12-81-31-94-30-15-62-15-92 0z"/></g></svg></div>`;
+  root.appendChild(stage);
+  ['helmet', 'armor', 'primary1', 'pistol', 'primary2', 'melee'].forEach((key) => appendLayoutSlot(stage, key));
+  root.querySelectorAll('[data-unequip-area]').forEach((button) => button.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const info = equipmentAreaInfo(button.dataset.unequipArea);
+  if (info) unequip(info.slotKey, equipmentSourceForArea(button.dataset.unequipArea));
+  }));
   }
 
   function renderSlotGroup(root, slots) {
   if (!root) return;
   root.innerHTML = '';
   slots.forEach((slot) => root.appendChild(createEquipSlotNode(slot)));
-  root.querySelectorAll('[data-unequip]').forEach((button) => button.addEventListener('click', () => unequip(button.dataset.unequip)));
+  root.querySelectorAll('[data-unequip-area]').forEach((button) => button.addEventListener('click', () => {
+  const info = equipmentAreaInfo(button.dataset.unequipArea);
+  if (info) unequip(info.slotKey, equipmentSourceForArea(button.dataset.unequipArea));
+  }));
   }
 
   function renderGearContainerRow(root, slot, area, title, description, equipmentSource = state.equipment, allowDrop = true) {
   const section = document.createElement('section');
   section.className = `gear-container-row gear-${area}-row`;
-  const slotWrap = createEquipSlotNode(slot, equipmentSource, allowDrop);
+  const slotWrap = createEquipSlotNode({ ...slot, label: EQUIP_SLOT_LABELS[slot.key] || slot.label }, equipmentSource, allowDrop);
   const spec = areaSpec(area);
   const internal = document.createElement('div');
   internal.className = 'gear-internal';
-  internal.innerHTML = spec.cols && spec.rows ? `<div class="inventory-wrap compact-grid" id="grid-${area}"></div>` : '<div class="empty-note">장착 슬롯이 비어 있습니다</div>';
+  internal.innerHTML = spec.cols && spec.rows ? '<div class="inventory-wrap compact-grid"></div>' : '';
   section.appendChild(slotWrap);
   section.appendChild(internal);
   root.appendChild(section);
-  if (spec.cols && spec.rows) renderGrid(internal.querySelector(`#grid-${CSS.escape(area)}`), spec.cols, spec.rows, areaItems(area), { area, draggable: true, drop: true });
-  section.querySelectorAll('[data-unequip]').forEach((button) => button.addEventListener('click', () => unequip(button.dataset.unequip)));
+  if (spec.cols && spec.rows) renderGrid(internal.querySelector('.inventory-wrap'), spec.cols, spec.rows, areaItems(area), { area, draggable: true, drop: true });
+  section.querySelectorAll('[data-unequip-area]').forEach((button) => button.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const info = equipmentAreaInfo(button.dataset.unequipArea);
+  if (info) unequip(info.slotKey, equipmentSourceForArea(button.dataset.unequipArea));
+  }));
   }
 
   function renderUsableGear() {
@@ -1466,7 +1650,7 @@
   if (!root) return;
   root.innerHTML = '';
   renderGearContainerRow(root, USABLE_SLOTS[0], 'rig', '', '');
-  renderInventoryArea(root, 'pockets', '주머니 · 1x1 독립 슬롯 4개', '', 'compact-grid');
+  renderInventoryArea(root, 'pockets', 'POCKETS · 1x1 슬롯 4칸', '', 'compact-grid');
   renderGearContainerRow(root, USABLE_SLOTS[1], 'backpack', '', '');
   renderGearContainerRow(root, USABLE_SLOTS[2], 'secure', '', '');
   }
@@ -1475,10 +1659,10 @@
   const root = document.getElementById('raidPlayerGear');
   if (!root) return;
   root.innerHTML = '';
-  renderGearContainerRow(root, USABLE_SLOTS[0], 'rig', '', '', raid.loadout || {}, false);
+  renderGearContainerRow(root, USABLE_SLOTS[0], 'rig', '', '', raid.loadout || {}, true);
   renderInventoryArea(root, 'pockets', '주머니 · 1x1 독립 슬롯 4개', '', 'compact-grid');
-  renderGearContainerRow(root, USABLE_SLOTS[1], 'backpack', '', '', raid.loadout || {}, false);
-  renderGearContainerRow(root, USABLE_SLOTS[2], 'secure', '', '', raid.loadout || {}, false);
+  renderGearContainerRow(root, USABLE_SLOTS[1], 'backpack', '', '', raid.loadout || {}, true);
+  renderGearContainerRow(root, USABLE_SLOTS[2], 'secure', '', '', raid.loadout || {}, true);
   }
 
   function renderInventoryArea(root, area, title, description, extraClass = '') {
@@ -1572,10 +1756,10 @@
   renderCharacterEquipmentLayout(equipment, raid.loadout || {}, true);
   const storage = document.getElementById('overlayStorage');
   storage.innerHTML = '';
-  renderOverlayStorageArea(storage, 'rig', '리그');
-  renderOverlayStorageArea(storage, 'pockets', '주머니');
-  renderOverlayStorageArea(storage, 'backpack', '백팩');
-  renderOverlayStorageArea(storage, 'secure', '보안 컨테이너');
+  renderGearContainerRow(storage, USABLE_SLOTS[0], 'rig', '', '', raid.loadout || {}, true);
+  renderOverlayStorageArea(storage, 'pockets', 'POCKETS');
+  renderGearContainerRow(storage, USABLE_SLOTS[1], 'backpack', '', '', raid.loadout || {}, true);
+  renderGearContainerRow(storage, USABLE_SLOTS[2], 'secure', '', '', raid.loadout || {}, true);
   const lootGrid = document.getElementById('overlayLootGrid');
   const corpsePanel = document.getElementById('overlayCorpseLoot');
   const empty = document.getElementById('overlayLootEmpty');
@@ -1655,7 +1839,7 @@
   });
   node.addEventListener('dblclick', () => quickMoveItem('enemy:equipment', item.uid));
   node.addEventListener('dragstart', (event) => {
-  dragData = { area: 'enemy:equipment', uid: item.uid };
+  dragData = { area: 'enemy:equipment', uid: item.uid, originalRotated: Boolean(item.rotated) };
   selected = dragData;
   event.dataTransfer.setData('text/plain', JSON.stringify(dragData));
   node.classList.add('dragging');
@@ -1664,6 +1848,8 @@
   dragData = null;
   node.classList.remove('dragging');
   clearSlotMarks();
+  saveState();
+  render();
   });
   return node;
   }
@@ -1804,19 +1990,30 @@
   if (options.onItemDblClick) node.addEventListener('dblclick', (event) => options.onItemDblClick(item, event));
   if (item.container || item.id === 'pistol') {
   if (!options.onItemDblClick) node.addEventListener('dblclick', () => openContainer(item.uid, true));
-  node.addEventListener('dragover', (event) => { if (!dragData || dragData.uid === item.uid) return; const dragged = getDraggedItem(); if (!item.container && !canAttachSuppressor(dragged, item)) return; event.preventDefault(); node.classList.add('valid'); });
+  node.addEventListener('dragover', (event) => { if (!dragData || dragData.uid === item.uid) return; const dragged = getDraggedItem(); if (!item.container && !canAttachSuppressor(dragged, item)) return; if (item.container && !canDetachEquipmentToArea(dragData.area, `container:${item.uid}`)) return; event.preventDefault(); node.classList.add('valid'); });
   node.addEventListener('dragleave', () => node.classList.remove('valid'));
   node.addEventListener('drop', (event) => { event.preventDefault(); node.classList.remove('valid'); if (!dragData) return; const dragged = getDraggedItem(); if (canAttachSuppressor(dragged, item)) { attachSuppressor(dragData.area, dragData.uid, item.uid); return; } if (!insertIntoContainer(dragData.area, dragData.uid, item.uid)) showToast('컨테이너 내부에 넣을 수 없습니다.'); });
   }
   if (options.draggable) {
-  node.addEventListener('dragstart', (event) => { dragData = { area: options.area, uid: item.uid }; selected = dragData; event.dataTransfer.setData('text/plain', JSON.stringify(dragData)); node.classList.add('dragging'); });
-  node.addEventListener('dragend', () => { dragData = null; node.classList.remove('dragging'); clearSlotMarks(); });
+  node.addEventListener('dragstart', (event) => { dragData = { area: options.area, uid: item.uid, originalRotated: Boolean(item.rotated) }; selected = dragData; event.dataTransfer.setData('text/plain', JSON.stringify(dragData)); node.classList.add('dragging'); });
+  node.addEventListener('dragend', () => {
+  const sourceItem = areaItems(options.area).find((entry) => entry.uid === item.uid);
+  if (sourceItem) {
+  const sourceSpec = areaSpec(options.area);
+  if (!canPlaceIn(sourceItem, sourceItem.x || 0, sourceItem.y || 0, areaItems(options.area), sourceSpec.cols, sourceSpec.rows, sourceItem.uid, options.area)) sourceItem.rotated = Boolean(dragData?.originalRotated);
+  }
+  dragData = null;
+  node.classList.remove('dragging');
+  clearSlotMarks();
+  saveState();
+  render();
+  });
   }
   grid.appendChild(node);
   });
   }
   function getDraggedItem() { return dragData ? areaItems(dragData.area).find((item) => item.uid === dragData.uid) : null; }
-  function canDropOn(area, x, y) { const item = getDraggedItem(); if (!item) return false; const spec = areaSpec(area); return canPlaceIn(item, x, y, areaItems(area), spec.cols, spec.rows, dragData.uid, area); }
+  function canDropOn(area, x, y) { const item = getDraggedItem(); if (!item || !canDetachEquipmentToArea(dragData.area, area) || isOwnContainerArea(item, area)) return false; const spec = areaSpec(area); return canPlaceIn(item, x, y, areaItems(area), spec.cols, spec.rows, dragData.uid, area); }
   function markSlots(grid, x, y, item, valid) { clearSlotMarks(); if (!item) return; const size = effectiveSize(item); for (let yy = y; yy < y + size.height; yy++) for (let xx = x; xx < x + size.width; xx++) { const slot = grid.querySelector(`.slot[data-x="${xx}"][data-y="${yy}"]`); if (slot) slot.classList.add(valid ? 'valid' : 'invalid'); } }
   function clearSlotMarks() { document.querySelectorAll('.slot.valid, .slot.invalid, .equip-slot.valid, .equip-slot.invalid').forEach((slot) => slot.classList.remove('valid', 'invalid')); }
 
@@ -1976,9 +2173,9 @@
   if (target && discardFromArea(target.area, target.uid)) event.preventDefault();
   return;
   }
-  if (event.key.toLowerCase() !== 'r') return;
-  const target = dragData || selected;
-  if (target) rotateItem(target.area, target.uid);
+  if (event.key.toLowerCase() !== 'r' || !dragData) return;
+  event.preventDefault();
+  rotateDraggedItem(dragData.area, dragData.uid);
   });
 
 
@@ -4180,10 +4377,13 @@ ${slotText}` : ''}`;
 
 
   const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
-  let cameraRollZ = 0; // 카메라 틸트 (Z축 회전)
-  let targetRollZ = 0; // 목표 틸트
-  let currentLeanX = 0; // 상체 좌우 기울기 이동량
-  let currentLeanY = 0; // 기울기에 따른 높이 변화
+  const LEAN_CAMERA_SIDE = 0.42;
+  const LEAN_CAMERA_DROP = 0.08;
+  const LEAN_CAMERA_ROLL = THREE.MathUtils.degToRad(14);
+  let leanTarget = 0;
+  let leanAmount = 0;
+  let cameraRollZ = 0;
+  const appliedLeanOffset = new THREE.Vector3();
 
 
   document.addEventListener('keydown', (event) => {
@@ -4224,6 +4424,38 @@ ${slotText}` : ''}`;
   let recoilTargetY = 0;
   let recoilCounter = 0;
   let horizontalRecoil = 0;
+  const aimPunchOffset = new THREE.Vector3();
+  const MAX_AIM_PUNCH_PITCH = THREE.MathUtils.degToRad(5);
+  const MAX_AIM_PUNCH_YAW = THREE.MathUtils.degToRad(4);
+  const MAX_AIM_PUNCH_ROLL = THREE.MathUtils.degToRad(2.5);
+
+
+  function applyAimPunch(damage = 0) {
+  const numericDamage = Math.max(0, Number(damage) || 0);
+  if (!numericDamage || !fpsRaidActive || deathState.active) return;
+
+  const intensity = THREE.MathUtils.clamp(numericDamage / 80, 0.12, 1);
+  const pitchStrength = THREE.MathUtils.degToRad(0.55 + intensity * 3.1);
+  const yawStrength = THREE.MathUtils.degToRad(0.4 + intensity * 2.2);
+  const rollStrength = THREE.MathUtils.degToRad(0.25 + intensity * 1.35);
+  const randomKick = (strength) => (Math.random() < 0.5 ? -1 : 1) * THREE.MathUtils.lerp(strength * 0.45, strength, Math.random());
+
+  aimPunchOffset.x = THREE.MathUtils.clamp(
+  aimPunchOffset.x + randomKick(pitchStrength),
+  -MAX_AIM_PUNCH_PITCH,
+  MAX_AIM_PUNCH_PITCH
+  );
+  aimPunchOffset.y = THREE.MathUtils.clamp(
+  aimPunchOffset.y + randomKick(yawStrength),
+  -MAX_AIM_PUNCH_YAW,
+  MAX_AIM_PUNCH_YAW
+  );
+  aimPunchOffset.z = THREE.MathUtils.clamp(
+  aimPunchOffset.z + randomKick(rollStrength),
+  -MAX_AIM_PUNCH_ROLL,
+  MAX_AIM_PUNCH_ROLL
+  );
+  }
 
 
   const bullets = [];
@@ -4794,6 +5026,8 @@ ${slotText}` : ''}`;
 
   const currentLocalPos = new THREE.Vector3(0.2, -0.35, -0.5);
   const targetLocalPos = new THREE.Vector3();
+  const leanWeaponOffsetPos = new THREE.Vector3();
+  const leanWeaponOffsetRot = new THREE.Euler();
   const r180Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   const enemyTracers = [];
   const raycaster = new THREE.Raycaster();
@@ -4969,6 +5203,8 @@ ${slotText}` : ''}`;
   }
   animationFrameId = requestAnimationFrame(animate);
   const delta = clock.getDelta();
+  camera.position.sub(appliedLeanOffset);
+  appliedLeanOffset.set(0, 0, 0);
   const scopeZoomMotionAmount = scopeZoomMotionTimer > 0
   ? Math.sin((scopeZoomMotionTimer / scopeZoomMotionDuration) * Math.PI)
   : 0;
@@ -5195,6 +5431,21 @@ ${slotText}` : ''}`;
   );
   }
 
+  if (deathState.active) {
+  leanTarget = 0;
+  leanAmount = THREE.MathUtils.lerp(leanAmount, leanTarget, Math.min(1, delta * 10));
+  } else {
+  leanTarget = keys.q === keys.e ? 0 : keys.q ? -1 : 1;
+  leanAmount = THREE.MathUtils.lerp(leanAmount, leanTarget, Math.min(1, delta * 10));
+  cameraRollZ = -leanAmount * LEAN_CAMERA_ROLL;
+  appliedLeanOffset.set(
+  Math.cos(yaw) * LEAN_CAMERA_SIDE * leanAmount,
+  -LEAN_CAMERA_DROP * Math.abs(leanAmount),
+  -Math.sin(yaw) * LEAN_CAMERA_SIDE * leanAmount
+  );
+  camera.position.add(appliedLeanOffset);
+  }
+
 
   Sound.updateFootsteps(
   delta,
@@ -5362,19 +5613,24 @@ ${slotText}` : ''}`;
 
   if (deathState.active) {
   updateDeathCamera(delta);
-  } else {
-  // Q/E 카메라 틸트 업데이트
-  if (keys.q) {
-  targetRollZ = Math.PI / 4; // 45도 좌측 기울임
-  } else if (keys.e) {
-  targetRollZ = -Math.PI / 4; // 45도 우측 기울임
-  } else {
-  targetRollZ = 0; // 기울임 해제
-  }
-  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, targetRollZ, 0.15); // 부드러운 모션
   }
 
-  camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, cameraRollZ, 'YXZ'));
+  const aimPunchRecovery = Math.min(1, delta * 10);
+  aimPunchOffset.x = THREE.MathUtils.lerp(aimPunchOffset.x, 0, aimPunchRecovery);
+  aimPunchOffset.y = THREE.MathUtils.lerp(aimPunchOffset.y, 0, aimPunchRecovery);
+  aimPunchOffset.z = THREE.MathUtils.lerp(aimPunchOffset.z, 0, aimPunchRecovery);
+
+  const finalCameraPitch = THREE.MathUtils.clamp(
+  pitch + aimPunchOffset.x,
+  -Math.PI / 2.2,
+  Math.PI / 2.2
+  );
+  camera.quaternion.setFromEuler(new THREE.Euler(
+  finalCameraPitch,
+  yaw + aimPunchOffset.y,
+  cameraRollZ + aimPunchOffset.z,
+  'YXZ'
+  ));
 
 
   scopeCamera.position.copy(camera.position);
@@ -5415,14 +5671,26 @@ ${slotText}` : ''}`;
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.2);
   }
 
+  const leanWeaponScale = isAiming ? 0.2 : 1;
+  leanWeaponOffsetPos.set(
+  leanAmount * 0.055 * leanWeaponScale,
+  -Math.abs(leanAmount) * 0.025 * leanWeaponScale,
+  Math.abs(leanAmount) * 0.02 * leanWeaponScale
+  );
+  leanWeaponOffsetRot.set(
+  0,
+  leanAmount * 0.025 * leanWeaponScale,
+  -leanAmount * 0.08 * leanWeaponScale
+  );
 
-  const finalWeaponWorldPos = currentLocalPos.clone().add(swapOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
+  const finalWeaponWorldPos = currentLocalPos.clone().add(swapOffsetPos).add(leanWeaponOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
   weaponGroup.position.copy(finalWeaponWorldPos);
 
 
   const combinedQuat = camera.quaternion.clone()
   .multiply(new THREE.Quaternion().setFromEuler(swapOffsetRot))
-  .multiply(new THREE.Quaternion().setFromEuler(aimOffsetRot));
+  .multiply(new THREE.Quaternion().setFromEuler(aimOffsetRot))
+  .multiply(new THREE.Quaternion().setFromEuler(leanWeaponOffsetRot));
   weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
 
 
@@ -5565,6 +5833,7 @@ ${slotText}` : ''}`;
   recoilTargetY = 0;
   recoilCounter = 0;
   horizontalRecoil = 0;
+  aimPunchOffset.set(0, 0, 0);
   isSwapping = false;
   swapProgress = 0;
   swapDirection = -1;
@@ -5573,13 +5842,15 @@ ${slotText}` : ''}`;
   scopeZoomMotionTimer = 0;
   yaw = 0;
   pitch = 0;
+  leanTarget = 0;
+  leanAmount = 0;
   cameraRollZ = 0;
-  targetRollZ = 0;
-  currentLeanX = 0;
-  currentLeanY = 0;
+  appliedLeanOffset.set(0, 0, 0);
   swapOffsetPos.set(0, 0, 0);
   swapOffsetRot.set(0, 0, 0);
   aimOffsetRot.set(0, 0, 0);
+  leanWeaponOffsetPos.set(0, 0, 0);
+  leanWeaponOffsetRot.set(0, 0, 0);
   currentLocalPos.set(0.2, -0.35, -0.5);
   const playerSpawn = getPlayerSpawnPoint();
   camera.position.set(
@@ -5626,6 +5897,7 @@ ${slotText}` : ''}`;
   },
   setLoadout(loadout = {}) { applyWeaponLoadout(loadout); },
   startDeathSequence,
+  applyAimPunch,
   stopSounds() { Sound.stopAll(); },
   unlockPointer,
   setInventoryOpen(open) { fpsInventoryOpen = open; if (open) unlockPointer(); refreshBlocker(); },

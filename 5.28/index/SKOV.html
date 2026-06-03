@@ -240,6 +240,13 @@
   .status-tile { border: 1px solid rgba(130, 146, 151, 0.36); background: rgba(0,0,0,.24); padding: 9px; }
   .status-tile strong { display: block; color: #dfe8e8; font-size: .82rem; }
   .status-tile span { color: var(--muted); font-size: .86rem; }
+  .body-health-card { grid-column: 1 / -1; display: grid; gap: 7px; border: 1px solid rgba(130, 146, 151, 0.36); background: rgba(0,0,0,.24); padding: 9px; }
+  .body-health-card h3 { margin: 0 0 3px; padding: 0; border: 0; background: none; font-size: .86rem; color: #dfe8e8; }
+  .body-part { display: grid; grid-template-columns: 78px 1fr 72px; gap: 8px; align-items: center; color: var(--muted); font-size: .8rem; }
+  .body-meter { height: 7px; overflow: hidden; border: 1px solid rgba(130, 146, 151, 0.42); background: rgba(0,0,0,.36); }
+  .body-meter span { display: block; width: var(--hp, 100%); height: 100%; background: linear-gradient(90deg, #7fa56d, #c7d1d9); }
+  .body-part.critical .body-meter span { background: linear-gradient(90deg, #9e392f, #d35b4f); }
+  .body-part.broken .body-meter span { background: #3b1111; }
 
   .container-window {
   position: fixed;
@@ -277,6 +284,15 @@
   z-index: 10;
   line-height: 1.55;
   padding: 24px;
+  }
+  #deathFade {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 20;
+  transition: opacity 0.12s linear;
   }
   #crosshair {
   position: absolute;
@@ -422,6 +438,7 @@
   <section id="raid" class="screen fps-screen">
   <div id="fpsViewport">
   <div id="blocker" aria-hidden="true"></div>
+  <div id="deathFade" aria-hidden="true"></div>
   <div id="crosshair"></div>
   <canvas id="minimap"></canvas>
   <div id="weapon-ui">WEAPON: 장착 무기 없음</div>
@@ -489,6 +506,98 @@
   const STASH_ROWS = 16;
   const STARTING_MONEY = 45000;
   const SAVE_KEY = 'tarkov-style-web-prototype-state-v5';
+  const PLAYER_TOTAL_HP = 440;
+  const PLAYER_BODY_PARTS = {
+  torso: { label: '몸통', shotLabel: '몸샷', max: 335, lethalWhenHitAtZero: true },
+  head: { label: '머리', shotLabel: '헤드샷', max: 40, lethalOnZero: true },
+  leftLeg: { label: '왼쪽 다리', shotLabel: '다리 피격', max: 65, lethalWhenHitAtZero: true },
+  rightLeg: { label: '오른쪽 다리', shotLabel: '다리 피격', max: 65, lethalWhenHitAtZero: true }
+  };
+  const menuTracks = [
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Desolated.mp3',
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/EFT%20-%20geneburn%20-%20Dark%20Horizon%20%28Escape%20From%20Tarkov%20new%20menu%20music%29.mp3',
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Echoes.mp3',
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Eclipse.mp3',
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/Themes/Escape%20from%20Tarkov%20OST%20-%20%20Countdown.mp3'
+  ];
+  const menuMusic = new Audio();
+  let currentMenuTrack = null;
+  let menuMusicUnlocked = false;
+  let menuMusicPlaying = false;
+  let menuMusicRetryTimer = null;
+
+  menuMusic.preload = 'auto';
+  menuMusic.volume = 0.42;
+
+  function getRandomMenuTrack() {
+  if (!menuTracks.length) return null;
+  const candidates = menuTracks.length > 1 ? menuTracks.filter((track) => track !== currentMenuTrack) : menuTracks;
+  return candidates[Math.floor(Math.random() * candidates.length)] || null;
+  }
+
+  function isMenuMusicScreen() {
+  return currentScreen !== 'raid';
+  }
+
+  function playRandomMenuMusic({ keepCurrent = false } = {}) {
+  if (!isMenuMusicScreen() || !menuTracks.length) return;
+  clearTimeout(menuMusicRetryTimer);
+  const nextTrack = keepCurrent && currentMenuTrack ? currentMenuTrack : getRandomMenuTrack();
+  if (!nextTrack) return;
+  if (menuMusic.src !== new URL(nextTrack, document.baseURI).href) {
+  currentMenuTrack = nextTrack;
+  menuMusic.pause();
+  try { menuMusic.currentTime = 0; } catch {}
+  menuMusic.src = nextTrack;
+  menuMusic.load();
+  }
+  if (!menuMusicUnlocked) return;
+  const playPromise = menuMusic.play();
+  if (playPromise) {
+  playPromise.then(() => { menuMusicPlaying = true; }).catch((error) => {
+  menuMusicPlaying = false;
+  console.warn('메뉴 BGM 재생 실패:', error);
+  });
+  }
+  }
+
+  function stopMenuMusic() {
+  clearTimeout(menuMusicRetryTimer);
+  menuMusic.pause();
+  menuMusicPlaying = false;
+  try { menuMusic.currentTime = 0; } catch {}
+  }
+
+  function stopRaidSounds() {
+  window.FPSRaid?.stopSounds?.();
+  }
+
+  function enterMainMenu() {
+  stopRaidSounds();
+  if (menuMusic.paused) playRandomMenuMusic();
+  }
+
+  function enterRaid() {
+  stopMenuMusic();
+  }
+
+  function unlockMenuMusic() {
+  menuMusicUnlocked = true;
+  if (isMenuMusicScreen() && menuMusic.paused) playRandomMenuMusic({ keepCurrent: Boolean(currentMenuTrack) });
+  }
+
+  menuMusic.addEventListener('playing', () => { menuMusicPlaying = true; });
+  menuMusic.addEventListener('pause', () => { menuMusicPlaying = false; });
+  menuMusic.addEventListener('ended', () => { menuMusicPlaying = false; playRandomMenuMusic(); });
+  menuMusic.addEventListener('error', () => {
+  menuMusicPlaying = false;
+  console.warn('메뉴 BGM 음원을 불러오지 못했습니다:', menuMusic.currentSrc || currentMenuTrack);
+  if (!menuMusicUnlocked || !isMenuMusicScreen()) return;
+  clearTimeout(menuMusicRetryTimer);
+  menuMusicRetryTimer = setTimeout(playRandomMenuMusic, 500);
+  });
+  document.addEventListener('pointerdown', unlockMenuMusic, true);
+  document.addEventListener('keydown', unlockMenuMusic, true);
 
   const ITEM_CATALOG = [
   { id: 'ruble', name: '루블', rarity: 'Currency', category: 'currency', width: 1, height: 1, value: 1, weight: 0.01, description: '기본 화폐' },
@@ -660,7 +769,14 @@
   }
 
   function saveState() { if (raid?.active) syncRaidToState(); localStorage.setItem(SAVE_KEY, JSON.stringify(state)); window.InventoryBridge?.refreshFpsLoadout?.(); }
-  function createEmptyRaid() { return { active: false, risk: 0, lootedPoi: new Set(), containers: {}, corpses: {}, inventoryOpen: false, menuOpen: false, search: null, enemySearch: null, pendingEvent: null, lootContainer: null, corpse: null, inv: { rig: [], pockets: [], backpack: [], secure: [] }, loadout: null }; }
+  function createPlayerHealth() {
+  return {
+  total: PLAYER_TOTAL_HP,
+  dead: false,
+  parts: Object.fromEntries(Object.entries(PLAYER_BODY_PARTS).map(([key, part]) => [key, { current: part.max, max: part.max }]))
+  };
+  }
+  function createEmptyRaid() { return { active: false, risk: 0, lootedPoi: new Set(), containers: {}, corpses: {}, inventoryOpen: false, menuOpen: false, search: null, enemySearch: null, pendingEvent: null, lootContainer: null, corpse: null, inv: { rig: [], pockets: [], backpack: [], secure: [] }, loadout: null, playerHealth: createPlayerHealth() }; }
   function formatMoney(value) { return `₽${Math.round(value).toLocaleString('ko-KR')}`; }
   function xpForNextLevel() { return state.level * 100; }
   function effectiveSize(item) { return item?.rotated ? { width: item.height, height: item.width } : { width: item.width, height: item.height }; }
@@ -675,11 +791,14 @@
   document.body.classList.toggle('in-fps-raid', screen === 'raid');
   if (currentScreen !== screen) previousScreen = currentScreen;
   currentScreen = screen;
+  if (screen === 'raid') enterRaid();
+  else enterMainMenu();
   if (screen === 'raid' && !raid.active) startRaid();
   render();
   }
 
   function startRaid() {
+  enterRaid();
   clearSearchTimer();
   raid = createEmptyRaid();
   raid.active = true;
@@ -709,6 +828,58 @@
   }
 
   function clearSearchTimer() { if (searchTimer) clearInterval(searchTimer); searchTimer = null; }
+  function getPlayerHealth() {
+  if (!raid.playerHealth) raid.playerHealth = createPlayerHealth();
+  return raid.playerHealth;
+  }
+  function isLegInjured() {
+  const health = getPlayerHealth();
+  return health.parts.leftLeg.current <= 0 || health.parts.rightLeg.current <= 0;
+  }
+  function movementSpeedMultiplier() {
+  const health = getPlayerHealth();
+  if (health.dead) return 0;
+  if (isLegInjured()) return 0.55;
+  const legRatio = Math.min(health.parts.leftLeg.current / health.parts.leftLeg.max, health.parts.rightLeg.current / health.parts.rightLeg.max);
+  return legRatio < 0.5 ? 0.78 : 1;
+  }
+  function killPlayer(message) {
+  const health = getPlayerHealth();
+  if (health.dead) return { dead: true };
+  health.dead = true;
+  addLog(message);
+  raid.inventoryOpen = false;
+  raid.menuOpen = false;
+  raid.search = null;
+  raid.enemySearch = null;
+  raid.lootContainer = null;
+  raid.corpse = null;
+  clearSearchTimer();
+  render();
+  if (window.FPSRaid?.startDeathSequence) window.FPSRaid.startDeathSequence({ message });
+  else finishPlayerDeath(message);
+  return { dead: true };
+  }
+  function applyPlayerDamage(partKey, damage, source = 'AI 사격') {
+  if (!raid.active) return { dead: false };
+  const health = getPlayerHealth();
+  const config = PLAYER_BODY_PARTS[partKey];
+  const part = health.parts[partKey];
+  if (!config || !part || health.dead) return { dead: health.dead };
+  if (part.current <= 0 && config.lethalWhenHitAtZero) return killPlayer(`${source}: ${config.label} 체력이 0인 상태에서 추가 피격되어 사망했습니다.`);
+
+  const wasLegInjured = isLegInjured();
+  part.current = Math.max(0, part.current - damage);
+  health.total = Math.max(0, health.total - damage);
+  addLog(`${source}: ${config.shotLabel} ${damage} 피해 (${config.label} ${part.current}/${part.max}, 총 HP ${health.total}/${PLAYER_TOTAL_HP})`);
+
+  if (config.lethalOnZero && part.current <= 0) return killPlayer(`${source}: 헤드샷으로 머리 체력이 0이 되어 사망했습니다.`);
+  if (health.total <= 0) return killPlayer(`${source}: 총 체력이 0이 되어 사망했습니다.`);
+  if (!wasLegInjured && isLegInjured()) addLog(`${config.label} 체력이 0입니다. 부상으로 이동속도가 ${Math.round(movementSpeedMultiplier() * 100)}%로 감소합니다.`);
+  if (part.current <= 0 && config.lethalWhenHitAtZero) addLog(`${config.label} 체력이 0입니다. 같은 부위에 추가 피격되면 즉사합니다.`);
+  renderPlayerStatus();
+  return { dead: false };
+  }
   function lootPoi(index) {
   if (!raid.active || raid.pendingEvent || raid.search) return;
   if (raid.containers[index]) return openLootContainer(index);
@@ -716,7 +887,7 @@
   }
   function startSearch(index) {
   const poi = POIS[index];
-  raid.search = { poiIndex: index, startedAt: Date.now(), duration: poi.searchTime, progress: 0, completed: false };
+  raid.search = { poiIndex: index, startedAt: Date.now(), duration: Math.round(poi.searchTime / movementSpeedMultiplier()), progress: 0, completed: false };
   raid.inventoryOpen = true;
   raid.lootContainer = null;
   addLog(`${poi.name} Searching...`);
@@ -776,6 +947,26 @@
   saveState();
   }
   showToast(message);
+  render();
+  }
+
+  function applyDeathInventoryLoss() {
+  const melee = raid.loadout?.melee ? normalizeItem(JSON.parse(JSON.stringify(raid.loadout.melee))) : null;
+  const secure = raid.loadout?.secure ? normalizeItem(JSON.parse(JSON.stringify(raid.loadout.secure))) : null;
+  if (secure?.container) secure.containerItems = (raid.inv.secure || []).map((item) => normalizeItem(JSON.parse(JSON.stringify(item))));
+  state.equipment = emptyEquipment(false);
+  if (melee) state.equipment.melee = melee;
+  if (secure) state.equipment.secure = secure;
+  state.pockets = [];
+  raid.inv = { rig: [], pockets: [], backpack: [], secure: secure?.containerItems || [] };
+  }
+
+  function finishPlayerDeath(message = '사망했습니다.') {
+  applyDeathInventoryLoss();
+  endRaidSession(false);
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  showToast(`${message} 근접무기와 보안 컨테이너 내부 아이템만 유지했습니다.`);
+  switchScreen('menu');
   render();
   }
 
@@ -1303,15 +1494,26 @@
   function renderPlayerStatus() {
   const panel = document.getElementById('playerStatusPanel');
   if (!panel) return;
+  const health = getPlayerHealth();
   const carried = ['rig', 'pockets', 'backpack', 'secure'].flatMap((area) => areaItems(area)).reduce((sum, item) => sum + (item.weight || 0), 0);
   const gearWeight = Object.values(raid.active ? (raid.loadout || {}) : state.equipment).filter(Boolean).reduce((sum, item) => sum + (item.weight || 0), 0);
   const weight = carried + gearWeight;
   const bleeding = raid.risk > 55 ? '위험' : '없음';
   const dehydration = raid.risk > 70 ? '경미' : '없음';
-  const penalty = weight > 28 ? '중간' : weight > 18 ? '낮음' : '없음';
+  const speed = movementSpeedMultiplier();
+  const weightPenalty = weight > 28 ? '중간' : weight > 18 ? '낮음' : '없음';
+  const injury = isLegInjured() ? '다리 부상' : '없음';
+  const partOrder = ['head', 'torso', 'leftLeg', 'rightLeg'];
+  const bodyHealth = partOrder.map((key) => {
+  const config = PLAYER_BODY_PARTS[key];
+  const part = health.parts[key];
+  const ratio = part.current / part.max;
+  const stateClass = part.current <= 0 ? 'broken' : ratio <= 0.35 ? 'critical' : '';
+  return `<div class="body-part ${stateClass}"><span>${config.label}</span><div class="body-meter"><span style="--hp:${Math.max(0, ratio * 100)}%"></span></div><span>${part.current}/${part.max}</span></div>`;
+  }).join('');
   panel.innerHTML = [
-  ['❤ HP', '435 / 435'], ['🩸 출혈', bleeding], ['🦴 골절', '없음'], ['💧 탈수', dehydration], ['⚡ 에너지', '90 / 100'], ['🎒 무게', `${weight.toFixed(1)}kg`], ['🐢 이동 패널티', penalty], ['레이드', raid.active ? '진행 중' : '대기']
-  ].map(([label, value]) => `<div class="status-tile"><strong>${label}</strong><span>${value}</span></div>`).join('');
+  ['HP', health.dead ? '사망' : `${health.total} / ${PLAYER_TOTAL_HP}`], ['출혈', bleeding], ['부상', injury], ['탈수', dehydration], ['에너지', '90 / 100'], ['무게', `${weight.toFixed(1)}kg`], ['이동속도', `${Math.round(speed * 100)}% · ${weightPenalty}`], ['레이드', raid.active ? '진행 중' : '대기']
+  ].map(([label, value]) => `<div class="status-tile"><strong>${label}</strong><span>${value}</span></div>`).join('') + `<div class="body-health-card"><h3>부위별 체력</h3>${bodyHealth}</div>`;
   }
 
   function renderPoi() {
@@ -1747,6 +1949,7 @@
   window.FPSRaid?.resumePointerPrompt?.();
   }
   function toggleTabInventory() {
+  if (raid.active && getPlayerHealth().dead) return;
   if (raid.active && currentScreen === 'raid') {
   if (raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse) closeRaidInventoryOverlay();
   else { raid.inventoryOpen = true; window.FPSRaid?.unlockPointer?.(); render(); }
@@ -1756,6 +1959,7 @@
   else switchScreen('inventory');
   }
   function handleEscape() {
+  if (raid.active && getPlayerHealth().dead) return;
   if (closeTopContainerWindow()) return;
   if (raid.active && (raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse)) return closeRaidInventoryOverlay();
   if (raid.active && currentScreen === 'raid') { endRaidSession(true); return switchScreen('menu'); }
@@ -1781,6 +1985,10 @@
   window.InventoryBridge = {
   getWeaponLoadout: getRaidWeaponLoadout,
   refreshFpsLoadout: () => window.FPSRaid?.setLoadout(getRaidWeaponLoadout()),
+  getMoveSpeedMultiplier: movementSpeedMultiplier,
+  isPlayerAlive: () => Boolean(raid.active && !getPlayerHealth().dead),
+  applyPlayerHit: ({ part, damage, source } = {}) => applyPlayerDamage(part, damage, source),
+  finishPlayerDeath: ({ message } = {}) => finishPlayerDeath(message),
   isOverlayOpen: () => Boolean(raid.active && (raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse)),
   registerEnemyCorpse: ({ weaponType } = {}) => {
   if (!raid.active) return null;
@@ -1812,6 +2020,7 @@
   document.getElementById('resumeRaidBtn')?.addEventListener('click', () => { raid.menuOpen = false; render(); });
   document.getElementById('raidMenuExtractBtn')?.addEventListener('click', () => { raid.menuOpen = false; extractRaid(); });
   document.getElementById('raidMenuAbandonBtn')?.addEventListener('click', () => { raid.menuOpen = false; failRaid('레이드를 포기했습니다. 안전 컨테이너 외 레이드 전리품은 모두 손실됩니다.', false); });
+  enterMainMenu();
   render();
   </script>
 
@@ -3154,6 +3363,17 @@ function createFN57HighQuality() {
   let fpsInventoryOpen = false;
   let animationFrameId = null;
   let weaponSlots = { primary1: null, primary2: null, pistol: null, melee: null };
+  const deathCameraHalfSize = 0.34;
+  const deathState = {
+  active: false,
+  message: '',
+  velocityY: 0,
+  drift: new THREE.Vector3(),
+  floorContact: false,
+  floorContactTimer: 0,
+  fadeTimer: 0,
+  completed: false
+  };
 
 
   const swapOffsetPos = new THREE.Vector3(0, 0, 0);
@@ -3169,8 +3389,12 @@ function createFN57HighQuality() {
   let ambientBus;
   let reverbBus;
   let ambienceStarted = false;
+  let ambientSources = [];
   let footstepTimer = 0;
   let footstepSide = 0;
+  const SFX_BUS_GAIN = 0.88;
+  const AMBIENT_BUS_GAIN = 0.045;
+  const REVERB_BUS_GAIN = 0.14;
   const SHOTGUN_SAMPLE_SOURCES = [
   'https://raw.githubusercontent.com/Angredth/my-fps/main/shotgun.mp3',
   'https://github.com/Angredth/my-fps/raw/main/shotgun.mp3',
@@ -3197,6 +3421,19 @@ function createFN57HighQuality() {
   let arSampleLoadAttempted = false;
   let arSampleIndex = 0;
   let activeArSampleSrc = '';
+  const FN57_SAMPLE_SOURCES = [
+  '../../FN57.mp3',
+  'https://raw.githubusercontent.com/Angredth/my-fps/my-fps/main/FN57.mp3',
+  'https://github.com/Angredth/my-fps/raw/main/FN.mp3',
+  'https://raw.githubusercontent.com/Angredth/my-fps/master/FN57.mp3',
+  'https://github.com/Angredth/my-fps/raw/master/FN57.mp3',
+  './FN57.mp3'
+  ];
+  let fn57SampleBuffer = null;
+  let fn57SampleLoadAttempted = false;
+  let fn57SampleStartOffset = 0;
+  let activeFn57SampleSrc = '';
+  const activeFn57Sources = new Set();
 
 
   function ensureContext() {
@@ -3219,15 +3456,15 @@ function createFN57HighQuality() {
 
 
   sfxBus = ctx.createGain();
-  sfxBus.gain.value = 0.88;
+  sfxBus.gain.value = SFX_BUS_GAIN;
 
 
   ambientBus = ctx.createGain();
-  ambientBus.gain.value = 0.045;
+  ambientBus.gain.value = AMBIENT_BUS_GAIN;
 
 
   reverbBus = ctx.createGain();
-  reverbBus.gain.value = 0.14;
+  reverbBus.gain.value = REVERB_BUS_GAIN;
 
 
   const convolver = ctx.createConvolver();
@@ -3246,12 +3483,32 @@ function createFN57HighQuality() {
   return ctx;
   }
 
+  function setRaidBusLevels(enabled) {
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const levels = [
+  [sfxBus, SFX_BUS_GAIN],
+  [ambientBus, AMBIENT_BUS_GAIN],
+  [reverbBus, REVERB_BUS_GAIN]
+  ];
+  levels.forEach(([bus, gain]) => {
+  if (!bus) return;
+  bus.gain.cancelScheduledValues(now);
+  bus.gain.setValueAtTime(enabled ? gain : 0, now);
+  });
+  }
+
 
   function resume() {
   const audio = ensureContext();
-  if (audio.state !== 'running') audio.resume();
+  setRaidBusLevels(true);
+  if (audio.state !== 'running') {
+  const resumePromise = audio.resume();
+  if (resumePromise) resumePromise.catch(() => {});
+  }
   preloadShotgunSample();
   preloadArSample();
+  preloadFn57Sample();
   startAmbience();
   }
 
@@ -3356,6 +3613,72 @@ function createFN57HighQuality() {
   audio.playbackRate = isAutoFollowUp ? 1.02 + Math.random() * 0.035 : 0.98 + Math.random() * 0.025;
   const playPromise = audio.play();
   if (playPromise) playPromise.catch(() => {});
+  return true;
+  } catch {
+  return false;
+  }
+  }
+
+  function findSampleStartOffset(buffer, threshold = 0.02) {
+  const maxScanFrames = Math.min(buffer.length, Math.floor(buffer.sampleRate * 1.5));
+  const scanStep = Math.max(1, Math.floor(buffer.sampleRate * 0.002));
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, index) => buffer.getChannelData(index));
+  for (let frame = 0; frame < maxScanFrames; frame += scanStep) {
+  const windowEnd = Math.min(maxScanFrames, frame + scanStep);
+  for (let sample = frame; sample < windowEnd; sample++) {
+  for (const channel of channels) {
+  if (Math.abs(channel[sample]) >= threshold) return Math.max(0, sample / buffer.sampleRate - 0.006);
+  }
+  }
+  }
+  return 0;
+  }
+
+  async function preloadFn57Sample() {
+  if (fn57SampleLoadAttempted || fn57SampleBuffer) return;
+  fn57SampleLoadAttempted = true;
+  let audioContext;
+  try {
+  audioContext = ensureContext();
+  } catch (error) {
+  fn57SampleLoadAttempted = false;
+  console.warn('FN 5-7 AudioContext 초기화 실패:', error);
+  return;
+  }
+  for (const source of FN57_SAMPLE_SOURCES) {
+  try {
+  const response = await fetch(source);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  const decoded = await audioContext.decodeAudioData(arrayBuffer);
+  fn57SampleBuffer = decoded;
+  fn57SampleStartOffset = findSampleStartOffset(decoded);
+  activeFn57SampleSrc = source;
+  return;
+  } catch (error) {
+  console.warn('FN 5-7 사격음 로딩 실패:', source, error);
+  }
+  }
+  fn57SampleLoadAttempted = false;
+  }
+
+  function playFn57Sample(volumeScale = 1) {
+  if (!ctx || !fn57SampleBuffer || !sfxBus) return false;
+  try {
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  source.buffer = fn57SampleBuffer;
+  gain.gain.setValueAtTime(Math.min(1, 0.9 * volumeScale), ctx.currentTime);
+  source.connect(gain);
+  gain.connect(sfxBus);
+  const active = { source, gain };
+  activeFn57Sources.add(active);
+  source.addEventListener('ended', () => {
+  activeFn57Sources.delete(active);
+  try { source.disconnect(); } catch {}
+  try { gain.disconnect(); } catch {}
+  }, { once: true });
+  source.start(ctx.currentTime, Math.min(fn57SampleStartOffset, Math.max(0, fn57SampleBuffer.duration - 0.01)));
   return true;
   } catch {
   return false;
@@ -3504,6 +3827,43 @@ function createFN57HighQuality() {
   wind.start();
   lfo.start();
   lowAir.start();
+  ambientSources = [wind, lfo, lowAir];
+  }
+
+  function stopAudioPool(pool) {
+  pool.forEach((audio) => {
+  try {
+  audio.pause();
+  audio.currentTime = 0;
+  } catch {}
+  });
+  }
+
+  function stopFn57Sources() {
+  activeFn57Sources.forEach(({ source, gain }) => {
+  try { source.stop(); } catch {}
+  try { source.disconnect(); } catch {}
+  try { gain.disconnect(); } catch {}
+  });
+  activeFn57Sources.clear();
+  }
+
+  function stopAmbience() {
+  ambientSources.forEach((source) => {
+  try { source.stop(); } catch {}
+  try { source.disconnect(); } catch {}
+  });
+  ambientSources = [];
+  ambienceStarted = false;
+  footstepTimer = 0;
+  }
+
+  function stopAll() {
+  stopAudioPool(shotgunSamplePool);
+  stopAudioPool(arSamplePool);
+  stopFn57Sources();
+  stopAmbience();
+  setRaidBusLevels(false);
   }
 
 
@@ -3606,6 +3966,7 @@ function createFN57HighQuality() {
 
   function playPistolShot(volumeScale = 1) {
   if (!ctx) return;
+  if (playFn57Sample(volumeScale)) return;
   const t = ctx.currentTime;
   noiseBurst({ start: t, duration: 0.075, gain: 0.28 * volumeScale, filterType: 'bandpass', frequency: 2600, q: 0.85 });
   noiseBurst({ start: t + 0.004, duration: 0.028, gain: 0.1 * volumeScale, filterType: 'highpass', frequency: 4700, q: 0.7 });
@@ -3615,7 +3976,7 @@ function createFN57HighQuality() {
 
   function playGunshot(weaponName, isAutoFollowUp = false, volumeScale = 1) {
   if (!ctx || ctx.state !== 'running') return;
-  if (weaponName === 'FN 5-7') { playPistolShot(volumeScale); return; }
+  if (weaponName === 'FN 5-7' || weaponName === 'FN 5-7 SD') { playPistolShot(volumeScale); return; }
   if (weaponName === 'MP-153' || weaponName === 'MP153') {
   playShotgunShot(volumeScale);
   return;
@@ -3735,6 +4096,7 @@ function createFN57HighQuality() {
   });
   }
 
+  preloadFn57Sample();
 
   return {
   resume,
@@ -3743,12 +4105,14 @@ function createFN57HighQuality() {
   updateFootsteps,
   playWeaponSwitch,
   playHit,
-  playAimToggle
+  playAimToggle,
+  stopAll
   };
   })();
 
 
   const blocker = document.getElementById('blocker');
+  const deathFade = document.getElementById('deathFade');
   const crosshair = document.getElementById('crosshair');
   const weaponUI = document.getElementById('weapon-ui');
 
@@ -3781,7 +4145,7 @@ ${slotText}` : ''}`;
 
 
   function requestRaidPointerLock() {
-  if (!fpsRaidActive || fpsInventoryOpen || document.pointerLockElement === document.body) return;
+  if (!fpsRaidActive || fpsInventoryOpen || deathState.active || document.pointerLockElement === document.body) return;
   Sound.resume();
   const lockRequest = document.body.requestPointerLock?.();
   if (lockRequest?.catch) lockRequest.catch(() => {});
@@ -3797,8 +4161,8 @@ ${slotText}` : ''}`;
   isAiming = false;
   isFiring = false;
   shotSequence = 0;
-  crosshair.style.opacity = '1';
-  if (fpsRaidActive && !fpsInventoryOpen && document.body.classList.contains('in-fps-raid')) window.InventoryBridge?.exitToMenu?.();
+  crosshair.style.opacity = deathState.active ? '0' : '1';
+  if (fpsRaidActive && !fpsInventoryOpen && !deathState.active && document.body.classList.contains('in-fps-raid')) window.InventoryBridge?.exitToMenu?.();
   }
   });
 
@@ -3808,7 +4172,7 @@ ${slotText}` : ''}`;
 
 
   document.addEventListener('mousemove', (event) => {
-  if (!fpsRaidActive || fpsInventoryOpen || document.pointerLockElement !== document.body) return;
+  if (!fpsRaidActive || fpsInventoryOpen || deathState.active || document.pointerLockElement !== document.body) return;
   yaw -= event.movementX * 0.002;
   pitch -= event.movementY * 0.002;
   pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
@@ -3823,7 +4187,7 @@ ${slotText}` : ''}`;
 
 
   document.addEventListener('keydown', (event) => {
-  if (!fpsRaidActive || fpsInventoryOpen || document.pointerLockElement !== document.body) return;
+  if (!fpsRaidActive || fpsInventoryOpen || deathState.active || document.pointerLockElement !== document.body) return;
 
 
   const key = event.key.toLowerCase();
@@ -3889,7 +4253,7 @@ ${slotText}` : ''}`;
 
 
   document.addEventListener('mousedown', (event) => {
-  if (!fpsRaidActive || fpsInventoryOpen || document.pointerLockElement !== document.body) return;
+  if (!fpsRaidActive || fpsInventoryOpen || deathState.active || document.pointerLockElement !== document.body) return;
   Sound.resume();
 
 
@@ -4062,6 +4426,43 @@ ${slotText}` : ''}`;
   const distance = Math.max(0, projected - offset);
   if (distance > maxDistance) return null;
   return { distance, point: origin.clone().addScaledVector(direction, distance) };
+  }
+
+  function getPlayerHitboxSpheres() {
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).normalize();
+  const base = camera.position;
+  const legBase = base.clone().add(new THREE.Vector3(0, -1.47, 0));
+  return [
+  { part: 'head', center: base.clone().add(new THREE.Vector3(0, -0.14, 0)), radius: 0.32 },
+  { part: 'torso', center: base.clone().add(new THREE.Vector3(0, -0.58, 0)), radius: 0.48 },
+  { part: 'torso', center: base.clone().add(new THREE.Vector3(0, -0.92, 0)), radius: 0.52 },
+  { part: 'torso', center: base.clone().add(new THREE.Vector3(0, -1.2, 0)), radius: 0.44 },
+  { part: 'leftLeg', center: legBase.clone().addScaledVector(right, -0.22), radius: 0.25 },
+  { part: 'leftLeg', center: legBase.clone().add(new THREE.Vector3(0, -0.32, 0)).addScaledVector(right, -0.2), radius: 0.23 },
+  { part: 'rightLeg', center: legBase.clone().addScaledVector(right, 0.22), radius: 0.25 },
+  { part: 'rightLeg', center: legBase.clone().add(new THREE.Vector3(0, -0.32, 0)).addScaledVector(right, 0.2), radius: 0.23 }
+  ];
+  }
+
+  function findPlayerRayHit(origin, direction, maxDistance) {
+  if (!window.InventoryBridge?.isPlayerAlive?.()) return null;
+  let best = null;
+  getPlayerHitboxSpheres().forEach((sphere) => {
+  const hit = raySphereHit(origin, direction, sphere.center, sphere.radius, maxDistance);
+  if (hit && (!best || hit.distance < best.distance)) best = { ...hit, part: sphere.part };
+  });
+  return best;
+  }
+
+  function applyEnemyShotToPlayer(origin, target, weaponType, damage) {
+  const direction = new THREE.Vector3().subVectors(target, origin);
+  const maxDistance = direction.length();
+  if (maxDistance <= 0.001) return false;
+  direction.normalize();
+  const hit = findPlayerRayHit(origin, direction, maxDistance);
+  if (!hit || !hasClearLineOfSight(origin, hit.point)) return false;
+  const result = window.InventoryBridge?.applyPlayerHit?.({ part: hit.part, damage, source: `AI ${weaponType}` });
+  return Boolean(result?.dead || hit);
   }
 
   function findEnemyRayHit(origin, direction, maxDistance) {
@@ -4713,6 +5114,7 @@ ${slotText}` : ''}`;
   (Math.random() - 0.5) * 1.5,
   (Math.random() - 0.5) * 1.5
   ));
+  applyEnemyShotToPlayer(enemyMuzzle, spreadHead, 'MP153', WEAPONS.MP153.damage);
   const eTracerGeo = new THREE.BufferGeometry().setFromPoints([enemyMuzzle, spreadHead]);
   const eTracerMat = new THREE.LineBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.9 });
   const eTracerLine = new THREE.Line(eTracerGeo, eTracerMat);
@@ -4720,6 +5122,7 @@ ${slotText}` : ''}`;
   enemyTracers.push({ element: eTracerLine, material: eTracerMat, life: 0.05 });
   }
   } else {
+  applyEnemyShotToPlayer(enemyMuzzle, playerHead, enemy.userData.weaponType || 'M4A1', WEAPONS.M4A1.damage);
   const eTracerGeo = new THREE.BufferGeometry().setFromPoints([enemyMuzzle, playerHead]);
   const eTracerMat = new THREE.LineBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.9 });
   const eTracerLine = new THREE.Line(eTracerGeo, eTracerMat);
@@ -4758,9 +5161,10 @@ ${slotText}` : ''}`;
 
 
   let playerIsMoving = false;
+  const playerMoveMultiplier = window.InventoryBridge?.getMoveSpeedMultiplier?.() ?? 1;
 
 
-  if (fpsRaidActive && !fpsInventoryOpen && document.pointerLockElement === document.body) {
+  if (!deathState.active && fpsRaidActive && !fpsInventoryOpen && document.pointerLockElement === document.body) {
   const moveVector = new THREE.Vector3();
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   forward.y = 0;
@@ -4779,7 +5183,7 @@ ${slotText}` : ''}`;
 
 
   if (moveVector.lengthSq() > 0) {
-  moveVector.normalize().multiplyScalar(moveSpeed * delta);
+  moveVector.normalize().multiplyScalar(moveSpeed * playerMoveMultiplier * delta);
   playerIsMoving = tryMovePlayer(moveVector);
   }
 
@@ -4795,7 +5199,7 @@ ${slotText}` : ''}`;
   Sound.updateFootsteps(
   delta,
   document.pointerLockElement === document.body && playerIsMoving,
-  isAiming ? 0.72 : 1.0
+  playerMoveMultiplier * (isAiming ? 0.72 : 1.0)
   );
 
 
@@ -4841,7 +5245,7 @@ ${slotText}` : ''}`;
   }
 
 
-  if (fpsRaidActive && !fpsInventoryOpen && isFiring && document.pointerLockElement === document.body) {
+  if (!deathState.active && fpsRaidActive && !fpsInventoryOpen && isFiring && document.pointerLockElement === document.body) {
   fireTimer += delta;
 
 
@@ -4956,6 +5360,9 @@ ${slotText}` : ''}`;
 
   pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
 
+  if (deathState.active) {
+  updateDeathCamera(delta);
+  } else {
   // Q/E 카메라 틸트 업데이트
   if (keys.q) {
   targetRollZ = Math.PI / 4; // 45도 좌측 기울임
@@ -4965,6 +5372,7 @@ ${slotText}` : ''}`;
   targetRollZ = 0; // 기울임 해제
   }
   cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, targetRollZ, 0.15); // 부드러운 모션
+  }
 
   camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, cameraRollZ, 'YXZ'));
 
@@ -5046,6 +5454,71 @@ ${slotText}` : ''}`;
   function setAllKeys(value = false) { Object.keys(keys).forEach((key) => { keys[key] = value; }); }
   function unlockPointer() { if (document.pointerLockElement === document.body) document.exitPointerLock(); }
   function refreshBlocker() { blocker.style.display = 'none'; }
+  function resetDeathSequence() {
+  deathState.active = false;
+  deathState.message = '';
+  deathState.velocityY = 0;
+  deathState.drift.set(0, 0, 0);
+  deathState.floorContact = false;
+  deathState.floorContactTimer = 0;
+  deathState.fadeTimer = 0;
+  deathState.completed = false;
+  if (deathFade) deathFade.style.opacity = '0';
+  }
+
+  function startDeathSequence({ message = '사망했습니다.' } = {}) {
+  if (deathState.active) return;
+  deathState.active = true;
+  deathState.message = message;
+  deathState.velocityY = -1.4;
+  deathState.drift.set(Math.sin(yaw) * 0.9, 0, Math.cos(yaw) * 0.9);
+  deathState.floorContact = false;
+  deathState.floorContactTimer = 0;
+  deathState.fadeTimer = 0;
+  deathState.completed = false;
+  fpsInventoryOpen = false;
+  isFiring = false;
+  isAiming = false;
+  isSwapping = false;
+  setAllKeys(false);
+  unlockPointer();
+  blocker.style.display = 'none';
+  crosshair.style.opacity = '0';
+  interactionUI?.classList.add('hidden');
+  currentWeapon.mesh.visible = false;
+  if (deathFade) deathFade.style.opacity = '0';
+  }
+
+  function updateDeathCamera(delta) {
+  if (!deathState.active) return;
+  const terrainY = getTerrainHeight(camera.position.x, camera.position.z);
+  if (!deathState.floorContact) {
+  deathState.velocityY -= 16 * delta;
+  camera.position.addScaledVector(deathState.drift, delta);
+  camera.position.y += deathState.velocityY * delta;
+  pitch = THREE.MathUtils.lerp(pitch, -1.1, Math.min(1, delta * 3.2));
+  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, 1.35, Math.min(1, delta * 3.8));
+  if (camera.position.y - deathCameraHalfSize <= terrainY) {
+  camera.position.y = terrainY + deathCameraHalfSize;
+  deathState.velocityY = 0;
+  deathState.floorContact = true;
+  deathState.floorContactTimer = 0;
+  }
+  } else {
+  camera.position.y = terrainY + deathCameraHalfSize;
+  pitch = THREE.MathUtils.lerp(pitch, -1.24, Math.min(1, delta * 2));
+  cameraRollZ = THREE.MathUtils.lerp(cameraRollZ, 1.55, Math.min(1, delta * 2));
+  deathState.floorContactTimer += delta;
+  if (deathState.floorContactTimer >= 2) {
+  deathState.fadeTimer += delta;
+  if (deathFade) deathFade.style.opacity = String(Math.min(1, deathState.fadeTimer / 0.7));
+  if (!deathState.completed && deathState.fadeTimer >= 0.7) {
+  deathState.completed = true;
+  window.InventoryBridge?.finishPlayerDeath?.({ message: deathState.message });
+  }
+  }
+  }
+  }
 
 
   function removeEnemyTargets(enemySet) {
@@ -5082,6 +5555,7 @@ ${slotText}` : ''}`;
 
   function resetRaidWorld() {
   clearRaidRuntimeWorld();
+  resetDeathSequence();
   setAllKeys(false);
   isAiming = false;
   isFiring = false;
@@ -5137,11 +5611,13 @@ ${slotText}` : ''}`;
   stop() {
   fpsRaidActive = false;
   fpsInventoryOpen = false;
+  Sound.stopAll();
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   animationFrameId = null;
   isFiring = false;
   isAiming = false;
   setAllKeys(false);
+  resetDeathSequence();
   unlockPointer();
   clearRaidRuntimeWorld();
   renderer.domElement.remove();
@@ -5149,6 +5625,8 @@ ${slotText}` : ''}`;
   interactionUI?.classList.add('hidden');
   },
   setLoadout(loadout = {}) { applyWeaponLoadout(loadout); },
+  startDeathSequence,
+  stopSounds() { Sound.stopAll(); },
   unlockPointer,
   setInventoryOpen(open) { fpsInventoryOpen = open; if (open) unlockPointer(); refreshBlocker(); },
   resumePointerPrompt() { fpsInventoryOpen = false; refreshBlocker(); requestRaidPointerLock(); }

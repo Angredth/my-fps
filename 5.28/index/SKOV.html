@@ -355,12 +355,18 @@
   #weapon-ui { bottom: 30px; }
   #interaction-ui { bottom: 84px; border-color: #d6c27d; color: #ffe7a1; }
   .corpse-loot-stack { display: grid; gap: 12px; max-height: calc(100vh - 190px); overflow: auto; padding-right: 6px; }
-  .corpse-section { border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.2); padding: 10px; }
+  .corpse-layout { display: grid; gap: 10px; min-width: 0; }
+  .corpse-loot-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgba(154, 174, 180, 0.42); background: linear-gradient(90deg, rgba(51, 68, 70, 0.72), rgba(8, 11, 12, 0.84)); padding: 7px 10px; }
+  .corpse-loot-header span { color: #e7f0f1; font-size: .86rem; font-weight: 900; letter-spacing: .12em; }
+  .corpse-loot-header strong { color: #b7c4c7; font-size: .8rem; }
+  .corpse-section { min-width: 0; border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.2); padding: 10px; }
   .corpse-section h3 { margin: -10px -10px 10px; }
+  .corpse-equipment-section { overflow-x: auto; }
   .corpse-search { display: grid; gap: 8px; align-items: start; }
-  .corpse-layout { display: grid; gap: 10px; }
-  .corpse-equipment-stack { display: grid; gap: 8px; }
-  .corpse-pair { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; align-items: stretch; }
+  .corpse-equipment-stack { display: grid; gap: 8px; min-width: 450px; }
+  .corpse-equipment-stack > .corpse-slot { justify-self: center; }
+  .corpse-pair { display: grid; grid-template-columns: minmax(0, 1fr) 138px; gap: 8px; align-items: stretch; }
+  .corpse-pair .corpse-slot:first-child { width: auto; min-width: 0; }
   .character-equipment-layout { display: block; width: 100%; min-width: 476px; overflow-x: auto; }
   .character-equipment-stage { position: relative; min-height: 692px; display: grid; grid-template-columns: minmax(0, 1fr) 138px; grid-template-rows: repeat(4, 138px); grid-template-areas: "headwear headwear" "armor armor" "sling holster" "back sheath"; gap: 24px 10px; align-content: start; padding: 8px 0 18px; }
   .character-silhouette { position: absolute; z-index: 0; left: 50%; top: 38px; width: 250px; height: 620px; transform: translateX(-50%); opacity: .2; pointer-events: none; filter: drop-shadow(0 0 18px rgba(190,205,205,.18)); }
@@ -372,36 +378,35 @@
   .character-equipment-stage .equip-slot[data-slot-key="pistol"] { grid-area: holster; }
   .character-equipment-stage .equip-slot[data-slot-key="primary2"] { grid-area: back; justify-self: stretch; width: auto; }
   .character-equipment-stage .equip-slot[data-slot-key="melee"] { grid-area: sheath; }
-  .corpse-slot { min-width: 0; border: 1px solid rgba(124, 143, 148, 0.42); background: rgba(0,0,0,.22); padding: 8px; }
-  .corpse-slot h4 { margin: -8px -8px 8px; padding: 4px 8px; border-bottom: 1px solid rgba(149, 164, 168, 0.28); background: rgba(16, 21, 23, 0.82); color: #d7e0e3; font-size: 0.8rem; }
-  .corpse-slot .empty-note { min-height: 42px; }
-  .corpse-container-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; align-items: start; }
-  .corpse-container-row + .corpse-container-row { margin-top: 10px; }
-  .corpse-container-row .corpse-slot { min-height: 100px; }
-  .corpse-container-body { min-width: 0; overflow-x: auto; }
-  .corpse-item {
-  min-height: 42px;
-  display: grid;
-  align-content: center;
-  gap: 2px;
-  border: 1px solid rgba(160, 173, 176, 0.3);
-  background: linear-gradient(180deg, rgba(79, 91, 93, 0.22), rgba(4, 6, 7, 0.5));
-  padding: 7px;
-  cursor: grab;
-  }
-  .corpse-item span { color: #e8eeee; font-size: 0.82rem; }
-  .corpse-item small { color: var(--muted); font-size: 0.68rem; line-height: 1.2; }
+  .corpse-slot { flex: none; }
+  .corpse-slot .empty-note { height: 100%; min-height: 0; border: 0; border-radius: 0; background: transparent; font-size: .75rem; }
+  .corpse-container-row { display: grid; grid-template-columns: 146px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .corpse-container-row .corpse-slot { width: 138px; min-width: 138px; height: 138px; min-height: 138px; }
+  .corpse-container-body { min-width: 0; min-height: 138px; overflow-x: auto; }
+  .corpse-container-body > .empty-note { min-height: 138px; border-radius: 0; }
+  .corpse-pockets-row .corpse-container-row { display: block; }
+  .corpse-pockets-row .corpse-container-body { min-height: 0; }
+  .corpse-item { cursor: grab; }
+  .corpse-item.dragging { opacity: .5; cursor: grabbing; }
   .unknown-cell {
   width: 100%;
-  min-height: 76px;
+  min-height: 138px;
   display: grid;
   place-items: center;
   border: 1px dashed rgba(214, 194, 125, 0.64);
-  background: rgba(77, 59, 23, 0.22);
+  background:
+  repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 6px, transparent 6px 12px),
+  rgba(77, 59, 23, 0.22);
   color: #ffe7a1;
   font-weight: 800;
+  letter-spacing: .08em;
   cursor: pointer;
   }
+  .unknown-cell small { display: block; margin-top: 4px; color: rgba(255, 231, 161, .62); font-size: .66rem; letter-spacing: 0; }
+  .unknown-cell--window { min-height: 112px; }
+  .unsearched-container-status { min-height: 138px; display: grid; align-content: center; gap: 8px; border: 1px dashed rgba(214, 194, 125, 0.64); background: rgba(77, 59, 23, 0.18); padding: 12px; color: #ffe7a1; }
+  .unsearched-container-status.unknown-cell--window { min-height: 112px; }
+  .unsearched-container-status strong { letter-spacing: .08em; }
   .loot-help { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
 
   @media (max-width: 1100px) { .three-pane, .raid-layout, .menu-grid { grid-template-columns: 1fr; } .three-pane > .panel { min-height: 0; max-height: none; } .topbar { align-items: flex-start; flex-direction: column; } .wallet { text-align: left; } }
@@ -732,6 +737,7 @@
   let previousScreen = 'menu';
   let raid = createEmptyRaid();
   let searchTimer = null;
+  let ownedContainerSearchTimer = null;
   let dragData = null;
   let selected = null;
   let openContainers = [];
@@ -765,6 +771,19 @@
   }
   if (template.container) item.container = { ...template.container };
   if (template.container && !Array.isArray(item.containerItems)) item.containerItems = [];
+  if (template.container) {
+  if (raw.unsearched) {
+  item.unsearched = true;
+  item.searching = false;
+  item.searchProgress = Math.max(0, Math.min(100, Number(raw.searchProgress) || 0));
+  } else {
+  delete item.unsearched;
+  delete item.searching;
+  delete item.searchProgress;
+  delete item.searchStartedAt;
+  delete item.searchDuration;
+  }
+  }
   if (Array.isArray(item.containerItems)) item.containerItems = item.containerItems.map(normalizeItem);
   return item;
   }
@@ -866,6 +885,7 @@
   }
 
   function clearSearchTimer() { if (searchTimer) clearInterval(searchTimer); searchTimer = null; }
+  function clearOwnedContainerSearchTimer() { if (ownedContainerSearchTimer) clearInterval(ownedContainerSearchTimer); ownedContainerSearchTimer = null; }
   function getPlayerHealth() {
   if (!raid.playerHealth) raid.playerHealth = createPlayerHealth();
   return raid.playerHealth;
@@ -1061,6 +1081,7 @@
 
   function extractRaid() {
   if (!raid.active) return;
+  markAllOwnedContainersSearchedOnExtract();
   endRaidSession(true);
   showToast('레이드를 종료하고 장비/루팅 상태를 저장했습니다.');
   switchScreen('menu');
@@ -1080,6 +1101,7 @@
   function endRaidSession(saveProgress = true) {
   if (saveProgress) syncRaidToState();
   clearSearchTimer();
+  clearOwnedContainerSearchTimer();
   raid.active = false;
   raid.inventoryOpen = false;
   raid.menuOpen = false;
@@ -1147,6 +1169,90 @@
   if (!loot.backpackItem) loot.searched.backpack = false;
   }
 
+  function markLootedContainerUnsearched(item) {
+  const loot = activeCorpseLoot();
+  const key = item?.category === 'rig' ? 'rig' : item?.category === 'backpack' ? 'backpack' : null;
+  if (!loot || !key || !item.container) return;
+  if (loot.searched[key]) return clearContainerUnsearchedState(item);
+  item.unsearched = true;
+  item.searching = false;
+  item.searchProgress = 0;
+  }
+
+  function clearContainerUnsearchedState(item) {
+  delete item.unsearched;
+  delete item.searching;
+  delete item.searchProgress;
+  delete item.searchStartedAt;
+  delete item.searchDuration;
+  }
+
+  function visitNestedItems(items, callback, seen = new Set()) {
+  for (const item of items || []) {
+  if (!item?.uid || seen.has(item.uid)) continue;
+  seen.add(item.uid);
+  callback(item);
+  if (item.containerItems) visitNestedItems(item.containerItems, callback, seen);
+  }
+  return seen;
+  }
+
+  function ownedItemRoots() {
+  if (raid.active && raid.loadout) return [...Object.values(raid.loadout).filter(Boolean), ...Object.values(raid.inv || {}).flat()];
+  return [...state.stash, ...Object.values(state.equipment).filter(Boolean), ...state.pockets];
+  }
+
+  function findOwnedItem(uid) {
+  let found = null;
+  visitNestedItems(ownedItemRoots(), (item) => { if (!found && item.uid === uid) found = item; });
+  return found;
+  }
+
+  function completeOwnedContainerSearch(uid) {
+  const item = findOwnedItem(uid);
+  if (!item?.container) return false;
+  clearContainerUnsearchedState(item);
+  clearOwnedContainerSearchTimer();
+  saveState();
+  render();
+  return true;
+  }
+
+  function updateOwnedContainerSearch() {
+  let searchingItem = null;
+  visitNestedItems(ownedItemRoots(), (item) => { if (!searchingItem && item.searching && item.unsearched) searchingItem = item; });
+  if (!searchingItem) return clearOwnedContainerSearchTimer();
+  searchingItem.searchProgress = Math.min(100, Math.round(((Date.now() - searchingItem.searchStartedAt) / searchingItem.searchDuration) * 100));
+  if (searchingItem.searchProgress >= 100) return completeOwnedContainerSearch(searchingItem.uid);
+  renderContainerWindows();
+  renderUsableGear();
+  renderRaidPlayerGear();
+  renderRaidLootOverlay();
+  }
+
+  function startOwnedContainerSearch(uid) {
+  const item = findOwnedItem(uid);
+  if (!item?.container || !item.unsearched || item.searching) return;
+  let activeSearch = false;
+  visitNestedItems(ownedItemRoots(), (entry) => { if (entry.searching && entry.unsearched) activeSearch = true; });
+  if (activeSearch) return showToast('다른 컨테이너를 검색 중입니다.');
+  item.searching = true;
+  item.searchProgress = 0;
+  item.searchStartedAt = Date.now();
+  item.searchDuration = item.category === 'backpack' ? 1800 : 1100;
+  clearOwnedContainerSearchTimer();
+  ownedContainerSearchTimer = setInterval(updateOwnedContainerSearch, 80);
+  updateOwnedContainerSearch();
+  render();
+  }
+
+  function markAllOwnedContainersSearchedOnExtract() {
+  visitNestedItems(ownedItemRoots(), (item) => {
+  if (!item.container || !item.unsearched) return;
+  clearContainerUnsearchedState(item);
+  });
+  }
+
   function createEnemyCorpseLoot(weaponType = 'M4A1') {
   const primaryId = weaponType === 'MP153' || weaponType === 'MP-153' ? 'mp153' : 'rifle';
   const equipmentItems = [];
@@ -1156,6 +1262,7 @@
   place(cloneItem(getTemplate('helmet')), 0, 0);
   if (Math.random() < 0.75) place(cloneItem(getTemplate('armor')), 2, 0);
   place(cloneItem(getTemplate(primaryId)), 5, 0);
+  place(cloneItem(getTemplate('knife')), 7, 2);
   place(rigItem, 0, 2);
   if (backpackItem) place(backpackItem, 3, 2);
   const pools = ['bandage', 'ammo', 'magazine', 'ruble', 'wire', 'screw', 'painkiller', 'ssd'];
@@ -1219,7 +1326,7 @@
   if (area === 'secure') return state.equipment.secure?.containerItems || [];
   return state.equipment[area]?.containerItems || [];
   }
-  if (area.startsWith('container:')) return findItemEverywhere(area.slice(10))?.containerItems || [];
+  if (area.startsWith('container:')) return findContainerItem(area.slice(10))?.containerItems || [];
   return [];
   }
   function makeSegments(cols, rows, width, height) {
@@ -1253,9 +1360,15 @@
   if (area === 'rig') return unrestrictedContainer((raid.active ? raid.loadout?.rig : state.equipment.rig)?.container);
   if (area === 'backpack') return unrestrictedContainer((raid.active ? raid.loadout?.backpack : state.equipment.backpack)?.container);
   if (area === 'secure') return (raid.active ? raid.loadout?.secure : state.equipment.secure)?.container || { cols: 0, rows: 0, rejectTypes: ['military', 'weapon', 'ammo'] };
-  if (area.startsWith('container:')) return findItemEverywhere(area.slice(10))?.container || { cols: 0, rows: 0 };
+  if (area.startsWith('container:')) return findContainerItem(area.slice(10))?.container || { cols: 0, rows: 0 };
   return { cols: 0, rows: 0 };
   }
+  function containerItemForArea(area) {
+  if (area === 'rig' || area === 'backpack' || area === 'secure') return (raid.active ? raid.loadout : state.equipment)?.[area] || null;
+  if (area.startsWith('container:')) return findContainerItem(area.slice(10));
+  return null;
+  }
+  function findContainerItem(uid) { return findOwnedItem(uid) || findItemEverywhere(uid); }
   function findItemEverywhere(uid) {
   const enemyPools = currentEnemyAreas();
   const pools = [state.stash, Object.values(state.equipment).filter(Boolean), areaItems('loot'), areaItems('rig'), areaItems('pockets'), areaItems('backpack'), areaItems('secure'), ...enemyPools];
@@ -1270,6 +1383,7 @@
   function canAccept(area, item) {
   const spec = areaSpec(area);
   const size = effectiveSize(item);
+  if (containerItemForArea(area)?.unsearched) return false;
   if (spec.accepts && !spec.accepts.includes(item.category)) return false;
   if (spec.rejects && (spec.rejects.includes(item.id) || spec.rejects.includes(item.category))) return false;
   if (spec.rejectTypes && spec.rejectTypes.includes(item.type || item.category)) return false;
@@ -1321,6 +1435,7 @@
   if (isOwnContainerArea(item, to)) return false;
   const spec = areaSpec(to);
   if (!canPlaceIn(item, x, y, areaItems(to), spec.cols, spec.rows, uid, to)) return false;
+  if (from === 'enemy:equipment') markLootedContainerUnsearched(item);
   removeFromArea(from, uid);
   areaItems(to).push({ ...item, x, y });
   if (from === 'enemy:equipment' || to === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
@@ -1338,6 +1453,7 @@
   const item = areaItems(from).find((entry) => entry.uid === uid);
   if (!item) return false;
   if (!canEquipTarget(item, slotKey, equipmentTarget)) { showToast('장착 실패: 슬롯 타입이 맞지 않거나 슬롯이 비어 있지 않습니다.'); return false; }
+  if (from === 'enemy:equipment') markLootedContainerUnsearched(item);
   removeFromArea(from, uid);
   equipmentTarget[slotKey] = { ...item, x: undefined, y: undefined };
   if (from === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
@@ -1369,8 +1485,8 @@
 
   function insertIntoContainer(from, uid, targetUid) {
   const item = areaItems(from).find((entry) => entry.uid === uid);
-  const target = findItemEverywhere(targetUid);
-  if (!item || !target?.container || uid === targetUid || findNested(item.containerItems || [], targetUid)) return false;
+  const target = findContainerItem(targetUid);
+  if (!item || !target?.container || target.unsearched || uid === targetUid || findNested(item.containerItems || [], targetUid)) return false;
   const area = `container:${targetUid}`;
   if (!canDetachEquipmentToArea(from, area)) return false;
   const spot = findFreeSpotIn(item, target.containerItems || [], target.container.cols, target.container.rows, area);
@@ -1527,6 +1643,7 @@
   renderCharacterEquipmentLayout(document.getElementById('bodySlots'), state.equipment, true);
   }
   function equippedItemStatus(item) {
+  if (item.unsearched) return 'UNSEARCHED';
   if (item.durability != null) return `${item.durability}/${item.maxDurability ?? item.durability}`;
   if (item.quantity != null) return `수량 ${item.quantity}`;
   if (item.count != null) return `수량 ${item.count}`;
@@ -1626,18 +1743,31 @@
   }));
   }
 
+  function renderUnsearchedContainerWindow(root, item, compact = false) {
+  if (!root || !item?.unsearched) return false;
+  if (item.searching) {
+  root.innerHTML = `<div class="unsearched-container-status${compact ? ' unknown-cell--window' : ''}"><strong>Searching...</strong><div class="progress-shell"><div class="progress-fill" style="--progress:${item.searchProgress || 0}%"></div></div><small>${item.searchProgress || 0}%</small></div>`;
+  } else {
+  root.innerHTML = `<button class="unknown-cell${compact ? ' unknown-cell--window' : ''}" data-search-owned="${item.uid}">UNSEARCHED<small>클릭하여 검색</small></button>`;
+  root.querySelector('[data-search-owned]')?.addEventListener('click', () => startOwnedContainerSearch(item.uid));
+  }
+  return true;
+  }
+
   function renderGearContainerRow(root, slot, area, title, description, equipmentSource = state.equipment, allowDrop = true) {
   const section = document.createElement('section');
   section.className = `gear-container-row gear-${area}-row`;
   const slotWrap = createEquipSlotNode({ ...slot, label: EQUIP_SLOT_LABELS[slot.key] || slot.label }, equipmentSource, allowDrop);
+  const equippedItem = equipmentSource?.[slot.key] || null;
   const spec = areaSpec(area);
   const internal = document.createElement('div');
   internal.className = 'gear-internal';
-  internal.innerHTML = spec.cols && spec.rows ? '<div class="inventory-wrap compact-grid"></div>' : '';
+  internal.innerHTML = equippedItem?.unsearched ? '' : spec.cols && spec.rows ? '<div class="inventory-wrap compact-grid"></div>' : '';
   section.appendChild(slotWrap);
   section.appendChild(internal);
   root.appendChild(section);
-  if (spec.cols && spec.rows) renderGrid(internal.querySelector('.inventory-wrap'), spec.cols, spec.rows, areaItems(area), { area, draggable: true, drop: true });
+  if (equippedItem?.unsearched) renderUnsearchedContainerWindow(internal, equippedItem);
+  else if (spec.cols && spec.rows) renderGrid(internal.querySelector('.inventory-wrap'), spec.cols, spec.rows, areaItems(area), { area, draggable: true, drop: true });
   section.querySelectorAll('[data-unequip-area]').forEach((button) => button.addEventListener('click', (event) => {
   event.stopPropagation();
   const info = equipmentAreaInfo(button.dataset.unequipArea);
@@ -1764,7 +1894,7 @@
   const corpsePanel = document.getElementById('overlayCorpseLoot');
   const empty = document.getElementById('overlayLootEmpty');
   if (corpseLoot) {
-  document.getElementById('overlayLootTitle').textContent = '적 시체 루팅';
+  document.getElementById('overlayLootTitle').textContent = `LOOT · ${corpseLoot.name}`;
   lootGrid.classList.add('hidden');
   empty.classList.add('hidden');
   corpsePanel.classList.remove('hidden');
@@ -1799,11 +1929,12 @@
   syncActiveCorpseEquipmentRefs();
   const layout = document.createElement('div');
   layout.className = 'corpse-layout';
+  layout.innerHTML = `<div class="corpse-loot-header"><span>LOOT</span><strong>${loot.name}</strong></div>`;
   root.appendChild(layout);
 
   const equipment = document.createElement('section');
-  equipment.className = 'corpse-section';
-  equipment.innerHTML = '<h3>적 시체 장비</h3><div class="corpse-equipment-stack"></div><p class="loot-help">Ctrl+클릭 또는 드래그로 플레이어 저장공간에 옮깁니다. 빈 슬롯은 장착 없음입니다.</p>';
+  equipment.className = 'corpse-section corpse-equipment-section';
+  equipment.innerHTML = '<h3>BODY EQUIPMENT</h3><div class="corpse-equipment-stack"></div><p class="loot-help">Ctrl+클릭, 더블클릭 또는 드래그로 플레이어 저장공간에 옮깁니다.</p>';
   layout.appendChild(equipment);
   const equipmentStack = equipment.querySelector('.corpse-equipment-stack');
   const equipmentItems = loot.equipmentItems || [];
@@ -1820,10 +1951,12 @@
 
   function createCorpseItemNode(item) {
   const node = document.createElement('div');
-  node.className = `corpse-item ${item.rarity || ''}`;
+  const containerKey = item.category === 'rig' ? 'rig' : item.category === 'backpack' ? 'backpack' : null;
+  const status = containerKey && !loot.searched[containerKey] ? 'UNSEARCHED' : equippedItemStatus(item);
+  node.className = `equipped-item-card corpse-item ${item.rarity || ''}${selected?.area === 'enemy:equipment' && selected.uid === item.uid ? ' selected' : ''}`;
   node.draggable = true;
   node.dataset.uid = item.uid;
-  node.innerHTML = `<span>${item.name}</span><small>${itemMeta(item)}</small>`;
+  node.innerHTML = `<span class="equip-item-name">${item.name}</span><span class="equip-item-type">${item.description || item.category}</span><span class="equip-item-footer"><em>${effectiveSize(item).width}x${effectiveSize(item).height}</em><em>${status}</em></span>`;
   node.title = itemInfo(item);
   node.addEventListener('click', (event) => {
   if (event.altKey) {
@@ -1861,50 +1994,43 @@
   return node;
   }
 
-  function appendCorpseSlot(parent, title, item) {
+  function appendCorpseSlot(parent, slotKey, item) {
+  const long = ['primary1', 'primary2'].includes(slotKey);
   const slot = document.createElement('div');
-  slot.className = 'corpse-slot';
-  slot.innerHTML = `<h4>${title}</h4>`;
+  slot.className = `equip-slot corpse-slot${long ? ' equip-slot--long' : ' equip-slot--square'}`;
+  slot.dataset.slotKey = slotKey;
+  slot.innerHTML = `<strong>${EQUIP_SLOT_LABELS[slotKey] || slotKey}</strong>`;
   slot.appendChild(item ? createCorpseItemNode(item) : createEmptyCorpseNote('장착 없음'));
   parent.appendChild(slot);
   return slot;
   }
 
-  appendCorpseSlot(equipmentStack, '1. 헬멧', slots.helmet);
-  appendCorpseSlot(equipmentStack, '2. 방어구', slots.armor);
+  appendCorpseSlot(equipmentStack, 'helmet', slots.helmet);
+  appendCorpseSlot(equipmentStack, 'armor', slots.armor);
 
   const row1 = document.createElement('div');
   row1.className = 'corpse-pair';
   equipmentStack.appendChild(row1);
-  appendCorpseSlot(row1, '3. 주무기 1', slots.primary1);
-  appendCorpseSlot(row1, '권총', slots.pistol);
+  appendCorpseSlot(row1, 'primary1', slots.primary1);
+  appendCorpseSlot(row1, 'pistol', slots.pistol);
 
   const row2 = document.createElement('div');
   row2.className = 'corpse-pair';
   equipmentStack.appendChild(row2);
-  appendCorpseSlot(row2, '4. 주무기 2', slots.primary2);
-  appendCorpseSlot(row2, '나이프', slots.melee);
+  appendCorpseSlot(row2, 'primary2', slots.primary2);
+  appendCorpseSlot(row2, 'melee', slots.melee);
 
-  const containerGrid = document.createElement('div');
-  containerGrid.className = 'corpse-container-grid';
-  layout.appendChild(containerGrid);
-  const containers = [
-  ['rig', '5. 리그', loot.rigItem],
-  ['pockets', '6. 주머니', { name: '주머니' }],
-  ['backpack', '7. 가방', loot.backpackItem]
-  ];
-  containers.forEach(([key, title, source]) => {
+  function renderCorpseContainerRow(key, title, source = null) {
   const section = document.createElement('section');
-  section.className = 'corpse-container-row';
+  section.className = `corpse-section corpse-container-section${key === 'pockets' ? ' corpse-pockets-row' : ''}`;
   const searching = raid.enemySearch?.key === key;
   const searched = loot.searched[key];
-  section.innerHTML = `<div class="corpse-slot"><h4>${title}</h4></div><div class="corpse-container-body" id="corpse-${key}"></div>`;
-  containerGrid.appendChild(section);
-  const slot = section.querySelector('.corpse-slot');
+  section.innerHTML = `<h3>${title}</h3><div class="corpse-container-row"><div class="corpse-container-body" id="corpse-${key}"></div></div>`;
+  layout.appendChild(section);
+  const row = section.querySelector('.corpse-container-row');
   if (key === 'rig' || key === 'backpack') {
-  slot.appendChild(source?.uid ? createCorpseItemNode(source) : createEmptyCorpseNote('장착 없음'));
-  } else {
-  slot.appendChild(createEmptyCorpseNote('기본 4칸'));
+  const body = row.querySelector(`#corpse-${key}`);
+  row.insertBefore(appendCorpseSlot(document.createDocumentFragment(), key, source), body);
   }
   const body = section.querySelector(`#corpse-${key}`);
   if ((key === 'rig' || key === 'backpack') && !source) {
@@ -1913,15 +2039,19 @@
   }
   if (!searched) {
   body.innerHTML = searching
-  ? `<strong>Searching...</strong><div class="progress-shell"><div class="progress-fill" style="--progress:${raid.enemySearch.progress}%"></div></div>`
-  : `<button class="unknown-cell" data-search-enemy="${key}">미확인</button>`;
+  ? `<div class="unsearched-container-status"><strong>Searching...</strong><div class="progress-shell"><div class="progress-fill" style="--progress:${raid.enemySearch.progress}%"></div></div><small>${raid.enemySearch.progress}%</small></div>`
+  : `<button class="unknown-cell" data-search-enemy="${key}">UNSEARCHED<small>클릭하여 검색</small></button>`;
   body.querySelector('[data-search-enemy]')?.addEventListener('click', () => startEnemyContainerSearch(key));
   return;
   }
   const spec = areaSpec(`enemy:${key}`);
   body.innerHTML = spec.cols && spec.rows ? `<div id="enemy-${key}-grid" class="inventory-wrap compact-grid"></div>` : '<div class="empty-note">사용 가능한 공간 없음</div>';
   if (spec.cols && spec.rows) renderGrid(body.querySelector(`#enemy-${key}-grid`), spec.cols, spec.rows, areaItems(`enemy:${key}`), { area: `enemy:${key}`, draggable: true, drop: false });
-  });
+  }
+
+  renderCorpseContainerRow('rig', 'TACTICAL RIG', loot.rigItem);
+  renderCorpseContainerRow('pockets', 'POCKETS');
+  renderCorpseContainerRow('backpack', 'BACKPACK', loot.backpackItem);
   }
 
   function renderEventPanel() {
@@ -1990,7 +2120,7 @@
   if (options.onItemDblClick) node.addEventListener('dblclick', (event) => options.onItemDblClick(item, event));
   if (item.container || item.id === 'pistol') {
   if (!options.onItemDblClick) node.addEventListener('dblclick', () => openContainer(item.uid, true));
-  node.addEventListener('dragover', (event) => { if (!dragData || dragData.uid === item.uid) return; const dragged = getDraggedItem(); if (!item.container && !canAttachSuppressor(dragged, item)) return; if (item.container && !canDetachEquipmentToArea(dragData.area, `container:${item.uid}`)) return; event.preventDefault(); node.classList.add('valid'); });
+  node.addEventListener('dragover', (event) => { if (!dragData || dragData.uid === item.uid) return; const dragged = getDraggedItem(); if (!item.container && !canAttachSuppressor(dragged, item)) return; if (item.container && (item.unsearched || !canDetachEquipmentToArea(dragData.area, `container:${item.uid}`))) return; event.preventDefault(); node.classList.add('valid'); });
   node.addEventListener('dragleave', () => node.classList.remove('valid'));
   node.addEventListener('drop', (event) => { event.preventDefault(); node.classList.remove('valid'); if (!dragData) return; const dragged = getDraggedItem(); if (canAttachSuppressor(dragged, item)) { attachSuppressor(dragData.area, dragData.uid, item.uid); return; } if (!insertIntoContainer(dragData.area, dragData.uid, item.uid)) showToast('컨테이너 내부에 넣을 수 없습니다.'); });
   }
@@ -2084,7 +2214,7 @@
   function createSmallButton(label, onClick, className = '') { const button = document.createElement('button'); button.textContent = label; button.className = className; button.addEventListener('click', onClick); return button; }
 
   function openContainer(uid, toggle = false) {
-  const item = findItemEverywhere(uid);
+  const item = findContainerItem(uid);
   if (!item?.container) return;
   const existing = openContainers.find((win) => win.uid === uid);
   if (existing) {
@@ -2106,17 +2236,21 @@
   function renderContainerWindows() {
   const root = document.getElementById('containerWindows');
   root.innerHTML = '';
-  openContainers = openContainers.filter((win) => findItemEverywhere(win.uid)?.container);
+  openContainers = openContainers.filter((win) => findContainerItem(win.uid)?.container);
   openContainers.forEach((win) => {
-  const item = findItemEverywhere(win.uid);
+  const item = findContainerItem(win.uid);
   const area = `container:${win.uid}`;
   const node = document.createElement('div');
   node.className = 'container-window';
   node.style.setProperty('--x', `${win.x}px`);
   node.style.setProperty('--y', `${win.y}px`);
-  node.innerHTML = `<div class="window-title" data-window-drag="${win.uid}"><strong>${item.name} 내부</strong><button data-close-window="${win.uid}">닫기</button></div><div id="window-grid-${win.uid}" class="inventory-wrap compact-grid"></div>`;
+  node.innerHTML = `<div class="window-title" data-window-drag="${win.uid}"><strong>${item.name} 내부</strong><button data-close-window="${win.uid}">닫기</button></div><div id="window-body-${win.uid}"></div>`;
   root.appendChild(node);
-  renderGrid(node.querySelector(`#window-grid-${CSS.escape(win.uid)}`), item.container.cols, item.container.rows, item.containerItems, { area, draggable: true, drop: true });
+  const body = node.querySelector(`#window-body-${CSS.escape(win.uid)}`);
+  if (!renderUnsearchedContainerWindow(body, item, true)) {
+  body.innerHTML = `<div id="window-grid-${win.uid}" class="inventory-wrap compact-grid"></div>`;
+  renderGrid(body.querySelector(`#window-grid-${CSS.escape(win.uid)}`), item.container.cols, item.container.rows, item.containerItems, { area, draggable: true, drop: true });
+  }
   });
   root.querySelectorAll('[data-close-window]').forEach((button) => button.addEventListener('click', () => { openContainers = openContainers.filter((win) => win.uid !== button.dataset.closeWindow); renderContainerWindows(); }));
   root.querySelectorAll('[data-window-drag]').forEach((title) => title.addEventListener('pointerdown', startWindowDrag));

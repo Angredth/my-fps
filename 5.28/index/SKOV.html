@@ -1081,7 +1081,6 @@
 
   function extractRaid() {
   if (!raid.active) return;
-  markAllOwnedContainersSearchedOnExtract();
   endRaidSession(true);
   showToast('레이드를 종료하고 장비/루팅 상태를 저장했습니다.');
   switchScreen('menu');
@@ -1099,6 +1098,7 @@
   }
 
   function endRaidSession(saveProgress = true) {
+  if (saveProgress) markAllOwnedContainersSearchedOnExtract();
   if (saveProgress) syncRaidToState();
   clearSearchTimer();
   clearOwnedContainerSearchTimer();
@@ -2369,8 +2369,12 @@
   import * as CANNON from 'cannon-es';
 
 
+  const WORLD_UNIT_METERS = 1;
+  const PLAYER_EYE_HEIGHT = 1.8;
+
+
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xb7c4bd, 45, 260);
+  scene.fog = new THREE.Fog(0xb7c4bd, 60, 320);
 
 
   // Physics World Setup
@@ -2421,7 +2425,7 @@
 
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 2, 5);
+  camera.position.set(0, PLAYER_EYE_HEIGHT, 5);
 
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -2441,26 +2445,112 @@
   scene.add(dirLight);
 
 
-  const mapTileSize = 70;
-  const mapTileSegments = 24;
-  const mapTiles = [
-  { gx: 0, gz: 0 },
-  { gx: 1, gz: 0 },
-  { gx: 1, gz: 1 }
+  const mapTileSize = 35;
+  const mapTileSegments = 12;
+  const mapLayout = [
+  ['A', 'A', 'A', 'C', 'C', 'C', 'C'],
+  ['A', 'A', 'A', 'C', 'C', 'C', 'C'],
+  [null, null, null, 'B', 'B', 'B', 'B'],
+  [null, null, null, 'B', 'B', 'B', 'B'],
+  [null, null, null, 'B', 'B', 'B', 'B'],
+  [null, null, null, 'B', 'B', 'B', 'B']
   ];
-  const mapTileKeys = new Set(mapTiles.map(({ gx, gz }) => `${gx},${gz}`));
-  const mapOriginX = -mapTileSize;
-  const mapOriginZ = -mapTileSize;
-  const worldSize = mapTileSize * 2;
-  const distantTerrainSegments = 28;
-  const distantTerrainMargin = mapTileSize * 2;
+  const mapTiles = [];
+
+  mapLayout.forEach((row, gz) => {
+  row.forEach((zone, gx) => {
+  if (!zone) return;
+
+  mapTiles.push({
+  gx,
+  gz,
+  zone
+  });
+  });
+  });
+
+  const mapTileByKey = new Map(
+  mapTiles.map((tile) => [
+  `${tile.gx},${tile.gz}`,
+  tile
+  ])
+  );
+  const mapTileKeys = new Set(mapTileByKey.keys());
+  const mapRows = mapLayout.length;
+  const mapCols = Math.max(
+  ...mapLayout.map((row) => row.length)
+  );
+  const worldWidth = mapCols * mapTileSize;
+  const worldDepth = mapRows * mapTileSize;
+  const mapOriginX = -worldWidth / 2;
+  const mapOriginZ = -worldDepth / 2;
+  const mapMaxX = mapOriginX + worldWidth;
+  const mapMaxZ = mapOriginZ + worldDepth;
+  const preferredPlayerSpawn = {
+  x: 87.5,
+  z: 87.5
+  };
+  const distantTerrainMargin = 140;
+  const distantTerrainSegmentsX = 42;
+  const distantTerrainSegmentsZ = 36;
   const mountainStartDistance = 28;
   const mountainBlendDistance = 135;
   const mountainRiseHeight = 28;
 
 
+  console.log('[MAP CONFIG]', {
+  worldUnitMeters: WORLD_UNIT_METERS,
+  playerEyeHeight: PLAYER_EYE_HEIGHT,
+  mapTileSize,
+  mapTileSegments,
+  mapRows,
+  mapCols,
+  mapTileCount: mapTiles.length,
+  worldWidth,
+  worldDepth,
+  mapOriginX,
+  mapOriginZ,
+  mapMaxX,
+  mapMaxZ,
+  playableArea:
+  mapTiles.length *
+  mapTileSize *
+  mapTileSize
+  });
+
+
   function hasMapTile(gx, gz) {
   return mapTileKeys.has(`${gx},${gz}`);
+  }
+
+
+  function getMapTileAt(x, z) {
+  if (
+  x < mapOriginX ||
+  x > mapMaxX ||
+  z < mapOriginZ ||
+  z > mapMaxZ
+  ) {
+  return null;
+  }
+
+  let gx = Math.floor(
+  (x - mapOriginX) / mapTileSize
+  );
+
+  let gz = Math.floor(
+  (z - mapOriginZ) / mapTileSize
+  );
+
+  if (gx === mapCols) gx = mapCols - 1;
+  if (gz === mapRows) gz = mapRows - 1;
+
+  return mapTileByKey.get(`${gx},${gz}`) || null;
+  }
+
+
+  function getMapZoneAt(x, z) {
+  return getMapTileAt(x, z)?.zone || null;
   }
 
 
@@ -2585,25 +2675,53 @@
   function createDistantTerrainGeometry() {
   const vertices = [];
   const indices = [];
+  const terrainWidth =
+  worldWidth + distantTerrainMargin * 2;
+  const terrainDepth =
+  worldDepth + distantTerrainMargin * 2;
   const minX = mapOriginX - distantTerrainMargin;
   const minZ = mapOriginZ - distantTerrainMargin;
-  const size = worldSize + distantTerrainMargin * 2;
 
-  for (let zIndex = 0; zIndex <= distantTerrainSegments; zIndex++) {
-  for (let xIndex = 0; xIndex <= distantTerrainSegments; xIndex++) {
-  const x = minX + (xIndex / distantTerrainSegments) * size;
-  const z = minZ + (zIndex / distantTerrainSegments) * size;
+  for (
+  let zIndex = 0;
+  zIndex <= distantTerrainSegmentsZ;
+  zIndex++
+  ) {
+  for (
+  let xIndex = 0;
+  xIndex <= distantTerrainSegmentsX;
+  xIndex++
+  ) {
+  const x =
+  minX +
+  (xIndex / distantTerrainSegmentsX) *
+  terrainWidth;
+  const z =
+  minZ +
+  (zIndex / distantTerrainSegmentsZ) *
+  terrainDepth;
   const seamSink = Math.max(0, 1 - getPlayableAreaDistance(x, z) / mountainStartDistance) * 0.08;
   vertices.push(x, terrainFormula(x, z) - seamSink, z);
   }
   }
 
-  for (let zIndex = 0; zIndex < distantTerrainSegments; zIndex++) {
-  for (let xIndex = 0; xIndex < distantTerrainSegments; xIndex++) {
-  const cellMinX = minX + (xIndex / distantTerrainSegments) * size;
-  const cellMaxX = minX + ((xIndex + 1) / distantTerrainSegments) * size;
-  const cellMinZ = minZ + (zIndex / distantTerrainSegments) * size;
-  const cellMaxZ = minZ + ((zIndex + 1) / distantTerrainSegments) * size;
+  const rowStride =
+  distantTerrainSegmentsX + 1;
+
+  for (
+  let zIndex = 0;
+  zIndex < distantTerrainSegmentsZ;
+  zIndex++
+  ) {
+  for (
+  let xIndex = 0;
+  xIndex < distantTerrainSegmentsX;
+  xIndex++
+  ) {
+  const cellMinX = minX + (xIndex / distantTerrainSegmentsX) * terrainWidth;
+  const cellMaxX = minX + ((xIndex + 1) / distantTerrainSegmentsX) * terrainWidth;
+  const cellMinZ = minZ + (zIndex / distantTerrainSegmentsZ) * terrainDepth;
+  const cellMaxZ = minZ + ((zIndex + 1) / distantTerrainSegmentsZ) * terrainDepth;
   const fullyInsidePlayable =
   isInsideMap(cellMinX, cellMinZ) &&
   isInsideMap(cellMaxX, cellMinZ) &&
@@ -2612,9 +2730,9 @@
   isInsideMap((cellMinX + cellMaxX) / 2, (cellMinZ + cellMaxZ) / 2);
   if (fullyInsidePlayable) continue;
 
-  const a = zIndex * (distantTerrainSegments + 1) + xIndex;
+  const a = zIndex * rowStride + xIndex;
   const b = a + 1;
-  const c = a + (distantTerrainSegments + 1);
+  const c = a + rowStride;
   const d = c + 1;
   indices.push(a, c, b, b, c, d);
   }
@@ -2680,7 +2798,14 @@
   }
 
 
-  camera.position.set(35, getTerrainHeight(35, -35) + 1.8, -35);
+  camera.position.set(
+  preferredPlayerSpawn.x,
+  getTerrainHeight(
+  preferredPlayerSpawn.x,
+  preferredPlayerSpawn.z
+  ) + PLAYER_EYE_HEIGHT,
+  preferredPlayerSpawn.z
+  );
 
 
   const collidableObjects = [];
@@ -2688,7 +2813,6 @@
   const buildingsData = [];
   const treesData = [];
   const targets = [];
-  const preferredPlayerSpawn = { x: 35, z: -35 };
 
 
   function overlapsCollidableXZ(x, z, radius) {
@@ -3266,10 +3390,20 @@ function createFN57HighQuality() {
 
 
   const enemies = [];
+  const SCAV_MIN_PLAYER_DISTANCE = 30;
+  const SCAV_MAX_PLAYER_DISTANCE = 100;
+  const SCAV_MIN_ENEMY_DISTANCE = 5;
+  const SCAV_SPAWN_ATTEMPTS = 200;
+  const playerViewFrustum = new THREE.Frustum();
+  const playerViewProjectionMatrix = new THREE.Matrix4();
+  const scavSpawnSphere = new THREE.Sphere(
+  new THREE.Vector3(),
+  1.2
+  );
   const initialPlayerSpawn = getPlayerSpawnPoint();
   camera.position.set(
   initialPlayerSpawn.x,
-  getTerrainHeight(initialPlayerSpawn.x, initialPlayerSpawn.z) + 1.8,
+  getTerrainHeight(initialPlayerSpawn.x, initialPlayerSpawn.z) + PLAYER_EYE_HEIGHT,
   initialPlayerSpawn.z
   );
 
@@ -3459,7 +3593,84 @@ function createFN57HighQuality() {
   }
 
 
+  function updatePlayerViewFrustum() {
+  camera.updateMatrixWorld(true);
+
+  playerViewProjectionMatrix.multiplyMatrices(
+  camera.projectionMatrix,
+  camera.matrixWorldInverse
+  );
+
+  playerViewFrustum.setFromProjectionMatrix(
+  playerViewProjectionMatrix
+  );
+  }
+
+  function isScavSpawnVisibleToPlayer(x, z) {
+  const y = getTerrainHeight(x, z);
+
+  scavSpawnSphere.center.set(
+  x,
+  y + 1.25,
+  z
+  );
+
+  const insideView =
+  playerViewFrustum.intersectsSphere(scavSpawnSphere);
+
+  if (!insideView) return false;
+
+  return hasClearLineOfSight(
+  camera.position,
+  scavSpawnSphere.center
+  );
+  }
+
+  function findScavSpawnPointOutsideView(
+  maxAttempts = SCAV_SPAWN_ATTEMPTS
+  ) {
+  updatePlayerViewFrustum();
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  const point = randomMapPoint(8);
+
+  const playerDistance = Math.hypot(
+  point.x - camera.position.x,
+  point.z - camera.position.z
+  );
+
+  if (playerDistance < SCAV_MIN_PLAYER_DISTANCE) continue;
+  if (playerDistance > SCAV_MAX_PLAYER_DISTANCE) continue;
+
+  if (!isPointNavigable(point.x, point.z, 1.15)) continue;
+
+  const tooCloseToEnemy = enemies.some((enemy) =>
+  Math.hypot(
+  enemy.position.x - point.x,
+  enemy.position.z - point.z
+  ) < SCAV_MIN_ENEMY_DISTANCE
+  );
+
+  if (tooCloseToEnemy) continue;
+  if (isScavSpawnVisibleToPlayer(point.x, point.z)) continue;
+
+  return point;
+  }
+
+  return null;
+  }
+
+
   function spawnEnemy() {
+  const spawnPoint = findScavSpawnPointOutsideView();
+
+  if (!spawnPoint) {
+  console.warn(
+  '안전한 스캐브 스폰 위치를 찾지 못했습니다.'
+  );
+  return false;
+  }
+
   const enemyGroup = new THREE.Group();
   const bodyColor = new THREE.Color(0xcc2222);
   const enemyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5 });
@@ -3487,12 +3698,6 @@ function createFN57HighQuality() {
   enemyGroup.add(enemyWeapon);
 
 
-  const spawnPoint = findClearMapPoint(
-  8,
-  1.15,
-  140,
-  (x, z) => Math.hypot(x - camera.position.x, z - camera.position.z) >= 20
-  );
   const rx = spawnPoint.x;
   const rz = spawnPoint.z;
 
@@ -3525,6 +3730,8 @@ function createFN57HighQuality() {
   body.userData = { parentGroup: enemyGroup, part: 'body' };
   head.userData = { parentGroup: enemyGroup, part: 'head' };
   targets.push(body, head);
+
+  return true;
   }
 
 
@@ -4489,6 +4696,7 @@ ${slotText}` : ''}`;
   document.addEventListener('pointerlockchange', () => {
   blocker.style.display = 'none';
   if (document.pointerLockElement !== document.body) {
+  setAllKeys(false);
   isAiming = false;
   isFiring = false;
   shotSequence = 0;
@@ -4510,7 +4718,9 @@ ${slotText}` : ''}`;
   });
 
 
-  const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+  const keys = { w: false, a: false, s: false, d: false, q: false, e: false, shift: false };
+  let sprintToggle = false;
+  let playerIsSprinting = false;
   const LEAN_CAMERA_SIDE = 0.42;
   const LEAN_CAMERA_DROP = 0.08;
   const LEAN_CAMERA_ROLL = THREE.MathUtils.degToRad(14);
@@ -4520,8 +4730,36 @@ ${slotText}` : ''}`;
   const appliedLeanOffset = new THREE.Vector3();
 
 
+  function isPlayerSprintingNow() {
+  return sprintToggle &&
+  keys.w &&
+  !keys.s &&
+  !isAiming &&
+  isGrounded;
+  }
+
+  function isSprintBlockingFire() {
+  return !currentWeapon.melee && (playerIsSprinting || isPlayerSprintingNow());
+  }
+
+
   document.addEventListener('keydown', (event) => {
   if (!fpsRaidActive || fpsInventoryOpen || deathState.active || document.pointerLockElement !== document.body) return;
+
+  if (event.code === 'Space') {
+  event.preventDefault();
+  if (!event.repeat) {
+  jumpRequested = true;
+  }
+  }
+
+
+  if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+  if (!keys.shift && keys.w && !keys.s) {
+  sprintToggle = !sprintToggle;
+  }
+  keys.shift = true;
+  }
 
 
   const key = event.key.toLowerCase();
@@ -4545,8 +4783,12 @@ ${slotText}` : ''}`;
 
 
   document.addEventListener('keyup', (event) => {
+  if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+  keys.shift = false;
+  }
   const key = event.key.toLowerCase();
   if (key in keys) keys[key] = false;
+  if (key === 'w') sprintToggle = false;
   });
 
 
@@ -4624,6 +4866,12 @@ ${slotText}` : ''}`;
 
 
   if (event.button === 0) {
+  if (isSprintBlockingFire()) {
+  isFiring = false;
+  hasFiredSingle = false;
+  fireTimer = currentWeapon.fireRate;
+  return;
+  }
   isFiring = true;
   hasFiredSingle = false;
   shotSequence = 0;
@@ -4893,6 +5141,7 @@ ${slotText}` : ''}`;
 
   function shootWeapon() {
   if (isSwapping || currentWeapon.disabled) return;
+  if (isSprintBlockingFire()) return;
   if (currentWeapon.melee) { performMeleeAttack(); return; }
 
 
@@ -5154,7 +5403,34 @@ ${slotText}` : ''}`;
 
 
   const clock = new THREE.Clock();
-  const moveSpeed = 8.0;
+  const WALK_SPEED = 5.2;
+  const SPRINT_SPEED = 8.5;
+  const AIM_MOVE_SPEED_MULTIPLIER = 0.7;
+  const PLAYER_GRAVITY = 22;
+  const PLAYER_JUMP_VELOCITY = 8;
+  const WEAPON_ADS_MOVE_MOTION_SCALE = 0.28;
+  const WEAPON_WALK_MOTION = {
+  frequency: 8.2,
+  x: 0.018,
+  y: 0.014,
+  z: 0.008,
+  rotX: 0.018,
+  rotY: 0.024,
+  rotZ: 0.03
+  };
+  const WEAPON_SPRINT_MOTION = {
+  frequency: 13.5,
+  x: 0,
+  y: 0,
+  z: 0,
+  rotX: 0.055,
+  rotY: 0.08,
+  rotZ: 0.105,
+  rotOffsetX: -0.38,
+  rotOffsetY: 0.55,
+  rotOffsetZ: 0.48
+  };
+  const WEAPON_PLAYER_SIDE_PIVOT = new THREE.Vector3(0, 0.04, -1.05);
   const playerRadius = 0.8;
 
 
@@ -5162,6 +5438,21 @@ ${slotText}` : ''}`;
   const targetLocalPos = new THREE.Vector3();
   const leanWeaponOffsetPos = new THREE.Vector3();
   const leanWeaponOffsetRot = new THREE.Euler();
+  const moveWeaponOffsetPos = new THREE.Vector3();
+  const moveWeaponOffsetRot = new THREE.Euler();
+  const targetMoveWeaponOffsetPos = new THREE.Vector3();
+  const targetMoveWeaponOffsetRot = new THREE.Euler();
+  const weaponPivotCompensation = new THREE.Vector3();
+  const weaponPivotBasePos = new THREE.Vector3();
+  const weaponPivotMovedPos = new THREE.Vector3();
+  const weaponPivotBaseQuat = new THREE.Quaternion();
+  const weaponPivotMovedQuat = new THREE.Quaternion();
+  const weaponPivotTempQuat = new THREE.Quaternion();
+  let weaponMoveMotionTime = 0;
+  let verticalVelocity = 0;
+  let isGrounded = true;
+  let jumpRequested = false;
+  const airborneMoveVelocity = new THREE.Vector3();
   const r180Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   const enemyTracers = [];
   const raycaster = new THREE.Raycaster();
@@ -5276,7 +5567,7 @@ ${slotText}` : ''}`;
 
 
   playerBoundsBox.set(
-  new THREE.Vector3(position.x - playerRadius, position.y - 1.8, position.z - playerRadius),
+  new THREE.Vector3(position.x - playerRadius, position.y - PLAYER_EYE_HEIGHT, position.z - playerRadius),
   new THREE.Vector3(position.x + playerRadius, position.y + 1.0, position.z + playerRadius)
   );
 
@@ -5336,7 +5627,7 @@ ${slotText}` : ''}`;
   return;
   }
   animationFrameId = requestAnimationFrame(animate);
-  const delta = clock.getDelta();
+  const delta = Math.min(clock.getDelta(), 0.05);
   camera.position.sub(appliedLeanOffset);
   appliedLeanOffset.set(0, 0, 0);
   const scopeZoomMotionAmount = scopeZoomMotionTimer > 0
@@ -5531,7 +5822,9 @@ ${slotText}` : ''}`;
 
 
   let playerIsMoving = false;
+  playerIsSprinting = false;
   const playerMoveMultiplier = window.InventoryBridge?.getMoveSpeedMultiplier?.() ?? 1;
+  const aimMoveSpeedMultiplier = isAiming ? AIM_MOVE_SPEED_MULTIPLIER : 1;
 
 
   if (!deathState.active && fpsRaidActive && !fpsInventoryOpen && document.pointerLockElement === document.body) {
@@ -5552,17 +5845,63 @@ ${slotText}` : ''}`;
   if (keys.a) moveVector.add(right.clone().negate());
 
 
-  if (moveVector.lengthSq() > 0) {
-  moveVector.normalize().multiplyScalar(moveSpeed * playerMoveMultiplier * delta);
+  const isSprinting = isPlayerSprintingNow();
+  playerIsSprinting = isSprinting;
+  if (playerIsSprinting && isFiring && !currentWeapon.melee) {
+  isFiring = false;
+  hasFiredSingle = false;
+  fireTimer = currentWeapon.fireRate;
+  }
+
+  const currentMoveSpeed =
+  isSprinting
+  ? SPRINT_SPEED
+  : WALK_SPEED;
+  const currentMoveVelocity = currentMoveSpeed * playerMoveMultiplier * aimMoveSpeedMultiplier;
+  const hasMoveInput = moveVector.lengthSq() > 0;
+
+  if (jumpRequested && isGrounded) {
+  if (hasMoveInput) {
+  airborneMoveVelocity.copy(moveVector).normalize().multiplyScalar(currentMoveVelocity);
+  } else {
+  airborneMoveVelocity.set(0, 0, 0);
+  }
+  }
+
+  if (isGrounded && hasMoveInput) {
+  moveVector.normalize().multiplyScalar(currentMoveVelocity * delta);
   playerIsMoving = tryMovePlayer(moveVector);
+  } else if (!isGrounded && airborneMoveVelocity.lengthSq() > 0) {
+  playerIsMoving = tryMovePlayer(airborneMoveVelocity.clone().multiplyScalar(delta));
   }
 
 
-  camera.position.y = THREE.MathUtils.lerp(
-  camera.position.y,
-  getTerrainHeight(camera.position.x, camera.position.z) + 1.8,
-  0.3
-  );
+  const groundEyeY =
+  getTerrainHeight(camera.position.x, camera.position.z) +
+  PLAYER_EYE_HEIGHT;
+
+  if (jumpRequested && isGrounded) {
+  verticalVelocity = PLAYER_JUMP_VELOCITY;
+  isGrounded = false;
+  }
+
+  jumpRequested = false;
+
+  if (!isGrounded) {
+  verticalVelocity -= PLAYER_GRAVITY * delta;
+  camera.position.y += verticalVelocity * delta;
+
+  if (camera.position.y <= groundEyeY) {
+  camera.position.y = groundEyeY;
+  verticalVelocity = 0;
+  isGrounded = true;
+  airborneMoveVelocity.set(0, 0, 0);
+  }
+  } else {
+  camera.position.y = groundEyeY;
+  }
+
+  if (!isGrounded) playerIsSprinting = false;
   }
 
   if (deathState.active) {
@@ -5583,7 +5922,9 @@ ${slotText}` : ''}`;
 
   Sound.updateFootsteps(
   delta,
-  document.pointerLockElement === document.body && playerIsMoving,
+  document.pointerLockElement === document.body &&
+  playerIsMoving &&
+  isGrounded,
   playerMoveMultiplier * (isAiming ? 0.72 : 1.0)
   );
 
@@ -5629,6 +5970,12 @@ ${slotText}` : ''}`;
   }
   }
 
+
+  if (isFiring && isSprintBlockingFire()) {
+  isFiring = false;
+  hasFiredSingle = false;
+  fireTimer = currentWeapon.fireRate;
+  }
 
   if (!deathState.active && fpsRaidActive && !fpsInventoryOpen && isFiring && document.pointerLockElement === document.body) {
   fireTimer += delta;
@@ -5792,18 +6139,72 @@ ${slotText}` : ''}`;
   }
 
 
-  currentLocalPos.lerp(targetLocalPos, 0.25);
   } else {
   if (currentWeapon === WEAPONS.FN57) {
   targetLocalPos.set(0.18, -0.4 + recoilTargetY * 0.45, -0.52);
   } else {
   targetLocalPos.set(0.2, -0.35 + recoilTargetY * 0.5, -0.5);
   }
-  currentLocalPos.lerp(targetLocalPos, 0.2);
   aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, 0, 0.2);
   aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, 0, 0.2);
   aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.2);
   }
+
+  const weaponMotionActive = playerIsMoving && !deathState.active;
+  const weaponMotion = playerIsSprinting ? WEAPON_SPRINT_MOTION : WEAPON_WALK_MOTION;
+  const weaponMoveMotionScale = weaponMotionActive
+  ? playerIsSprinting
+  ? 1
+  : isAiming
+  ? WEAPON_ADS_MOVE_MOTION_SCALE
+  : 1
+  : 0;
+  if (weaponMotionActive) {
+  weaponMoveMotionTime += delta * weaponMotion.frequency;
+  }
+
+  targetMoveWeaponOffsetPos.set(0, 0, 0);
+  targetMoveWeaponOffsetRot.set(0, 0, 0);
+  if (weaponMoveMotionScale > 0) {
+  const moveSway = Math.sin(weaponMoveMotionTime);
+  const moveStep = Math.sin(weaponMoveMotionTime * 2);
+  const moveLift = Math.abs(Math.cos(weaponMoveMotionTime));
+  targetMoveWeaponOffsetPos.set(
+  moveSway * weaponMotion.x * weaponMoveMotionScale,
+  -moveLift * weaponMotion.y * weaponMoveMotionScale,
+  moveStep * weaponMotion.z * weaponMoveMotionScale
+  );
+  targetMoveWeaponOffsetRot.set(
+  moveStep * weaponMotion.rotX * weaponMoveMotionScale,
+  moveSway * weaponMotion.rotY * weaponMoveMotionScale,
+  -moveSway * weaponMotion.rotZ * weaponMoveMotionScale
+  );
+  if (playerIsSprinting) {
+  targetMoveWeaponOffsetRot.x += WEAPON_SPRINT_MOTION.rotOffsetX;
+  targetMoveWeaponOffsetRot.y += WEAPON_SPRINT_MOTION.rotOffsetY;
+  targetMoveWeaponOffsetRot.z += WEAPON_SPRINT_MOTION.rotOffsetZ;
+  }
+  }
+
+  const weaponMotionLerp = Math.min(1, delta * (playerIsSprinting ? 12 : 9));
+  moveWeaponOffsetPos.lerp(targetMoveWeaponOffsetPos, weaponMotionLerp);
+  moveWeaponOffsetRot.x = THREE.MathUtils.lerp(moveWeaponOffsetRot.x, targetMoveWeaponOffsetRot.x, weaponMotionLerp);
+  moveWeaponOffsetRot.y = THREE.MathUtils.lerp(moveWeaponOffsetRot.y, targetMoveWeaponOffsetRot.y, weaponMotionLerp);
+  moveWeaponOffsetRot.z = THREE.MathUtils.lerp(moveWeaponOffsetRot.z, targetMoveWeaponOffsetRot.z, weaponMotionLerp);
+  weaponPivotBaseQuat.identity()
+  .multiply(weaponPivotTempQuat.setFromEuler(swapOffsetRot))
+  .multiply(weaponPivotTempQuat.setFromEuler(aimOffsetRot))
+  .multiply(r180Y);
+  weaponPivotMovedQuat.identity()
+  .multiply(weaponPivotTempQuat.setFromEuler(swapOffsetRot))
+  .multiply(weaponPivotTempQuat.setFromEuler(aimOffsetRot))
+  .multiply(weaponPivotTempQuat.setFromEuler(moveWeaponOffsetRot))
+  .multiply(r180Y);
+  weaponPivotBasePos.copy(WEAPON_PLAYER_SIDE_PIVOT).applyQuaternion(weaponPivotBaseQuat);
+  weaponPivotMovedPos.copy(WEAPON_PLAYER_SIDE_PIVOT).applyQuaternion(weaponPivotMovedQuat);
+  weaponPivotCompensation.subVectors(weaponPivotBasePos, weaponPivotMovedPos);
+  targetLocalPos.add(moveWeaponOffsetPos);
+  currentLocalPos.lerp(targetLocalPos, playerIsSprinting ? 0.28 : isAiming ? 0.25 : 0.2);
 
   const leanWeaponScale = isAiming ? 0.2 : 1;
   leanWeaponOffsetPos.set(
@@ -5817,13 +6218,14 @@ ${slotText}` : ''}`;
   -leanAmount * 0.08 * leanWeaponScale
   );
 
-  const finalWeaponWorldPos = currentLocalPos.clone().add(swapOffsetPos).add(leanWeaponOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
+  const finalWeaponWorldPos = currentLocalPos.clone().add(weaponPivotCompensation).add(swapOffsetPos).add(leanWeaponOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
   weaponGroup.position.copy(finalWeaponWorldPos);
 
 
   const combinedQuat = camera.quaternion.clone()
   .multiply(new THREE.Quaternion().setFromEuler(swapOffsetRot))
   .multiply(new THREE.Quaternion().setFromEuler(aimOffsetRot))
+  .multiply(new THREE.Quaternion().setFromEuler(moveWeaponOffsetRot))
   .multiply(new THREE.Quaternion().setFromEuler(leanWeaponOffsetRot));
   weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
 
@@ -5853,9 +6255,19 @@ ${slotText}` : ''}`;
 
 
 
-  function setAllKeys(value = false) { Object.keys(keys).forEach((key) => { keys[key] = value; }); }
+  function setAllKeys(value = false) {
+  Object.keys(keys).forEach((key) => { keys[key] = value; });
+  if (!value) {
+  sprintToggle = false;
+  playerIsSprinting = false;
+  jumpRequested = false;
+  }
+  }
   function unlockPointer() { if (document.pointerLockElement === document.body) document.exitPointerLock(); }
   function refreshBlocker() { blocker.style.display = 'none'; }
+  window.addEventListener('blur', () => {
+  setAllKeys(false);
+  });
   function resetDeathSequence() {
   deathState.active = false;
   deathState.message = '';
@@ -5878,6 +6290,10 @@ ${slotText}` : ''}`;
   deathState.floorContactTimer = 0;
   deathState.fadeTimer = 0;
   deathState.completed = false;
+  verticalVelocity = 0;
+  jumpRequested = false;
+  isGrounded = true;
+  airborneMoveVelocity.set(0, 0, 0);
   fpsInventoryOpen = false;
   isFiring = false;
   isAiming = false;
@@ -5985,16 +6401,42 @@ ${slotText}` : ''}`;
   aimOffsetRot.set(0, 0, 0);
   leanWeaponOffsetPos.set(0, 0, 0);
   leanWeaponOffsetRot.set(0, 0, 0);
+  moveWeaponOffsetPos.set(0, 0, 0);
+  moveWeaponOffsetRot.set(0, 0, 0);
+  targetMoveWeaponOffsetPos.set(0, 0, 0);
+  targetMoveWeaponOffsetRot.set(0, 0, 0);
+  weaponMoveMotionTime = 0;
+  verticalVelocity = 0;
+  isGrounded = true;
+  jumpRequested = false;
+  airborneMoveVelocity.set(0, 0, 0);
   currentLocalPos.set(0.2, -0.35, -0.5);
   const playerSpawn = getPlayerSpawnPoint();
   camera.position.set(
   playerSpawn.x,
-  getTerrainHeight(playerSpawn.x, playerSpawn.z) + 1.8,
+  getTerrainHeight(playerSpawn.x, playerSpawn.z) + PLAYER_EYE_HEIGHT,
   playerSpawn.z
   );
+  verticalVelocity = 0;
+  isGrounded = true;
+  jumpRequested = false;
+  airborneMoveVelocity.set(0, 0, 0);
   camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, cameraRollZ, 'YXZ'));
+  camera.updateMatrixWorld(true);
   crosshair.style.opacity = '1';
-  for (let i = 0; i < 8; i++) spawnEnemy();
+  const targetScavCount = 8;
+  const maxSpawnCalls = 24;
+
+  let spawnedScavs = 0;
+
+  for (
+  let attempt = 0;
+  attempt < maxSpawnCalls &&
+  spawnedScavs < targetScavCount;
+  attempt++
+  ) {
+  if (spawnEnemy()) spawnedScavs++;
+  }
   drawMinimap();
   }
 
@@ -6022,6 +6464,10 @@ ${slotText}` : ''}`;
   isFiring = false;
   isAiming = false;
   setAllKeys(false);
+  verticalVelocity = 0;
+  jumpRequested = false;
+  isGrounded = true;
+  airborneMoveVelocity.set(0, 0, 0);
   resetDeathSequence();
   unlockPointer();
   clearRaidRuntimeWorld();
@@ -6034,7 +6480,7 @@ ${slotText}` : ''}`;
   applyAimPunch,
   stopSounds() { Sound.stopAll(); },
   unlockPointer,
-  setInventoryOpen(open) { fpsInventoryOpen = open; if (open) unlockPointer(); refreshBlocker(); },
+  setInventoryOpen(open) { fpsInventoryOpen = open; if (open) { setAllKeys(false); jumpRequested = false; unlockPointer(); } refreshBlocker(); },
   resumePointerPrompt() { fpsInventoryOpen = false; refreshBlocker(); requestRaidPointerLock(); }
   };
 

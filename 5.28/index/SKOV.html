@@ -3930,6 +3930,9 @@ function createFN57HighQuality() {
   let ambientSources = [];
   let footstepTimer = 0;
   let footstepSide = 0;
+  const WALK_STEP_INTERVAL = 0.38;
+  const RUN_STEP_INTERVAL = WALK_STEP_INTERVAL * 0.5;
+  const RUN_FOOTSTEP_PLAYBACK_RATE = 1.15;
   const SFX_BUS_GAIN = 0.88;
   const AMBIENT_BUS_GAIN = 0.045;
   const REVERB_BUS_GAIN = 0.14;
@@ -4269,10 +4272,12 @@ function createFN57HighQuality() {
   filterType = 'bandpass',
   frequency = 1600,
   q = 0.8,
+  playbackRate = 1,
   output = sfxBus
   } = {}) {
   const source = ctx.createBufferSource();
   source.buffer = createNoiseBuffer(duration);
+  source.playbackRate.setValueAtTime(Math.max(0.01, playbackRate), start);
 
 
   const filter = ctx.createBiquadFilter();
@@ -4531,42 +4536,46 @@ function createFN57HighQuality() {
   }
 
 
-  function playFootstep(volume = 1) {
+  function playFootstep(volume = 1, playbackRate = 1) {
   if (!ctx || ctx.state !== 'running') return;
   const t = ctx.currentTime;
   const sideOffset = footstepSide === 0 ? -6 : 6;
   footstepSide = 1 - footstepSide;
   const amplifiedVolume = volume * 4.5; // 4.5배 증폭
+  const rate = Math.max(0.01, playbackRate);
+  const durationScale = 1 / rate;
 
 
   tone({
   start: t,
-  duration: 0.075,
+  duration: 0.075 * durationScale,
   gain: 0.038 * amplifiedVolume,
   type: 'sine',
-  from: 84 + sideOffset,
-  to: 42
+  from: (84 + sideOffset) * rate,
+  to: 42 * rate
   });
   noiseBurst({
   start: t + 0.01,
-  duration: 0.055,
+  duration: 0.055 * durationScale,
   gain: 0.026 * amplifiedVolume,
   filterType: 'lowpass',
-  frequency: 520,
-  q: 0.65
+  frequency: 520 * rate,
+  q: 0.65,
+  playbackRate: rate
   });
   noiseBurst({
   start: t + 0.022,
-  duration: 0.045,
+  duration: 0.045 * durationScale,
   gain: 0.012 * amplifiedVolume,
   filterType: 'bandpass',
-  frequency: 1700,
-  q: 0.9
+  frequency: 1700 * rate,
+  q: 0.9,
+  playbackRate: rate
   });
   }
 
 
-  function updateFootsteps(delta, moving, speedMultiplier = 1) {
+  function updateFootsteps(delta, moving, speedMultiplier = 1, running = false) {
   if (!ctx || ctx.state !== 'running') return;
 
 
@@ -4581,8 +4590,8 @@ function createFN57HighQuality() {
 
 
   if (footstepTimer <= 0) {
-  playFootstep(Math.min(1.25, safeSpeed));
-  footstepTimer = 0.38;
+  playFootstep(Math.min(1.25, safeSpeed), running ? RUN_FOOTSTEP_PLAYBACK_RATE : 1);
+  footstepTimer = running ? RUN_STEP_INTERVAL : WALK_STEP_INTERVAL;
   }
   }
 
@@ -5925,7 +5934,8 @@ ${slotText}` : ''}`;
   document.pointerLockElement === document.body &&
   playerIsMoving &&
   isGrounded,
-  playerMoveMultiplier * (isAiming ? 0.72 : 1.0)
+  playerMoveMultiplier * (isAiming ? 0.72 : 1.0),
+  playerIsSprinting
   );
 
 

@@ -72,6 +72,11 @@
       box-shadow: inset 0 0 0 1px rgba(83, 182, 255, 0.35);
     }
 
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     button.danger {
       color: #ffdada;
       border-color: rgba(255, 107, 107, 0.45);
@@ -261,7 +266,7 @@
 
     .object-item {
       display: grid;
-      grid-template-columns: 24px minmax(0, 1fr) 34px;
+      grid-template-columns: 42px minmax(0, 1fr) 34px;
       align-items: center;
       min-height: 32px;
       border: 1px solid transparent;
@@ -280,9 +285,20 @@
       border-color: rgba(83, 182, 255, 0.45);
     }
 
+    .object-item.category {
+      color: #f4f8ff;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .object-item.root {
+      color: #d9f0ff;
+      font-weight: 700;
+    }
+
     .object-type {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       text-align: center;
     }
 
@@ -399,6 +415,7 @@
       <button id="translateTool" title="Move selected object">Move</button>
       <button id="rotateTool" title="Rotate selected object">Rotate</button>
       <button id="scaleTool" title="Scale selected object">Scale</button>
+      <button id="undoBtn" title="Undo last edit" disabled>Undo</button>
       <span class="separator" aria-hidden="true"></span>
       <button id="addBox">+ Box</button>
       <button id="addSphere">+ Sphere</button>
@@ -433,7 +450,8 @@
         <div class="panel-title">조작</div>
         <p class="hint">
           좌클릭: 파트 선택 · 우클릭 드래그: 이동 · 휠: 확대/축소<br>
-          W/E/R: Move/Rotate/Scale · Delete: 선택 파트 삭제
+          Scene의 CAT 행: 범주 선택 · W/E/R: Move/Rotate/Scale<br>
+          Ctrl+Z: 되돌리기 · Delete: 선택 파트 삭제
         </p>
       </section>
     </aside>
@@ -581,6 +599,9 @@
     transform.addEventListener("dragging-changed", (event) => {
       controls.enabled = !event.value;
     });
+    transform.addEventListener("mouseDown", () => {
+      if (selectedObject) pushUndoSnapshot("Transform");
+    });
     transform.addEventListener("objectChange", () => {
       syncInspector();
       renderObjectList();
@@ -644,6 +665,7 @@
       metalness: document.querySelector("#metalnessInput"),
       background: document.querySelector("#backgroundInput"),
       light: document.querySelector("#lightInput"),
+      undo: document.querySelector("#undoBtn"),
       triangleMetric: document.querySelector("#triangleMetric"),
       fpsMetric: document.querySelector("#fpsMetric"),
       transformInputs: [...document.querySelectorAll("[data-transform]")],
@@ -658,8 +680,11 @@
     let selectedObject = null;
     let currentTool = "select";
     let wireframeEnabled = false;
+    let isRestoring = false;
     let lastFrameTime = performance.now();
     let fpsTime = performance.now();
+    const undoStack = [];
+    const MAX_UNDO = 40;
 
     function createDVL10Rifle() {
       const rifle = new THREE.Group();
@@ -920,8 +945,117 @@
       return rifle;
     }
 
+    function organizeDVL10Categories(rifle) {
+      const categories = {
+        barrel: createCategoryGroup("Barrel / Suppressor"),
+        receiver: createCategoryGroup("Receiver / Rails"),
+        controls: createCategoryGroup("Magazine / Trigger / Grip"),
+        stock: createCategoryGroup("Stock Assembly"),
+        accessory: createCategoryGroup("Lower Accessory / Bipod"),
+        side: createCategoryGroup("Side Details / Bolts"),
+        misc: createCategoryGroup("Misc Parts")
+      };
+
+      const originalChildren = [...rifle.children];
+      Object.values(categories).forEach((group) => rifle.add(group));
+
+      originalChildren.forEach((child) => {
+        getDVL10Category(child, categories).add(child);
+      });
+
+      Object.values(categories).forEach((group) => {
+        if (group.children.length === 0) {
+          rifle.remove(group);
+          return;
+        }
+        centerGroupPivot(group);
+      });
+    }
+
+    function createCategoryGroup(name) {
+      const group = new THREE.Group();
+      group.name = name;
+      group.userData.category = true;
+      group.userData.editable = true;
+      return group;
+    }
+
+    function centerGroupPivot(group) {
+      const box = new THREE.Box3().setFromObject(group);
+      if (!Number.isFinite(box.min.x)) return;
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      group.children.forEach((child) => {
+        child.position.sub(center);
+      });
+      group.position.copy(center);
+    }
+
+    function getDVL10Category(child, categories) {
+      const name = (child.name || "").toLowerCase();
+      if (name.includes("lower tactical") || name.includes("accessory") || name.includes("tactical") || name.includes("bipod")) {
+        return categories.accessory;
+      }
+      if (name.includes("skeleton stock") || name.includes("stock") || name.includes("buttpad") || name.includes("buffer tube")) {
+        return categories.stock;
+      }
+      if (name.includes("magazine") || name.includes("trigger") || name.includes("pistol grip") || name.includes("grip finger")) {
+        return categories.controls;
+      }
+      if (name.includes("side rectangular") || name.includes("opposite side") || name.includes("small side bolt")) {
+        return categories.side;
+      }
+      if (name.includes("receiver") || name.includes("ejection") || name.includes("bolt action") || name.includes("single bolt") || name.includes("picatinny") || name.includes("rail")) {
+        return categories.receiver;
+      }
+      if (name.includes("suppressor") || name.includes("barrel") || name.includes("muzzle")) {
+        return categories.barrel;
+      }
+      return categories.misc;
+    }
+
     function setStatus(message) {
       ui.status.textContent = message;
+    }
+
+    function updateUndoButton() {
+      ui.undo.disabled = undoStack.length === 0;
+      ui.undo.title = undoStack.length ? `Undo: ${undoStack[undoStack.length - 1].label}` : "Undo last edit";
+    }
+
+    function pushUndoSnapshot(label = "Edit") {
+      if (isRestoring) return;
+      const snapshot = editableRoot.clone(true);
+      cloneMaterials(snapshot, false);
+      undoStack.push({ label, snapshot, wireframeEnabled });
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      updateUndoButton();
+    }
+
+    function undoLastChange() {
+      const entry = undoStack.pop();
+      if (!entry) {
+        setStatus("Nothing to undo.");
+        updateUndoButton();
+        return;
+      }
+
+      isRestoring = true;
+      selectObject(null);
+      editableRoot.clear();
+      wireframeEnabled = entry.wireframeEnabled;
+      document.querySelector("#wireToggle").classList.toggle("active", wireframeEnabled);
+
+      const restoredRoot = entry.snapshot.clone(true);
+      cloneMaterials(restoredRoot, false);
+      [...restoredRoot.children].forEach((child) => editableRoot.add(child));
+
+      isRestoring = false;
+      renderObjectList();
+      syncInspector();
+      updateMetrics();
+      updateUndoButton();
+      setStatus(`Undid ${entry.label}.`);
     }
 
     function createMaterial(color = "#4f552e") {
@@ -932,15 +1066,17 @@
       });
     }
 
-    function cloneMaterials(object) {
+    function cloneMaterials(object, syncWireframe = true) {
       object.traverse((child) => {
-        if (!child.isMesh || !child.material) return;
+        if (!child.isMesh) return;
+        if (child.geometry) child.geometry = child.geometry.clone();
+        if (!child.material) return;
         child.material = Array.isArray(child.material)
           ? child.material.map((mat) => mat.clone())
           : child.material.clone();
         const materials = Array.isArray(child.material) ? child.material : [child.material];
         materials.forEach((material) => {
-          material.wireframe = wireframeEnabled;
+          if (syncWireframe) material.wireframe = wireframeEnabled;
         });
       });
     }
@@ -969,6 +1105,7 @@
 
     function loadOriginalDVL10() {
       const rifle = createDVL10Rifle();
+      organizeDVL10Categories(rifle);
       rifle.position.y = 0;
       addEditableObject(rifle, "DVL-10 Rifle - aligned build");
       selectObject(null);
@@ -976,6 +1113,7 @@
     }
 
     function addPrimitive(type) {
+      pushUndoSnapshot(`Add ${type}`);
       const material = createMaterial(type === "sphere" ? "#7ed68d" : type === "cylinder" ? "#ffbf69" : "#4f552e");
       let geometry;
       if (type === "sphere") {
@@ -1032,13 +1170,15 @@
 
       objects.forEach((object) => {
         const row = document.createElement("div");
-        row.className = `object-item${object === selectedObject ? " selected" : ""}`;
+        const isRoot = object.parent === editableRoot;
+        const isCategory = Boolean(object.userData.category);
+        row.className = `object-item${object === selectedObject ? " selected" : ""}${isCategory ? " category" : ""}${isRoot ? " root" : ""}`;
         row.dataset.uuid = object.uuid;
         row.style.paddingLeft = `${6 + getDepth(object) * 12}px`;
 
         const type = document.createElement("span");
         type.className = "object-type";
-        type.textContent = object.isMesh ? "M" : "G";
+        type.textContent = isRoot ? "ROOT" : isCategory ? "CAT" : object.isMesh ? "M" : "G";
 
         const name = document.createElement("span");
         name.className = "object-name";
@@ -1052,6 +1192,7 @@
         visible.textContent = object.visible ? "On" : "Off";
         visible.addEventListener("click", (event) => {
           event.stopPropagation();
+          pushUndoSnapshot(`Toggle visibility: ${object.name || object.type}`);
           object.visible = !object.visible;
           visible.textContent = object.visible ? "On" : "Off";
         });
@@ -1138,6 +1279,7 @@
         return;
       }
 
+      pushUndoSnapshot(`Duplicate ${selectedObject.name || selectedObject.type}`);
       const parent = selectedObject.parent || editableRoot;
       const clone = selectedObject.clone(true);
       clone.name = `${selectedObject.name || selectedObject.type} Copy`;
@@ -1159,6 +1301,7 @@
       }
 
       const name = selectedObject.name || selectedObject.type;
+      pushUndoSnapshot(`Delete ${name}`);
       const parent = selectedObject.parent;
       if (parent) parent.remove(selectedObject);
       disposeObject(selectedObject);
@@ -1195,6 +1338,7 @@
       gltfLoader.load(
         url,
         (gltf) => {
+          pushUndoSnapshot(`Import ${file.name}`);
           const model = gltf.scene;
           model.name = file.name.replace(/\.(glb|gltf)$/i, "");
           normalizeImportedModel(model);
@@ -1295,10 +1439,25 @@
       renderer.render(scene, camera);
     }
 
+    function bindUndoOnFirstInteraction(element, label) {
+      let captured = false;
+      const capture = () => {
+        if (captured || !selectedObject) return;
+        pushUndoSnapshot(label);
+        captured = true;
+      };
+      element.addEventListener("focus", capture);
+      element.addEventListener("pointerdown", capture);
+      element.addEventListener("blur", () => {
+        captured = false;
+      });
+    }
+
     ui.toolButtons.select.addEventListener("click", () => setTool("select"));
     ui.toolButtons.translate.addEventListener("click", () => setTool("translate"));
     ui.toolButtons.rotate.addEventListener("click", () => setTool("rotate"));
     ui.toolButtons.scale.addEventListener("click", () => setTool("scale"));
+    ui.undo.addEventListener("click", undoLastChange);
     document.querySelector("#addBox").addEventListener("click", () => addPrimitive("box"));
     document.querySelector("#addSphere").addEventListener("click", () => addPrimitive("sphere"));
     document.querySelector("#addCylinder").addEventListener("click", () => addPrimitive("cylinder"));
@@ -1316,6 +1475,7 @@
       event.currentTarget.classList.toggle("active", axes.visible);
     });
     document.querySelector("#wireToggle").addEventListener("click", (event) => {
+      pushUndoSnapshot("Toggle wireframe");
       wireframeEnabled = !wireframeEnabled;
       event.currentTarget.classList.toggle("active", wireframeEnabled);
       editableRoot.traverse((child) => {
@@ -1328,6 +1488,7 @@
       });
     });
 
+    bindUndoOnFirstInteraction(ui.objectName, "Rename object");
     ui.objectName.addEventListener("input", () => {
       if (!selectedObject) return;
       selectedObject.name = ui.objectName.value;
@@ -1336,6 +1497,7 @@
     });
 
     ui.transformInputs.forEach((input) => {
+      bindUndoOnFirstInteraction(input, "Edit transform");
       input.addEventListener("input", () => {
         if (!selectedObject) return;
         const transformName = input.dataset.transform;
@@ -1351,17 +1513,20 @@
       });
     });
 
+    bindUndoOnFirstInteraction(ui.materialColor, "Edit material color");
     ui.materialColor.addEventListener("input", () => {
       updateSelectedMaterials((material) => {
         if (material.color) material.color.set(ui.materialColor.value);
       });
     });
+    bindUndoOnFirstInteraction(ui.roughness, "Edit roughness");
     ui.roughness.addEventListener("input", () => {
       updateSelectedMaterials((material) => {
         material.roughness = Number(ui.roughness.value);
         material.needsUpdate = true;
       });
     });
+    bindUndoOnFirstInteraction(ui.metalness, "Edit metalness");
     ui.metalness.addEventListener("input", () => {
       updateSelectedMaterials((material) => {
         material.metalness = Number(ui.metalness.value);
@@ -1385,6 +1550,11 @@
 
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undoLastChange();
+        return;
+      }
       if (event.target instanceof HTMLInputElement) return;
       if (event.key.toLowerCase() === "w") setTool("translate");
       if (event.key.toLowerCase() === "e") setTool("rotate");
@@ -1397,6 +1567,7 @@
     renderObjectList();
     syncInspector();
     updateMetrics();
+    updateUndoButton();
     requestAnimationFrame(animate);
   </script>
 </body>

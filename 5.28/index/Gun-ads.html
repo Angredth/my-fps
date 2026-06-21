@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gun ADS Pose Tuner</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b0c;
+      --panel: rgba(12, 15, 16, 0.92);
+      --line: rgba(170, 186, 190, 0.34);
+      --text: #edf3f2;
+      --muted: #a7b2b4;
+      --accent: #d2dde3;
+      --warn: #ffd166;
+      --danger: #ff7166;
+      --ok: #96df75;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: Arial, sans-serif; }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #crosshair {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 4;
+      width: 16px;
+      height: 16px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    #crosshair::before,
+    #crosshair::after {
+      content: "";
+      position: absolute;
+      background: rgba(255, 255, 255, 0.85);
+    }
+    #crosshair::before { left: 7px; top: 0; width: 2px; height: 16px; }
+    #crosshair::after { left: 0; top: 7px; width: 16px; height: 2px; }
+
+    #hud {
+      position: fixed;
+      left: 18px;
+      top: 18px;
+      z-index: 6;
+      display: grid;
+      gap: 6px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.58);
+      font-size: 13px;
+      line-height: 1.35;
+      pointer-events: none;
+      white-space: pre-line;
+    }
+    #hud strong { color: #fff; }
+
+    #panel {
+      position: fixed;
+      right: 14px;
+      top: 14px;
+      bottom: 14px;
+      z-index: 7;
+      width: 360px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.48);
+      overflow: hidden;
+    }
+    h1 { margin: 0; font-size: 16px; letter-spacing: 0.02em; }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .tabs, .segmented, .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    button {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      padding: 7px 9px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.active { border-color: #fff; background: rgba(255, 255, 255, 0.18); }
+    button.warn { color: #111; background: var(--warn); border-color: #ffe7a4; }
+
+    .scroll { overflow: auto; padding-right: 3px; }
+    .grid { display: grid; gap: 8px; }
+    .row {
+      display: grid;
+      grid-template-columns: 46px 1fr 76px;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    label { color: var(--muted); font-weight: 800; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    input[type="number"] {
+      width: 76px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.52);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+    pre {
+      min-height: 150px;
+      max-height: 220px;
+      margin: 0;
+      padding: 9px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.46);
+      color: #dfe8e8;
+      font-size: 11px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+    .metric { display: grid; grid-template-columns: 1fr auto; gap: 8px; color: var(--muted); font-size: 12px; }
+    .metric strong { color: var(--text); }
+    .metric.safe strong { color: var(--ok); }
+    .metric.risk strong { color: var(--warn); }
+    .metric.bad strong { color: var(--danger); }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="crosshair"></div>
+  <div id="hud"></div>
+  <aside id="panel">
+    <div>
+      <h1>Gun ADS Pose Tuner</h1>
+      <div class="hint">1 M4A1 · 2 MP-153 · 3 FN 5-7 · 4 AKS-74U · V 근접무기 · H/J/K Hip/ADS/Scope · 우클릭 ADS · Q/E Lean</div>
+    </div>
+
+    <div class="tabs">
+      <button data-weapon="M4A1" class="active">1 M4A1</button>
+      <button data-weapon="MP153">2 MP-153</button>
+      <button data-weapon="FN57">3 FN 5-7</button>
+      <button data-weapon="AKS74U">4 AKS-74U</button>
+      <button data-weapon="MELEE">V Knife</button>
+      <button id="aimButton">ADS</button>
+    </div>
+
+    <div class="scroll">
+      <div class="grid">
+        <div class="segmented">
+          <button data-pose="hip" class="active">Hip</button>
+          <button data-pose="ads">ADS</button>
+          <button data-pose="scope">Scope</button>
+        </div>
+
+        <div id="controls"></div>
+
+        <div class="metric" id="nearMetric"><span>nearest weapon z</span><strong>-</strong></div>
+        <div class="metric" id="scopeMetric"><span>M4 scope length</span><strong>-</strong></div>
+        <div class="metric"><span>camera.near</span><strong>0.03</strong></div>
+
+        <pre id="configOutput"></pre>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="copyConfig">Copy Config</button>
+      <button id="applyToSkov">Apply to SKOV</button>
+      <button id="resetPose" class="warn">Reset Current</button>
+    </div>
+  </aside>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const app = document.getElementById('app');
+    const hud = document.getElementById('hud');
+    const controlsRoot = document.getElementById('controls');
+    const configOutput = document.getElementById('configOutput');
+    const nearMetric = document.getElementById('nearMetric');
+    const scopeMetric = document.getElementById('scopeMetric');
+
+    const FPS_CAMERA_NEAR = 0.03;
+    const WORLD_UNITS_PER_METER = 1;
+    const M4A1_REAL_LENGTH = 0.838 * WORLD_UNITS_PER_METER;
+    const MP153_REAL_LENGTH = 1.25 * WORLD_UNITS_PER_METER;
+    const AKS74U_REAL_LENGTH = 0.730 * WORLD_UNITS_PER_METER;
+    const WEAPON_MODEL_CDN_BASE = 'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/';
+    const FN57_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}57.js`;
+    const ER_FULCRUM_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}er-fulcrum.js`;
+    const AKS74U_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}AKS.js`;
+    const POSE_BRIDGE_STORAGE_KEY = 'skov.weaponPose.v1';
+    const FN57_MODEL_SCALE = 0.355 / 9.285;
+    const KNIFE_MODEL_SCALE = 0.310 / 11.679;
+    const FN57_SKOV_MODEL_TRANSFORM = {
+      position: new THREE.Vector3(0.18, -0.2, 0.02),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: new THREE.Vector3(FN57_MODEL_SCALE, FN57_MODEL_SCALE, FN57_MODEL_SCALE)
+    };
+    const KNIFE_SKOV_MODEL_TRANSFORM = {
+      position: new THREE.Vector3(0.25, -0.12, 0.2),
+      rotation: new THREE.Euler(Math.PI / 2, Math.PI / 2, Math.PI),
+      scale: new THREE.Vector3(KNIFE_MODEL_SCALE, KNIFE_MODEL_SCALE, KNIFE_MODEL_SCALE)
+    };
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x121719);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, FPS_CAMERA_NEAR, 1000);
+    camera.position.set(0, 1.65, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.shadowMap.enabled = true;
+    app.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x243039, 1.8));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    keyLight.position.set(2.5, 5, 3);
+    keyLight.castShadow = true;
+    scene.add(keyLight);
+
+    const grid = new THREE.GridHelper(24, 24, 0x627078, 0x2b3438);
+    grid.position.y = -0.05;
+    scene.add(grid);
+
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7, metalness: 0.2 });
+    const accessoryMaterial = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.8, metalness: 0.1 });
+    const steelMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.6 });
+    const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.3 });
+    const metalGray = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.3 });
+    const darkPlasticMaterial = new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0.2, roughness: 0.5 });
+
+    window.THREE = THREE;
+
+    function loadClassicScript(src) {
+      return new Promise((resolve, reject) => {
+        const existing = Array.from(document.scripts).find((script) => script.src === src);
+        if (existing) {
+          resolve();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.append(script);
+      });
+    }
+
+    let createRemoteFN57Model = null;
+    try {
+      await loadClassicScript(FN57_MODEL_CDN_URL);
+      createRemoteFN57Model = window.createFN57HighQuality;
+      if (typeof createRemoteFN57Model !== 'function') throw new Error('createFN57HighQuality global not found');
+    } catch (error) {
+      console.error('FN57 CDN 모델을 불러오지 못했습니다. 내장 FN57 모델을 사용합니다.', error);
+    }
+
+    let createRemoteKnifeModel = null;
+    try {
+      const fulcrumModule = await import(ER_FULCRUM_MODEL_CDN_URL);
+      createRemoteKnifeModel = fulcrumModule.createTacticalBayonetModel || fulcrumModule.default;
+      if (typeof createRemoteKnifeModel !== 'function') throw new Error('createTacticalBayonetModel export not found');
+    } catch (error) {
+      console.error('ER Fulcrum CDN 모델을 불러오지 못했습니다. 내장 근접무기 모델을 사용합니다.', error);
+    }
+
+    let createRemoteAKS74UModel = null;
+    try {
+      await loadClassicScript(AKS74U_MODEL_CDN_URL);
+      createRemoteAKS74UModel = window.createAKS74U;
+      if (typeof createRemoteAKS74UModel !== 'function') throw new Error('createAKS74U global not found');
+    } catch (error) {
+      console.error('AKS-74U CDN 모델을 불러오지 못했습니다. fallback 모델을 사용합니다.', error);
+    }
+
+    function normalizeWeaponLength(model, targetLength) {
+      model.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      if (!Number.isFinite(size.x) || size.x <= 0) return model;
+      model.scale.multiplyScalar(targetLength / size.x);
+      model.updateMatrixWorld(true);
+      return model;
+    }
+
+    function setShadows(root) {
+      root.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    }
+
+    function centerModelOnPivot(model, pivotName) {
+      model.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const pivot = new THREE.Group();
+      pivot.name = pivotName;
+      model.position.sub(center);
+      pivot.add(model);
+      return pivot;
+    }
+
+    function createM4A1Model() {
+      const m4a1 = new THREE.Group();
+      m4a1.name = 'M4A1';
+
+      const receiver = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.25), bodyMaterial);
+      receiver.position.set(0, 0.2, 0);
+      m4a1.add(receiver);
+
+      const magWell = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.25), bodyMaterial);
+      magWell.position.set(0.4, -0.1, 0);
+      m4a1.add(magWell);
+
+      const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.2), accessoryMaterial);
+      magazine.position.set(0.45, -0.5, 0);
+      magazine.rotation.z = 0.2;
+      m4a1.add(magazine);
+
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.2), accessoryMaterial);
+      grip.position.set(-0.5, -0.3, 0);
+      grip.rotation.z = -0.3;
+      m4a1.add(grip);
+
+      const handguardGeom = new THREE.CylinderGeometry(0.2, 0.2, 1.8, 8);
+      handguardGeom.rotateZ(Math.PI / 2);
+      const handguard = new THREE.Mesh(handguardGeom, accessoryMaterial);
+      handguard.position.set(1.8, 0.25, 0);
+      m4a1.add(handguard);
+
+      const barrelGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8);
+      barrelGeom.rotateZ(Math.PI / 2);
+      const barrel = new THREE.Mesh(barrelGeom, steelMaterial);
+      barrel.position.set(3.1, 0.25, 0);
+      m4a1.add(barrel);
+
+      const hiderGeom = new THREE.CylinderGeometry(0.1, 0.09, 0.25, 8);
+      hiderGeom.rotateZ(Math.PI / 2);
+      const hider = new THREE.Mesh(hiderGeom, steelMaterial);
+      hider.position.set(3.75, 0.25, 0);
+      m4a1.add(hider);
+
+      const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), bodyMaterial);
+      frontSight.position.set(3.5, 0.55, 0);
+      m4a1.add(frontSight);
+
+      const tubeGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8);
+      tubeGeom.rotateZ(Math.PI / 2);
+      const tube = new THREE.Mesh(tubeGeom, steelMaterial);
+      tube.position.set(-1.3, 0.25, 0);
+      m4a1.add(tube);
+
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.25), accessoryMaterial);
+      stock.position.set(-1.8, 0.15, 0);
+      m4a1.add(stock);
+
+      const stockPad = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.25), accessoryMaterial);
+      stockPad.position.set(-2.3, 0.1, 0);
+      m4a1.add(stockPad);
+
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.15), bodyMaterial);
+      handle.position.set(-0.1, 0.5, 0);
+      m4a1.add(handle);
+
+      const handlePost1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.15), bodyMaterial);
+      handlePost1.position.set(-0.5, 0.4, 0);
+      const handlePost2 = handlePost1.clone();
+      handlePost2.position.set(0.3, 0.4, 0);
+      m4a1.add(handlePost1, handlePost2);
+
+      setShadows(m4a1);
+      normalizeWeaponLength(m4a1, M4A1_REAL_LENGTH);
+
+      const m4CarryHandleTopAnchor = new THREE.Object3D();
+      const m4Scale = m4a1.scale.x || 1;
+      m4CarryHandleTopAnchor.name = 'M4_CARRY_HANDLE_TOP_ANCHOR';
+      m4CarryHandleTopAnchor.position.set(-0.02 / m4Scale, 0.09 / m4Scale, 0);
+      m4CarryHandleTopAnchor.scale.set(1 / m4Scale, 1 / m4Scale, 1 / m4Scale);
+      m4a1.add(m4CarryHandleTopAnchor);
+
+      m4a1.rotation.y = -Math.PI / 2;
+      return m4a1;
+    }
+
+    function createMP153Model() {
+      const mp153 = new THREE.Group();
+      mp153.name = 'MP-153';
+
+      const mpReceiver = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.36, 0.22), metalMaterial);
+      mpReceiver.position.set(0, 0.2, 0);
+      mp153.add(mpReceiver);
+
+      const ejectionPort = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.01), metalGray);
+      ejectionPort.position.set(0.1, 0.22, 0.111);
+      mp153.add(ejectionPort);
+
+      const mpBarrelGeom = new THREE.CylinderGeometry(0.07, 0.07, 2.5, 8);
+      mpBarrelGeom.rotateZ(Math.PI / 2);
+      const mpBarrel = new THREE.Mesh(mpBarrelGeom, metalMaterial);
+      mpBarrel.position.set(2.0, 0.26, 0);
+      mp153.add(mpBarrel);
+
+      const mpTubeGeom = new THREE.CylinderGeometry(0.06, 0.06, 2.0, 8);
+      mpTubeGeom.rotateZ(Math.PI / 2);
+      const mpTube = new THREE.Mesh(mpTubeGeom, metalMaterial);
+      mpTube.position.set(1.75, 0.14, 0);
+      mp153.add(mpTube);
+
+      const mpHandguardGeom = new THREE.CylinderGeometry(0.13, 0.13, 1.4, 8);
+      mpHandguardGeom.rotateZ(Math.PI / 2);
+      const mpHandguard = new THREE.Mesh(mpHandguardGeom, darkPlasticMaterial);
+      mpHandguard.position.set(1.2, 0.14, 0);
+      mp153.add(mpHandguard);
+
+      const mpStock = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.38, 0.2), darkPlasticMaterial);
+      mpStock.position.set(-1.4, 0.06, 0);
+      mpStock.rotation.z = -0.12;
+      mp153.add(mpStock);
+
+      const mpGrip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.45, 0.18), darkPlasticMaterial);
+      mpGrip.position.set(-0.6, -0.15, 0);
+      mpGrip.rotation.z = -0.42;
+      mp153.add(mpGrip);
+
+      setShadows(mp153);
+      normalizeWeaponLength(mp153, MP153_REAL_LENGTH);
+      mp153.rotation.y = -Math.PI / 2;
+      return mp153;
+    }
+
+    function createAKS74UModel() {
+      if (typeof createRemoteAKS74UModel === 'function') {
+        try {
+          const aks = createRemoteAKS74UModel();
+          aks.name = 'AKS-74U CDN';
+          setShadows(aks);
+          normalizeWeaponLength(aks, AKS74U_REAL_LENGTH);
+          aks.rotation.y = Math.PI / 2;
+          return centerModelOnPivot(aks, 'AKS-74U Pivot');
+        } catch (error) {
+          console.error('AKS-74U CDN 모델 생성에 실패했습니다. fallback 모델을 사용합니다.', error);
+        }
+      }
+      return createFallbackAKS74UModel();
+    }
+
+    function createFallbackAKS74UModel() {
+      const aks = new THREE.Group();
+      aks.name = 'AKS-74U Fallback';
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.16, 0.18), bodyMaterial);
+      body.position.set(0, 0.08, 0);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 12), steelMaterial);
+      barrel.rotation.z = Math.PI / 2;
+      barrel.position.set(0.42, 0.1, 0);
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.14), accessoryMaterial);
+      stock.position.set(-0.42, 0.08, 0);
+      const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.34, 0.13), darkPlasticMaterial);
+      magazine.position.set(-0.02, -0.14, 0);
+      magazine.rotation.z = 0.18;
+      aks.add(body, barrel, stock, magazine);
+      setShadows(aks);
+      normalizeWeaponLength(aks, AKS74U_REAL_LENGTH);
+      aks.rotation.y = -Math.PI / 2;
+      return aks;
+    }
+
+    function createFN57Model() {
+      if (typeof createRemoteFN57Model === 'function') {
+        try {
+          const gun = createRemoteFN57Model();
+          gun.name = 'FN 5-7 CDN';
+          gun.position.copy(FN57_SKOV_MODEL_TRANSFORM.position);
+          gun.rotation.copy(FN57_SKOV_MODEL_TRANSFORM.rotation);
+          gun.scale.copy(FN57_SKOV_MODEL_TRANSFORM.scale);
+          setShadows(gun);
+          return centerModelOnPivot(gun, 'FN 5-7 Pivot');
+        } catch (error) {
+          console.error('FN57 CDN 모델 생성에 실패했습니다. 내장 FN57 모델을 사용합니다.', error);
+        }
+      }
+      return createFallbackFN57Model();
+    }
+
+    function createFallbackFN57Model() {
+      const gun = new THREE.Group();
+      gun.name = 'FN 5-7';
+      const slide = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.08, 0.12), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.45, metalness: 0.35 }));
+      slide.position.set(0.04, 0.08, 0);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.08, 0.12), new THREE.MeshStandardMaterial({ color: 0xa18457, roughness: 0.72, metalness: 0.06 }));
+      frame.position.set(0, 0.0, 0);
+      const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.1, 20), steelMaterial);
+      muzzle.rotation.z = Math.PI / 2;
+      muzzle.position.set(0.36, 0.08, 0);
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.11), frame.material);
+      grip.position.set(-0.16, -0.18, 0);
+      grip.rotation.z = -0.18;
+      const triggerGuard = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 8, 20), darkPlasticMaterial);
+      triggerGuard.scale.set(1.3, 0.72, 0.22);
+      triggerGuard.rotation.x = Math.PI / 2;
+      triggerGuard.position.set(0.05, -0.07, 0.045);
+      const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.025, 0.09), darkPlasticMaterial);
+      rearSight.position.set(-0.22, 0.14, 0);
+      const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 0.07), darkPlasticMaterial);
+      frontSight.position.set(0.28, 0.14, 0);
+      gun.add(slide, frame, muzzle, grip, triggerGuard, rearSight, frontSight);
+      setShadows(gun);
+      gun.rotation.y = -Math.PI / 2;
+      return gun;
+    }
+
+    function createKnifeModel() {
+      if (typeof createRemoteKnifeModel === 'function') {
+        try {
+          const knife = createRemoteKnifeModel();
+          knife.name = 'ER Fulcrum CDN';
+          knife.position.copy(KNIFE_SKOV_MODEL_TRANSFORM.position);
+          knife.rotation.copy(KNIFE_SKOV_MODEL_TRANSFORM.rotation);
+          knife.scale.copy(KNIFE_SKOV_MODEL_TRANSFORM.scale);
+          setShadows(knife);
+          return centerModelOnPivot(knife, 'ER Fulcrum Pivot');
+        } catch (error) {
+          console.error('ER Fulcrum CDN 모델 생성에 실패했습니다. 내장 근접무기 모델을 사용합니다.', error);
+        }
+      }
+      return createFallbackKnifeModel();
+    }
+
+    function createFallbackKnifeModel() {
+      const knife = new THREE.Group();
+      knife.name = 'Melee Knife';
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.72, metalness: 0.18 });
+      const guardMat = new THREE.MeshStandardMaterial({ color: 0x2f3437, roughness: 0.48, metalness: 0.55 });
+      const bladeMat = new THREE.MeshStandardMaterial({ color: 0xb8c0c5, roughness: 0.26, metalness: 0.86 });
+
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 0.62), handleMat);
+      handle.position.set(-0.22, -0.04, 0);
+
+      const gripCap = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.08), guardMat);
+      gripCap.position.set(-0.55, -0.04, 0);
+
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.36, 0.08), guardMat);
+      guard.position.set(0.12, -0.01, 0);
+      guard.rotation.z = 0.06;
+
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.82), bladeMat);
+      blade.position.set(0.56, 0.03, 0);
+      blade.rotation.y = 0.08;
+
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 4), bladeMat);
+      tip.rotation.z = Math.PI / 2;
+      tip.position.set(1.05, 0.03, 0);
+
+      knife.add(handle, gripCap, guard, blade, tip);
+      setShadows(knife);
+      knife.rotation.y = -Math.PI / 2;
+      return knife;
+    }
+
+    function createScopeGroup() {
+      const scope = new THREE.Group();
+      const scopeRadius = 0.05;
+      const scopeLength = 0.4;
+      const scopeBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(scopeRadius, scopeRadius, scopeLength, 32, 1, true),
+        darkPlasticMaterial
+      );
+      scopeBody.rotation.x = Math.PI / 2;
+      const glass = new THREE.Mesh(
+        new THREE.CircleGeometry(scopeRadius * 0.97, 32),
+        new THREE.MeshBasicMaterial({ color: 0x203241, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+      );
+      glass.position.z = -scopeLength / 2 + 0.028;
+      const border = new THREE.Mesh(
+        new THREE.RingGeometry(scopeRadius * 0.95, scopeRadius * 1.2, 48),
+        new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
+      );
+      border.position.z = glass.position.z + 0.002;
+      const dot = new THREE.Mesh(
+        new THREE.CircleGeometry(0.0022, 12),
+        new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, depthTest: false })
+      );
+      dot.position.z = glass.position.z + 0.005;
+      scope.add(scopeBody, glass, border, dot);
+      scope.scale.set(0.5, 0.5, 0.5);
+      scope.position.set(0, 0.035, 0);
+      return scope;
+    }
+
+    const weaponGroup = new THREE.Group();
+    scene.add(weaponGroup);
+
+    const m4a1 = createM4A1Model();
+    const mp153 = createMP153Model();
+    const fn57 = createFN57Model();
+    const aks74u = createAKS74UModel();
+    const knife = createKnifeModel();
+    const fullScope = createScopeGroup();
+    const m4Anchor = m4a1.getObjectByName('M4_CARRY_HANDLE_TOP_ANCHOR');
+    (m4Anchor || m4a1).add(fullScope);
+
+    weaponGroup.add(m4a1, mp153, fn57, aks74u, knife);
+
+    const WEAPONS = {
+      M4A1: { name: 'M4A1', mesh: m4a1 },
+      MP153: { name: 'MP-153', mesh: mp153 },
+      FN57: { name: 'FN 5-7', mesh: fn57 },
+      AKS74U: { name: 'AKS-74U', mesh: aks74u },
+      MELEE: { name: '근접무기', mesh: knife }
+    };
+
+    const DEFAULT_WEAPON_VIEW_POSES = {
+      M4A1: {
+        hip: { position: new THREE.Vector3(0.22, -0.30, -0.55), rotation: new THREE.Euler(0.0, -0.04, 0.0) },
+        ads: { position: new THREE.Vector3(0.012, -0.235, -0.46), rotation: new THREE.Euler(0.0, 0.0, 0.0) }
+      },
+      MP153: {
+        hip: { position: new THREE.Vector3(0.24, -0.32, -0.68), rotation: new THREE.Euler(0.0, -0.045, 0.0) },
+        ads: { position: new THREE.Vector3(0.018, -0.255, -0.58), rotation: new THREE.Euler(0.0, 0.0, 0.0) }
+      },
+      FN57: {
+        hip: { position: new THREE.Vector3(0.18, -0.34, -0.42), rotation: new THREE.Euler(0.0, -0.03, 0.0) },
+        ads: { position: new THREE.Vector3(0.035, -0.285, -0.38), rotation: new THREE.Euler(0.0, 0.0, 0.0) }
+      },
+      AKS74U: {
+        hip: { position: new THREE.Vector3(0.12, -0.18, -0.32), rotation: new THREE.Euler(-0.025, -0.08, 0.01) },
+        ads: { position: new THREE.Vector3(0.006, -0.105, -0.265), rotation: new THREE.Euler(0.012, -0.004, 0.0) }
+      },
+      MELEE: {
+        hip: { position: new THREE.Vector3(0.28, -0.32, -0.42), rotation: new THREE.Euler(-0.12, -0.18, 0.22) },
+        ads: { position: new THREE.Vector3(0.18, -0.28, -0.36), rotation: new THREE.Euler(-0.04, -0.08, 0.08) }
+      }
+    };
+
+    function clonePoseTable(source) {
+      const result = {};
+      Object.entries(source).forEach(([weapon, config]) => {
+        result[weapon] = {
+          hip: { position: config.hip.position.clone(), rotation: config.hip.rotation.clone() },
+          ads: { position: config.ads.position.clone(), rotation: config.ads.rotation.clone() }
+        };
+      });
+      return result;
+    }
+
+    const WEAPON_VIEW_POSES = clonePoseTable(DEFAULT_WEAPON_VIEW_POSES);
+    const DEFAULT_SCOPE_POSE = {
+      position: new THREE.Vector3(0, 0.035, 0),
+      rotation: new THREE.Euler(0, 0, 0),
+      scale: new THREE.Vector3(fullScope.scale.x, fullScope.scale.y, fullScope.scale.z)
+    };
+    const SCOPE_POSE = {
+      position: DEFAULT_SCOPE_POSE.position.clone(),
+      rotation: DEFAULT_SCOPE_POSE.rotation.clone(),
+      scale: DEFAULT_SCOPE_POSE.scale.clone()
+    };
+    const currentLocalPos = new THREE.Vector3();
+    const targetLocalPos = new THREE.Vector3();
+    const cameraBasePosition = camera.position.clone();
+    const appliedLeanOffset = new THREE.Vector3();
+    const leanWeaponOffsetPos = new THREE.Vector3();
+    const leanWeaponOffsetRot = new THREE.Euler();
+    const r180Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    const LEAN_CAMERA_SIDE = 0.42;
+    const LEAN_CAMERA_DROP = 0.08;
+    const LEAN_CAMERA_ROLL = THREE.MathUtils.degToRad(14);
+    let currentWeaponKey = 'M4A1';
+    let activePoseKey = 'hip';
+    let isAiming = false;
+    let yaw = 0;
+    let pitch = 0;
+    let leanTarget = 0;
+    let leanAmount = 0;
+    let cameraRollZ = 0;
+    let lastNearestZ = null;
+    const keys = { q: false, e: false };
+    const clock = new THREE.Clock();
+
+    const controlDefs = [
+      { group: 'position', key: 'x', label: 'pos x', min: -0.5, max: 0.5, step: 0.001 },
+      { group: 'position', key: 'y', label: 'pos y', min: -0.7, max: 0.1, step: 0.001 },
+      { group: 'position', key: 'z', label: 'pos z', min: -0.9, max: -0.2, step: 0.001 },
+      { group: 'rotation', key: 'x', label: 'rot x', min: -Math.PI, max: Math.PI, step: 0.001 },
+      { group: 'rotation', key: 'y', label: 'rot y', min: -Math.PI, max: Math.PI, step: 0.001 },
+      { group: 'rotation', key: 'z', label: 'rot z', min: -Math.PI, max: Math.PI, step: 0.001 },
+      { group: 'scale', key: 'x', label: 'scale x', min: 0.02, max: 0.8, step: 0.001, scopeOnly: true },
+      { group: 'scale', key: 'y', label: 'scale y', min: 0.02, max: 0.8, step: 0.001, scopeOnly: true },
+      { group: 'scale', key: 'z', label: 'scale z', min: 0.02, max: 0.8, step: 0.001, scopeOnly: true }
+    ];
+
+    function getActivePose() {
+      if (activePoseKey === 'scope') return SCOPE_POSE;
+      return WEAPON_VIEW_POSES[currentWeaponKey][activePoseKey];
+    }
+
+    function getRenderPose() {
+      return WEAPON_VIEW_POSES[currentWeaponKey][isAiming ? 'ads' : 'hip'];
+    }
+
+    function setWeapon(key) {
+      currentWeaponKey = key;
+      Object.entries(WEAPONS).forEach(([weaponKey, weapon]) => {
+        weapon.mesh.visible = weaponKey === currentWeaponKey;
+      });
+      fullScope.visible = currentWeaponKey === 'M4A1';
+      document.querySelectorAll('[data-weapon]').forEach((button) => button.classList.toggle('active', button.dataset.weapon === key));
+      syncControls();
+      updateOutput();
+    }
+
+    function setPoseMode(key) {
+      activePoseKey = key;
+      document.querySelectorAll('[data-pose]').forEach((button) => button.classList.toggle('active', button.dataset.pose === key));
+      buildControls();
+      syncControls();
+      updateOutput();
+    }
+
+    function setAiming(value) {
+      isAiming = value;
+      document.getElementById('aimButton').classList.toggle('active', isAiming);
+      camera.fov = isAiming ? 60 : 75;
+      camera.updateProjectionMatrix();
+    }
+
+    function buildControls() {
+      controlsRoot.innerHTML = '';
+      controlDefs
+      .filter((def) => activePoseKey === 'scope' || !def.scopeOnly)
+      .forEach((def) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const label = document.createElement('label');
+        label.textContent = def.label;
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.min = String(def.min);
+        range.max = String(def.max);
+        range.step = String(def.step);
+        const number = document.createElement('input');
+        number.type = 'number';
+        number.step = String(def.step);
+        number.min = String(def.min);
+        number.max = String(def.max);
+        range.dataset.controlKey = `${def.group}.${def.key}`;
+        number.dataset.controlKey = `${def.group}.${def.key}`;
+
+        function applyValue(raw) {
+          const value = Number(raw);
+          if (!Number.isFinite(value)) return;
+          const pose = getActivePose();
+          pose[def.group][def.key] = value;
+          applyScopePose();
+          syncControls();
+          updateOutput();
+        }
+
+        range.addEventListener('input', () => applyValue(range.value));
+        number.addEventListener('input', () => applyValue(number.value));
+        row.append(label, range, number);
+        controlsRoot.append(row);
+      });
+    }
+
+    function syncControls() {
+      const pose = getActivePose();
+      controlDefs
+      .filter((def) => activePoseKey === 'scope' || !def.scopeOnly)
+      .forEach((def) => {
+        const value = pose[def.group][def.key];
+        const formatted = value.toFixed(3);
+        document.querySelectorAll(`[data-control-key="${def.group}.${def.key}"]`).forEach((input) => {
+          if (input.value !== formatted) input.value = formatted;
+        });
+      });
+    }
+
+    function formatVec(vec) {
+      return `${vec.x.toFixed(3)}, ${vec.y.toFixed(3)}, ${vec.z.toFixed(3)}`;
+    }
+
+    function vectorToArray(vec) {
+      return [Number(vec.x.toFixed(6)), Number(vec.y.toFixed(6)), Number(vec.z.toFixed(6))];
+    }
+
+    function poseToPlain(pose, includeScale = false) {
+      const plain = {
+        position: vectorToArray(pose.position),
+        rotation: vectorToArray(pose.rotation)
+      };
+      if (includeScale) plain.scale = vectorToArray(pose.scale);
+      return plain;
+    }
+
+    function buildPoseBridgePayload() {
+      return {
+        version: 1,
+        source: 'Gun-ads.html',
+        updatedAt: new Date().toISOString(),
+        weaponViewPoses: Object.fromEntries(
+          Object.entries(WEAPON_VIEW_POSES).map(([key, config]) => [
+            key,
+            {
+              hip: poseToPlain(config.hip),
+              ads: poseToPlain(config.ads)
+            }
+          ])
+        ),
+        m4ScopePose: poseToPlain(SCOPE_POSE, true)
+      };
+    }
+
+    function applyPoseToSkov() {
+      const payload = buildPoseBridgePayload();
+      localStorage.setItem(POSE_BRIDGE_STORAGE_KEY, JSON.stringify(payload));
+      const button = document.getElementById('applyToSkov');
+      button.textContent = 'Applied to SKOV';
+      window.setTimeout(() => { button.textContent = 'Apply to SKOV'; }, 1200);
+    }
+
+    function applyScopePose() {
+      fullScope.position.copy(SCOPE_POSE.position);
+      fullScope.rotation.copy(SCOPE_POSE.rotation);
+      fullScope.scale.copy(SCOPE_POSE.scale);
+    }
+
+    function updateOutput() {
+      const body = Object.entries(WEAPON_VIEW_POSES).map(([key, config]) => {
+        return `  ${key}: {
+    hip: { position: new THREE.Vector3(${formatVec(config.hip.position)}), rotation: new THREE.Euler(${formatVec(config.hip.rotation)}) },
+    ads: { position: new THREE.Vector3(${formatVec(config.ads.position)}), rotation: new THREE.Euler(${formatVec(config.ads.rotation)}) }
+  }`;
+      }).join(',\n');
+      configOutput.textContent = `const WEAPON_VIEW_POSES = {\n${body}\n};
+
+const M4_SCOPE_POSE = {
+  position: new THREE.Vector3(${formatVec(SCOPE_POSE.position)}),
+  rotation: new THREE.Euler(${formatVec(SCOPE_POSE.rotation)}),
+  scale: new THREE.Vector3(${formatVec(SCOPE_POSE.scale)})
+};`;
+    }
+
+    function getNearestWeaponZInCameraSpace(model, camera) {
+      if (!model || !camera) return null;
+      model.updateWorldMatrix(true, true);
+      camera.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(model);
+      const points = [
+        new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+      ];
+      return Math.max(...points.map((point) => {
+        const local = point.clone();
+        camera.worldToLocal(local);
+        return local.z;
+      }));
+    }
+
+    function updateMetrics() {
+      const weapon = WEAPONS[currentWeaponKey];
+      lastNearestZ = getNearestWeaponZInCameraSpace(weapon.mesh, camera);
+      const nearValue = lastNearestZ == null ? '-' : lastNearestZ.toFixed(4);
+      nearMetric.querySelector('strong').textContent = nearValue;
+      nearMetric.classList.remove('safe', 'risk', 'bad');
+      if (lastNearestZ != null) {
+        nearMetric.classList.add(lastNearestZ > -0.03 ? 'bad' : lastNearestZ > -0.06 ? 'risk' : 'safe');
+      }
+
+      fullScope.updateWorldMatrix(true, true);
+      const scopeSize = new THREE.Box3().setFromObject(fullScope).getSize(new THREE.Vector3());
+      scopeMetric.querySelector('strong').textContent = `${scopeSize.x.toFixed(4)} unit`;
+    }
+
+    function resetCurrentPose() {
+      if (activePoseKey === 'scope') {
+        SCOPE_POSE.position.copy(DEFAULT_SCOPE_POSE.position);
+        SCOPE_POSE.rotation.copy(DEFAULT_SCOPE_POSE.rotation);
+        SCOPE_POSE.scale.copy(DEFAULT_SCOPE_POSE.scale);
+        applyScopePose();
+        syncControls();
+        updateOutput();
+        return;
+      }
+      const defaults = DEFAULT_WEAPON_VIEW_POSES[currentWeaponKey][activePoseKey];
+      const pose = getActivePose();
+      pose.position.copy(defaults.position);
+      pose.rotation.copy(defaults.rotation);
+      syncControls();
+      updateOutput();
+    }
+
+    document.querySelectorAll('[data-weapon]').forEach((button) => {
+      button.addEventListener('click', () => setWeapon(button.dataset.weapon));
+    });
+    document.querySelectorAll('[data-pose]').forEach((button) => {
+      button.addEventListener('click', () => setPoseMode(button.dataset.pose));
+    });
+    document.getElementById('aimButton').addEventListener('click', () => setAiming(!isAiming));
+    document.getElementById('resetPose').addEventListener('click', resetCurrentPose);
+    document.getElementById('copyConfig').addEventListener('click', async () => {
+      await navigator.clipboard?.writeText(configOutput.textContent);
+    });
+    document.getElementById('applyToSkov').addEventListener('click', applyPoseToSkov);
+
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'Digit1') setWeapon('M4A1');
+      if (event.code === 'Digit2') setWeapon('MP153');
+      if (event.code === 'Digit3') setWeapon('FN57');
+      if (event.code === 'Digit4') setWeapon('AKS74U');
+      if (event.code === 'KeyV') setWeapon('MELEE');
+      if (event.code === 'KeyF') setAiming(!isAiming);
+      if (event.code === 'KeyH') setPoseMode('hip');
+      if (event.code === 'KeyJ') setPoseMode('ads');
+      if (event.code === 'KeyK') setPoseMode('scope');
+      if (event.code === 'KeyQ' || event.code === 'KeyE') {
+        event.preventDefault();
+        if (event.repeat) return;
+        const key = event.code === 'KeyQ' ? 'q' : 'e';
+        const oppositeKey = key === 'q' ? 'e' : 'q';
+        keys[key] = !keys[key];
+        keys[oppositeKey] = false;
+      }
+    });
+    window.addEventListener('keyup', (event) => {
+      if (event.code === 'KeyQ' || event.code === 'KeyE') {
+        event.preventDefault();
+      }
+    });
+    window.addEventListener('blur', () => {
+      keys.q = false;
+      keys.e = false;
+    });
+
+    window.addEventListener('contextmenu', (event) => event.preventDefault());
+    window.addEventListener('mousedown', (event) => {
+      if (event.button === 2) setAiming(true);
+      if (event.button === 0 && event.target === renderer.domElement) renderer.domElement.requestPointerLock?.();
+    });
+    window.addEventListener('mouseup', (event) => {
+      if (event.button === 2) setAiming(false);
+    });
+    window.addEventListener('mousemove', (event) => {
+      if (document.pointerLockElement !== renderer.domElement) return;
+      yaw -= event.movementX * 0.002;
+      pitch -= event.movementY * 0.002;
+      pitch = THREE.MathUtils.clamp(pitch, -Math.PI / 2.2, Math.PI / 2.2);
+    });
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+      leanTarget = keys.q === keys.e ? 0 : keys.q ? -1 : 1;
+      leanAmount = THREE.MathUtils.lerp(leanAmount, leanTarget, Math.min(1, delta * 10));
+      cameraRollZ = -leanAmount * LEAN_CAMERA_ROLL;
+      appliedLeanOffset.set(
+        Math.cos(yaw) * LEAN_CAMERA_SIDE * leanAmount,
+        -LEAN_CAMERA_DROP * Math.abs(leanAmount),
+        -Math.sin(yaw) * LEAN_CAMERA_SIDE * leanAmount
+      );
+      camera.position.copy(cameraBasePosition).add(appliedLeanOffset);
+      camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, cameraRollZ, 'YXZ'));
+
+      const pose = getRenderPose();
+      targetLocalPos.copy(pose.position);
+      currentLocalPos.lerp(targetLocalPos, isAiming ? 0.28 : 0.22);
+
+      const leanWeaponScale = isAiming ? 0.2 : 1;
+      leanWeaponOffsetPos.set(
+        leanAmount * 0.055 * leanWeaponScale,
+        -Math.abs(leanAmount) * 0.025 * leanWeaponScale,
+        Math.abs(leanAmount) * 0.02 * leanWeaponScale
+      );
+      leanWeaponOffsetRot.set(
+        0,
+        leanAmount * 0.025 * leanWeaponScale,
+        -leanAmount * 0.08 * leanWeaponScale
+      );
+
+      weaponGroup.position.copy(currentLocalPos).add(leanWeaponOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
+      const combinedQuat = camera.quaternion.clone()
+        .multiply(new THREE.Quaternion().setFromEuler(pose.rotation))
+        .multiply(new THREE.Quaternion().setFromEuler(leanWeaponOffsetRot));
+      weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
+
+      updateMetrics();
+      const activeEdit = getActivePose();
+      hud.innerHTML = `<strong>${WEAPONS[currentWeaponKey].name}</strong>
+mode: ${isAiming ? 'ADS' : 'HIP'} / editing: ${activePoseKey.toUpperCase()}
+lean: ${leanAmount.toFixed(2)} / camera roll: ${cameraRollZ.toFixed(3)}
+${activePoseKey === 'scope' ? 'scope' : 'pose'} position: ${formatVec(activeEdit.position)}
+${activePoseKey === 'scope' ? 'scope' : 'pose'} rotation: ${formatVec(activeEdit.rotation)}
+${activePoseKey === 'scope' ? `scope scale: ${formatVec(activeEdit.scale)}\n` : ''}nearest z: ${lastNearestZ == null ? '-' : lastNearestZ.toFixed(4)}`;
+
+      renderer.render(scene, camera);
+    }
+
+    buildControls();
+    applyScopePose();
+    setWeapon('M4A1');
+    setPoseMode('hip');
+    setAiming(false);
+    currentLocalPos.copy(WEAPON_VIEW_POSES.M4A1.hip.position);
+    animate();
+  </script>
+</body>
+</html>

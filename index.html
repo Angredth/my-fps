@@ -506,6 +506,94 @@
     let openContainers = [];
     let movingWindow = null;
     let trade = { mode: 'buy', selected: SHOP_ITEMS[0].itemId, sellItems: [] };
+    const SFX_VERSION = '2026-06-13-index';
+    const sfxSources = {
+      buttonHover: ['./Bottonselect.mp3', './5.28/index/Bottonselect.mp3'],
+      buttonClick: ['./Botton.mp3', './5.28/index/Botton.mp3'],
+      extract: ['./Exit.mp3', './5.28/index/Exit.mp3'],
+      death: ['./Dead.mp3', './5.28/index/Dead.mp3']
+    };
+    const sfxPools = {};
+    const sfxPoolIndex = {};
+    let lastButtonHoverSoundAt = 0;
+
+    function resolveSfxUrl(source) {
+      try {
+        const url = new URL(source, document.baseURI);
+        if (url.protocol !== 'file:') url.searchParams.set('v', SFX_VERSION);
+        return url.href;
+      } catch {
+        return source;
+      }
+    }
+
+    function createSfxAudio(sources, volume = 0.7) {
+      const audio = new Audio();
+      const resolvedSources = sources.map(resolveSfxUrl);
+      let sourceIndex = 0;
+      const loadSource = () => {
+        audio.src = resolvedSources[sourceIndex];
+        audio.preload = 'auto';
+        audio.volume = volume;
+        audio.load();
+      };
+      audio.addEventListener('error', () => {
+        if (sourceIndex >= resolvedSources.length - 1) return;
+        sourceIndex++;
+        loadSource();
+      });
+      loadSource();
+      return audio;
+    }
+
+    function preloadSfx(key, poolSize = 1, volume = 0.7) {
+      if (sfxPools[key]) return sfxPools[key];
+      const sources = sfxSources[key] || [];
+      sfxPools[key] = sources.length
+        ? Array.from({ length: poolSize }, () => createSfxAudio(sources, volume))
+        : [];
+      sfxPoolIndex[key] = 0;
+      return sfxPools[key];
+    }
+
+    function playSfx(key) {
+      const pool = preloadSfx(
+        key,
+        key === 'buttonHover' ? 3 : key === 'buttonClick' ? 2 : 1,
+        key.startsWith('button') ? 0.6 : 0.92
+      );
+      if (!pool.length) return;
+      const audio = pool[sfxPoolIndex[key] % pool.length];
+      sfxPoolIndex[key]++;
+      try {
+        audio.currentTime = 0;
+        const playPromise = audio.play();
+        if (playPromise) playPromise.catch(() => {});
+      } catch {}
+    }
+
+    function installButtonSfx() {
+      document.addEventListener('pointerover', (event) => {
+        const button = event.target?.closest?.('button');
+        if (!button || button.disabled || button.contains(event.relatedTarget)) return;
+        const now = performance.now();
+        if (now - lastButtonHoverSoundAt < 45) return;
+        lastButtonHoverSoundAt = now;
+        playSfx('buttonHover');
+      }, true);
+      document.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        const button = event.target?.closest?.('button');
+        if (!button || button.disabled) return;
+        playSfx('buttonClick');
+      }, true);
+    }
+
+    preloadSfx('buttonHover', 3, 0.6);
+    preloadSfx('buttonClick', 2, 0.6);
+    preloadSfx('extract', 1, 0.92);
+    preloadSfx('death', 1, 0.92);
+    installButtonSfx();
 
     function emptyEquipment(includeDefaultSecure = true) {
       const equipment = {};
@@ -692,6 +780,7 @@
     }
 
     function failRaid(message, loseGear = false) {
+      playSfx('death');
       clearSearchTimer();
       raid.active = false;
       if (state.equipment.secure) state.equipment.secure.containerItems = raid.inv.secure;
@@ -729,6 +818,7 @@
     function extractRaid() {
       if (!raid.active || raid.pendingEvent || raid.search) return;
       if (Math.random() < deathChance(raid.risk / 190)) return failRaid('탈출로 이동 중 사망했습니다. 안전 컨테이너를 제외한 아이템은 손실됩니다.', true);
+      playSfx('extract');
       const kept = raid.inv.rig.length + raid.inv.pockets.length + raid.inv.backpack.length + raid.inv.secure.length;
       if (state.equipment.rig) state.equipment.rig.containerItems = raid.inv.rig;
       state.pockets = raid.inv.pockets;

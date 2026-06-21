@@ -12,7 +12,7 @@
   --panel-strong: rgba(9, 13, 14, 0.9);
   --line: #435059;
   --muted: #9ca8aa;
-  --text: #eef5f2;
+  --text: rgb(246, 248, 247);
   --accent: #c7d1d9;
   --danger: #d35b4f;
   --ok: #9fe16b;
@@ -4595,9 +4595,46 @@
 	  import * as THREE from 'three';
 	  import * as CANNON from 'cannon-es';
 
+	  const WEAPON_MODEL_CDN_BASE = 'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/';
+	  const FN57_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}57.js`;
+	  const ER_FULCRUM_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}er-fulcrum.js`;
+	  const POSE_BRIDGE_STORAGE_KEY = 'skov.weaponPose.v1';
+	  const FN57_MODEL_SCALE = 0.355 / 9.285;
+	  const KNIFE_MODEL_SCALE = 0.310 / 11.679;
+
+	  window.THREE = THREE;
+
+	  function loadClassicScript(src) {
+	  return new Promise((resolve, reject) => {
+	  const existing = Array.from(document.scripts).find((script) => script.src === src);
+	  if (existing) {
+	  resolve();
+	  return;
+	  }
+	  const script = document.createElement('script');
+	  script.src = src;
+	  script.async = true;
+	  script.crossOrigin = 'anonymous';
+	  script.onload = () => resolve();
+	  script.onerror = () => reject(new Error(`Failed to load ${src}`));
+	  document.head.append(script);
+	  });
+	  }
+
+	  let createRemoteFN57Model = null;
+	  try {
+	  await loadClassicScript(FN57_MODEL_CDN_URL);
+	  createRemoteFN57Model = window.createFN57HighQuality;
+	  if (typeof createRemoteFN57Model !== 'function') {
+	  throw new Error('createFN57HighQuality global not found');
+	  }
+	  } catch (error) {
+	  console.error('FN57 CDN 모델을 불러오지 못했습니다. 내장 FN57 모델을 사용합니다.', error);
+	  }
+
 	  let createFulcrumKnifeModel = null;
 	  try {
-	  const fulcrumModule = await import('https://cdn.jsdelivr.net/gh/Angredth/my-fps@fc72912d1c39bd6126cbea727d07535e7994c26c/5.28/index/er-fulcrum.js');
+	  const fulcrumModule = await import(ER_FULCRUM_MODEL_CDN_URL);
 	  createFulcrumKnifeModel = fulcrumModule.createTacticalBayonetModel || fulcrumModule.default;
 	  if (typeof createFulcrumKnifeModel !== 'function') {
 	  throw new Error('createTacticalBayonetModel export not found');
@@ -4724,7 +4761,8 @@
   scene.add(sky);
 
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const FPS_CAMERA_NEAR = 0.03;
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, FPS_CAMERA_NEAR, 1000);
   camera.position.set(0, PLAYER_EYE_HEIGHT, 5);
 
 
@@ -5418,6 +5456,50 @@
   const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.3 });
   const metalGray = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.3 });
   const darkPlasticMaterial = new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0.2, roughness: 0.5 });
+  const WORLD_UNITS_PER_METER = 1;
+  const M4A1_REAL_LENGTH = 0.838 * WORLD_UNITS_PER_METER;
+  const MP153_REAL_LENGTH = 1.25 * WORLD_UNITS_PER_METER;
+
+  function normalizeWeaponLength(model, targetLength) {
+  model.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+
+  if (!Number.isFinite(size.x) || size.x <= 0) {
+  console.warn('무기 길이 측정 실패:', model.name || model);
+  return model;
+  }
+
+  const scaleFactor = targetLength / size.x;
+  model.scale.multiplyScalar(scaleFactor);
+
+  model.updateMatrixWorld(true);
+  return model;
+  }
+
+  function debugWeaponModelSize(name, model) {
+  model.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+
+  box.getSize(size);
+  box.getCenter(center);
+
+  console.log(`[WEAPON SIZE] ${name}`, {
+  lengthX: Number(size.x.toFixed(4)),
+  heightY: Number(size.y.toFixed(4)),
+  widthZ: Number(size.z.toFixed(4)),
+  center: {
+  x: Number(center.x.toFixed(4)),
+  y: Number(center.y.toFixed(4)),
+  z: Number(center.z.toFixed(4))
+  }
+  });
+  }
   const concreteWallMaterial = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.85, metalness: 0.05 });
 
 
@@ -5491,6 +5573,19 @@
 
 
 function createFN57HighQuality() {
+  if (typeof createRemoteFN57Model === 'function') {
+    try {
+      const remoteModel = createRemoteFN57Model();
+      remoteModel.name = remoteModel.name || 'FN 5-7 CDN';
+      return remoteModel;
+    } catch (error) {
+      console.error('FN57 CDN 모델 생성에 실패했습니다. 내장 FN57 모델을 사용합니다.', error);
+    }
+  }
+  return createFallbackFN57HighQuality();
+}
+
+function createFallbackFN57HighQuality() {
   const gun = new THREE.Group();
 
   const mats = {
@@ -5668,6 +5763,7 @@ function createFN57HighQuality() {
 
   function createM4A1Model() {
   const m4a1 = new THREE.Group();
+  m4a1.name = 'M4A1';
 
 
   const receiver = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.25), bodyMaterial);
@@ -5753,6 +5849,16 @@ function createFN57HighQuality() {
   child.receiveShadow = true;
   }
   });
+  normalizeWeaponLength(m4a1, M4A1_REAL_LENGTH);
+  if (window.DEBUG_WEAPON_SIZE) {
+  debugWeaponModelSize('M4A1', m4a1);
+  }
+  const m4CarryHandleTopAnchor = new THREE.Object3D();
+  const m4Scale = m4a1.scale.x || 1;
+  m4CarryHandleTopAnchor.name = 'M4_CARRY_HANDLE_TOP_ANCHOR';
+  m4CarryHandleTopAnchor.position.set(-0.02 / m4Scale, 0.09 / m4Scale, 0);
+  m4CarryHandleTopAnchor.scale.set(1 / m4Scale, 1 / m4Scale, 1 / m4Scale);
+  m4a1.add(m4CarryHandleTopAnchor);
   m4a1.rotation.y = -Math.PI / 2;
   return m4a1;
   }
@@ -5760,6 +5866,7 @@ function createFN57HighQuality() {
 
   function createMP153Model() {
   const mp153 = new THREE.Group();
+  mp153.name = 'MP-153';
 
 
   const mpReceiver = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.36, 0.22), metalMaterial);
@@ -5811,6 +5918,10 @@ function createFN57HighQuality() {
   child.receiveShadow = true;
   }
   });
+  normalizeWeaponLength(mp153, MP153_REAL_LENGTH);
+  if (window.DEBUG_WEAPON_SIZE) {
+  debugWeaponModelSize('MP-153', mp153);
+  }
   mp153.rotation.y = -Math.PI / 2;
   return mp153;
   }
@@ -5843,6 +5954,17 @@ function createFN57HighQuality() {
 	  });
 	  }
 
+	  function centerModelOnPivot(model, pivotName) {
+	  model.updateMatrixWorld(true);
+	  const box = new THREE.Box3().setFromObject(model);
+	  const center = box.getCenter(new THREE.Vector3());
+	  const pivot = new THREE.Group();
+	  pivot.name = pivotName;
+	  model.position.sub(center);
+	  pivot.add(model);
+	  return pivot;
+	  }
+
 		  function createKnifeModel() {
 		  if (typeof createFulcrumKnifeModel !== 'function') {
 		  const fallback = createFallbackKnifeModel();
@@ -5854,7 +5976,7 @@ function createFN57HighQuality() {
 		  try {
 		  const fulcrum = createFulcrumKnifeModel();
 		  fulcrum.name = 'ER Fulcrum';
-		  fulcrum.scale.setScalar(0.18);
+		  fulcrum.scale.setScalar(KNIFE_MODEL_SCALE);
 		  fulcrum.rotation.x = Math.PI/2;
 		  fulcrum.rotation.y = Math.PI/2;
 		  fulcrum.rotation.z = Math.PI;
@@ -6432,28 +6554,26 @@ function createFN57HighQuality() {
   mp153.add(mpMuzzleMarker);
 
 
-  const fn57 = createFN57HighQuality();
+  const fn57Model = createFN57HighQuality();
+  fn57Model.position.set(0.18, -0.2, 0.02);
+  fn57Model.rotation.y = -Math.PI / 2;
+  fn57Model.scale.setScalar(FN57_MODEL_SCALE);
+  const fnMuzzleMarker = new THREE.Object3D();
+  fnMuzzleMarker.position.set(6.08, 0.98, 0);
+  fn57Model.add(fnMuzzleMarker);
+  const fn57 = centerModelOnPivot(fn57Model, 'FN 5-7 Pivot');
   fn57.visible = false;
-  fn57.position.set(0.18, -0.2, 0.02);
-  fn57.rotation.y = -Math.PI / 2;
-  fn57.scale.set(0.16, 0.16, 0.16);
   weaponGroup.add(fn57);
 
 
-  const fnMuzzleMarker = new THREE.Object3D();
-  fnMuzzleMarker.position.set(6.08, 0.98, 0);
-  fn57.add(fnMuzzleMarker);
-
-
-  const knife = createKnifeModel();
-  knife.visible = false;
-  knife.position.set(0.25, -0.12, 0.2);
-  weaponGroup.add(knife);
-
-
+  const knifeModel = createKnifeModel();
+  knifeModel.position.set(0.25, -0.12, 0.2);
   const knifeMarker = new THREE.Object3D();
   knifeMarker.position.set(1.45, 0.08, 0);
-  knife.add(knifeMarker);
+  knifeModel.add(knifeMarker);
+  const knife = centerModelOnPivot(knifeModel, 'ER Fulcrum Pivot');
+  knife.visible = false;
+  weaponGroup.add(knife);
 
 
   const emptyWeapon = new THREE.Group();
@@ -6560,13 +6680,21 @@ function createFN57HighQuality() {
 
   const fullScope = new THREE.Group();
   fullScope.add(scopeBody, scopeScreen, reticleGroup, redDot, scopeBorder, scopeShadow, glass);
-  fullScope.scale.set(1.5, 1.5, 1.5);
-  fullScope.position.set(0, 0.68, 0.005);
-  weaponGroup.add(fullScope);
+  const M4_SCOPE_POSE = {
+  position: new THREE.Vector3(-0.025, -0.007, -0.002),
+  rotation: new THREE.Euler(0.000, 1.590, 0.000),
+  scale: new THREE.Vector3(0.5, 0.5, 0.5)
+  };
+  fullScope.position.copy(M4_SCOPE_POSE.position);
+  fullScope.rotation.copy(M4_SCOPE_POSE.rotation);
+  fullScope.scale.copy(M4_SCOPE_POSE.scale);
+
+  const m4CarryHandleTopAnchor = m4a1.getObjectByName('M4_CARRY_HANDLE_TOP_ANCHOR');
+  (m4CarryHandleTopAnchor || m4a1).add(fullScope);
 
 
-  weaponGroup.position.set(0.2, -0.35, -0.5);
-  weaponGroup.scale.set(0.5, 0.5, 0.5);
+  weaponGroup.position.set(0.22, -0.30, -0.55);
+  weaponGroup.scale.set(1, 1, 1);
   scene.add(weaponGroup);
 
 
@@ -6578,11 +6706,222 @@ function createFN57HighQuality() {
   EMPTY: { name: '장착 무기 없음', mesh: emptyWeapon, marker: emptyMarker, fireRate: 0.5, automatic: false, recoil: 0, damage: 0, pellets: 0, spread: 0, range: 0, disabled: true }
   };
 
+  const WEAPON_VIEW_POSES = {
+  M4A1: {
+  hip: { 
+  position: new THREE.Vector3(0.082, -0.117, -0.200), 
+  rotation: new THREE.Euler(-0.042, -0.105, 0.008) },
+  ads: { 
+  position: new THREE.Vector3(0.001, -0.081, -0.200), 
+  rotation: new THREE.Euler(0.017, -0.005, 0.000) }
+  },
+
+  MP153: {
+  hip: {
+  position: new THREE.Vector3(0.161, -0.162, -0.457),
+  rotation: new THREE.Euler(0.017, 0.053, 0.017)
+  },
+  ads: {
+  position: new THREE.Vector3(-0.001, -0.097, -0.251),
+  rotation: new THREE.Euler(0.017, -0.001, 0.000)
+  }
+  },
+
+  FN57: {
+  hip: {
+  position: new THREE.Vector3(0.048, -0.090, -0.390),
+  rotation: new THREE.Euler(0.088, 0.124, -0.018)
+  },
+  ads: {
+  position: new THREE.Vector3(0.001, -0.077, -0.267),
+  rotation: new THREE.Euler(0.005, 0.001, 0.000)
+  }
+  },
+
+  MELEE: {
+  hip: {
+  position: new THREE.Vector3(0.154, -0.093, -0.200),
+  rotation: new THREE.Euler(-0.039, 0.194, 0.271)
+  },
+  ads: {
+  position: new THREE.Vector3(0.18, -0.28, -0.36),
+  rotation: new THREE.Euler(-0.04, -0.08, 0.08)
+  }
+  }
+  };
+
+  function applyArrayToVector(target, values) {
+  if (!target || !Array.isArray(values) || values.length < 3) return;
+  const [x, y, z] = values.map(Number);
+  if (![x, y, z].every(Number.isFinite)) return;
+  target.set(x, y, z);
+  }
+
+  function applyPoseBridgePayload(payload) {
+  if (!payload || payload.version !== 1 || !payload.weaponViewPoses) return false;
+
+  Object.entries(payload.weaponViewPoses).forEach(([weaponKey, poses]) => {
+  const targetConfig = WEAPON_VIEW_POSES[weaponKey];
+  if (!targetConfig || !poses) return;
+
+  ['hip', 'ads'].forEach((poseKey) => {
+  const sourcePose = poses[poseKey];
+  const targetPose = targetConfig[poseKey];
+  if (!sourcePose || !targetPose) return;
+  applyArrayToVector(targetPose.position, sourcePose.position);
+  applyArrayToVector(targetPose.rotation, sourcePose.rotation);
+  });
+  });
+
+  if (payload.m4ScopePose) {
+  applyArrayToVector(M4_SCOPE_POSE.position, payload.m4ScopePose.position);
+  applyArrayToVector(M4_SCOPE_POSE.rotation, payload.m4ScopePose.rotation);
+  applyArrayToVector(M4_SCOPE_POSE.scale, payload.m4ScopePose.scale);
+  fullScope.position.copy(M4_SCOPE_POSE.position);
+  fullScope.rotation.copy(M4_SCOPE_POSE.rotation);
+  fullScope.scale.copy(M4_SCOPE_POSE.scale);
+  }
+
+  if (payload.leanSettings) {
+  Object.entries(payload.leanSettings).forEach(([key, value]) => {
+  const numericValue = Number(value);
+  if (key in leanSettings && Number.isFinite(numericValue)) {
+  leanSettings[key] = numericValue;
+  }
+  });
+  }
+
+  return true;
+  }
+
+  function applyStoredPoseBridgePayload() {
+  try {
+  const raw = localStorage.getItem(POSE_BRIDGE_STORAGE_KEY);
+  if (!raw) return;
+  applyPoseBridgePayload(JSON.parse(raw));
+  } catch (error) {
+  console.error('Gun-ads POSE 적용 데이터를 읽지 못했습니다.', error);
+  }
+  }
+
+  applyStoredPoseBridgePayload();
+  window.addEventListener('storage', (event) => {
+  if (event.key !== POSE_BRIDGE_STORAGE_KEY || !event.newValue) return;
+  try {
+  applyPoseBridgePayload(JSON.parse(event.newValue));
+  } catch (error) {
+  console.error('Gun-ads POSE 적용 데이터 반영에 실패했습니다.', error);
+  }
+  });
+
 
   let currentWeapon = WEAPONS.EMPTY;
   let scopeMagnification = 4;
   let scopeZoomMotionTimer = 0;
   const scopeZoomMotionDuration = 0.24;
+
+  function getWeaponPoseKey(weapon) {
+  if (!weapon) return 'M4A1';
+  if (weapon.melee) return 'MELEE';
+
+  const name = String(weapon.name || weapon.id || '').toUpperCase();
+
+  if (name.includes('MP153') || name.includes('MP-153')) return 'MP153';
+  if (name.includes('FN57') || name.includes('FN 5-7') || name.includes('FIVE')) return 'FN57';
+  if (name.includes('KNIFE') || name.includes('MELEE') || name.includes('근접')) return 'MELEE';
+
+  return 'M4A1';
+  }
+
+  function getCurrentWeaponViewPose() {
+  const key = getWeaponPoseKey(currentWeapon);
+  const config = WEAPON_VIEW_POSES[key] || WEAPON_VIEW_POSES.M4A1;
+  return isAiming ? config.ads : config.hip;
+  }
+
+  function getNearestWeaponZInCameraSpace(model, camera) {
+  if (!model || !camera) return null;
+
+  model.updateWorldMatrix(true, true);
+  camera.updateWorldMatrix(true, true);
+
+  const box = new THREE.Box3().setFromObject(model);
+
+  const points = [
+  new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+  new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+  new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+  new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+  new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+  new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+  new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+  new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+  ];
+
+  const cameraSpacePoints = points.map((point) => {
+  const local = point.clone();
+  camera.worldToLocal(local);
+  return local;
+  });
+
+  return Math.max(...cameraSpacePoints.map((point) => point.z));
+  }
+
+  function debugWeaponClipping() {
+  if (!window.DEBUG_WEAPON_CLIPPING) return;
+  if (!currentWeapon?.mesh) return;
+
+  const nearestZ = getNearestWeaponZInCameraSpace(currentWeapon.mesh, camera);
+  if (nearestZ == null) return;
+
+  const safe = nearestZ <= -0.06;
+
+  console.log('[WEAPON CLIPPING]', {
+  weapon: currentWeapon.name,
+  isAiming,
+  cameraNear: camera.near,
+  nearestZ: Number(nearestZ.toFixed(4)),
+  safe
+  });
+
+  if (!safe) {
+  console.warn('[WEAPON CLIPPING RISK]', currentWeapon.name, {
+  nearestZ,
+  cameraNear: camera.near
+  });
+  }
+  }
+
+  function debugM4ScopePosition(m4, fullScope) {
+  if (!window.DEBUG_M4_SCOPE_POSITION) return;
+  if (!m4 || !fullScope) return;
+
+  m4.updateWorldMatrix(true, true);
+  fullScope.updateWorldMatrix(true, true);
+
+  const m4Box = new THREE.Box3().setFromObject(m4);
+  const scopeBox = new THREE.Box3().setFromObject(fullScope);
+
+  const m4Size = new THREE.Vector3();
+  const scopeSize = new THREE.Vector3();
+  const scopeCenter = new THREE.Vector3();
+
+  m4Box.getSize(m4Size);
+  scopeBox.getSize(scopeSize);
+  scopeBox.getCenter(scopeCenter);
+
+  console.log('[M4 SCOPE POSITION]', {
+  m4Length: Number(m4Size.x.toFixed(4)),
+  scopeLength: Number(scopeSize.x.toFixed(4)),
+  scopeHeight: Number(scopeSize.y.toFixed(4)),
+  scopeCenterWorld: {
+  x: Number(scopeCenter.x.toFixed(4)),
+  y: Number(scopeCenter.y.toFixed(4)),
+  z: Number(scopeCenter.z.toFixed(4))
+  }
+  });
+  }
+
   let isSwapping = false;
   let swapProgress = 0;
   let swapDirection = -1;
@@ -6607,7 +6946,6 @@ function createFN57HighQuality() {
   const swapOffsetPos = new THREE.Vector3(0, 0, 0);
   const swapOffsetRot = new THREE.Euler(0, 0, 0);
   const aimOffsetRot = new THREE.Euler(0, 0, 0);
-  const shotgunAdsRotation = new THREE.Euler(THREE.MathUtils.degToRad(2.2), THREE.MathUtils.degToRad(-0.35), 0);
 
 
   const Sound = (() => {
@@ -7369,7 +7707,7 @@ function createFN57HighQuality() {
 
 
   function updateWeaponUI() {
-  const scopeText = currentWeapon === WEAPONS.M4A1 ? ` | SCOPE: ${scopeMagnification}x` : '';
+  const scopeText = currentWeapon === WEAPONS.M4A1 ? ` | SCOPE: ${scopeMagnification/4}x` : '';
   const slotText = Object.entries(weaponSlots).filter(([, key]) => key).map(([slot, key]) => `${slot}:${WEAPONS[key].name}`).join(' ');
   weaponUI.innerText = `WEAPON: ${currentWeapon.name}${scopeText}${slotText ? `
 ${slotText}` : ''}`;
@@ -7421,12 +7759,20 @@ ${slotText}` : ''}`;
 
   let yaw = 0;
   let pitch = 0;
+  const BASE_LOOK_SENSITIVITY = 0.002;
+  const M4_SCOPE_16X_LOOK_SENSITIVITY_MULTIPLIER = 0.2;
+
+  function getLookSensitivity() {
+  const scope16xActive = currentWeapon === WEAPONS.M4A1 && isAiming && scopeMagnification === 16;
+  return BASE_LOOK_SENSITIVITY * (scope16xActive ? M4_SCOPE_16X_LOOK_SENSITIVITY_MULTIPLIER : 1);
+  }
 
 
 	  document.addEventListener('mousemove', (event) => {
 	  if (!fpsRaidActive || fpsInventoryOpen || deathState.active || raidEnded || document.pointerLockElement !== document.body) return;
-  yaw -= event.movementX * 0.002;
-  pitch -= event.movementY * 0.002;
+  const lookSensitivity = getLookSensitivity();
+  yaw -= event.movementX * lookSensitivity;
+  pitch -= event.movementY * lookSensitivity;
   pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
   });
 
@@ -7434,9 +7780,17 @@ ${slotText}` : ''}`;
   const keys = { w: false, a: false, s: false, d: false, q: false, e: false, shift: false };
   let sprintToggle = false;
   let playerIsSprinting = false;
-  const LEAN_CAMERA_SIDE = 0.42;
-  const LEAN_CAMERA_DROP = 0.08;
-  const LEAN_CAMERA_ROLL = THREE.MathUtils.degToRad(14);
+  const leanSettings = {
+  cameraSide: 0.42,
+  cameraDrop: 0.08,
+  cameraRollDeg: 14,
+  weaponSide: 0.055,
+  weaponDrop: 0.025,
+  weaponForward: 0.02,
+  weaponYaw: 0.025,
+  weaponRoll: 0.08,
+  adsWeaponScale: 0
+  };
   let leanTarget = 0;
   let leanAmount = 0;
   let cameraRollZ = 0;
@@ -7576,6 +7930,7 @@ ${slotText}` : ''}`;
   });
   const bulletHoles = [];
   const maxBulletHoles = 180;
+  const bulletHoleScale = 1 / 3;
 
 
   let activeFlash = null;
@@ -7694,7 +8049,7 @@ ${slotText}` : ''}`;
   hole.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), surfaceNormal);
 
 
-  const finalSize = size * THREE.MathUtils.randFloat(0.82, 1.18);
+  const finalSize = size * bulletHoleScale * THREE.MathUtils.randFloat(0.82, 1.18);
   hole.scale.set(finalSize, finalSize, finalSize);
   hole.renderOrder = 20;
   scene.add(hole);
@@ -8306,8 +8661,9 @@ ${slotText}` : ''}`;
   const playerRadius = 0.8;
 
 
-  const currentLocalPos = new THREE.Vector3(0.2, -0.35, -0.5);
+  const currentLocalPos = new THREE.Vector3(0.22, -0.30, -0.55);
   const targetLocalPos = new THREE.Vector3();
+  const targetLocalRot = new THREE.Euler();
   const leanWeaponOffsetPos = new THREE.Vector3();
   const leanWeaponOffsetRot = new THREE.Euler();
   const moveWeaponOffsetPos = new THREE.Vector3();
@@ -8779,11 +9135,11 @@ ${slotText}` : ''}`;
   } else {
   leanTarget = keys.q === keys.e ? 0 : keys.q ? -1 : 1;
   leanAmount = THREE.MathUtils.lerp(leanAmount, leanTarget, Math.min(1, delta * 10));
-  cameraRollZ = -leanAmount * LEAN_CAMERA_ROLL;
+  cameraRollZ = -leanAmount * THREE.MathUtils.degToRad(leanSettings.cameraRollDeg);
   appliedLeanOffset.set(
-  Math.cos(yaw) * LEAN_CAMERA_SIDE * leanAmount,
-  -LEAN_CAMERA_DROP * Math.abs(leanAmount),
-  -Math.sin(yaw) * LEAN_CAMERA_SIDE * leanAmount
+  Math.cos(yaw) * leanSettings.cameraSide * leanAmount,
+  -leanSettings.cameraDrop * Math.abs(leanAmount),
+  -Math.sin(yaw) * leanSettings.cameraSide * leanAmount
   );
   camera.position.add(appliedLeanOffset);
   }
@@ -8994,35 +9350,26 @@ ${slotText}` : ''}`;
   scopeCamera.updateProjectionMatrix();
 
 
-  if (isAiming) {
-  if (currentWeapon === WEAPONS.MP153) {
-  targetLocalPos.set(0.018, -0.255, -0.36);
-  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, shotgunAdsRotation.x, 0.24);
-  aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, shotgunAdsRotation.y, 0.24);
-  aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, shotgunAdsRotation.z, 0.24);
-  } else if (currentWeapon === WEAPONS.FN57) {
-  targetLocalPos.set(0.035, -0.31, -0.42);
-  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, 0.012, 0.24);
-  aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, 0, 0.24);
-  aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.24);
-  } else {
-  targetLocalPos.set(0.005 - scopeZoomMotionAmount * 0.018, -0.328 + scopeZoomMotionAmount * 0.014, -0.23);
-  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, -scopeZoomMotionAmount * 0.015, 0.24);
-  aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, 0, 0.24);
-  aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.24);
+  const weaponPoseKey = getWeaponPoseKey(currentWeapon);
+  const pose = getCurrentWeaponViewPose();
+  targetLocalPos.copy(pose.position);
+  targetLocalRot.copy(pose.rotation);
+
+  if (!isAiming) {
+  const recoilScale = weaponPoseKey === 'FN57' ? 0.45 : 0.5;
+  targetLocalPos.y += recoilTargetY * recoilScale;
   }
 
+  if (isAiming && weaponPoseKey === 'M4A1') {
+  targetLocalPos.x -= scopeZoomMotionAmount * 0.018;
+  targetLocalPos.y += scopeZoomMotionAmount * 0.014;
+  targetLocalRot.x += -scopeZoomMotionAmount * 0.015;
+  }
 
-  } else {
-  if (currentWeapon === WEAPONS.FN57) {
-  targetLocalPos.set(0.18, -0.4 + recoilTargetY * 0.45, -0.52);
-  } else {
-  targetLocalPos.set(0.2, -0.35 + recoilTargetY * 0.5, -0.5);
-  }
-  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, 0, 0.2);
-  aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, 0, 0.2);
-  aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, 0, 0.2);
-  }
+  const weaponPoseRotLerp = isAiming ? 0.24 : 0.2;
+  aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, targetLocalRot.x, weaponPoseRotLerp);
+  aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, targetLocalRot.y, weaponPoseRotLerp);
+  aimOffsetRot.z = THREE.MathUtils.lerp(aimOffsetRot.z, targetLocalRot.z, weaponPoseRotLerp);
 
 	  const weaponMotionActive = playerIsMoving && !deathState.active && !raidEnded;
   const weaponMotion = playerIsSprinting ? WEAPON_SPRINT_MOTION : WEAPON_WALK_MOTION;
@@ -9080,16 +9427,16 @@ ${slotText}` : ''}`;
   targetLocalPos.add(moveWeaponOffsetPos);
   currentLocalPos.lerp(targetLocalPos, playerIsSprinting ? 0.28 : isAiming ? 0.25 : 0.2);
 
-  const leanWeaponScale = isAiming ? 0.2 : 1;
+  const leanWeaponScale = isAiming ? leanSettings.adsWeaponScale : 1;
   leanWeaponOffsetPos.set(
-  leanAmount * 0.055 * leanWeaponScale,
-  -Math.abs(leanAmount) * 0.025 * leanWeaponScale,
-  Math.abs(leanAmount) * 0.02 * leanWeaponScale
+  leanAmount * leanSettings.weaponSide * leanWeaponScale,
+  -Math.abs(leanAmount) * leanSettings.weaponDrop * leanWeaponScale,
+  Math.abs(leanAmount) * leanSettings.weaponForward * leanWeaponScale
   );
   leanWeaponOffsetRot.set(
   0,
-  leanAmount * 0.025 * leanWeaponScale,
-  -leanAmount * 0.08 * leanWeaponScale
+  leanAmount * leanSettings.weaponYaw * leanWeaponScale,
+  -leanAmount * leanSettings.weaponRoll * leanWeaponScale
   );
 
   const finalWeaponWorldPos = currentLocalPos.clone().add(weaponPivotCompensation).add(swapOffsetPos).add(leanWeaponOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
@@ -9136,6 +9483,9 @@ ${slotText}` : ''}`;
 
   weaponGroup.visible = true;
   }
+
+  debugM4ScopePosition(m4a1, fullScope);
+  debugWeaponClipping();
 
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
@@ -9306,7 +9656,7 @@ ${slotText}` : ''}`;
   isGrounded = true;
   jumpRequested = false;
   airborneMoveVelocity.set(0, 0, 0);
-  currentLocalPos.set(0.2, -0.35, -0.5);
+  currentLocalPos.copy(WEAPON_VIEW_POSES.M4A1.hip.position);
 	  const playerSpawn = selectRaidSpawnPoint();
   camera.position.set(
   playerSpawn.x,

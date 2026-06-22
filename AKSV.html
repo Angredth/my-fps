@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKS-74U Geometry Viewer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111416;
+      --panel: rgba(18, 22, 24, 0.88);
+      --line: rgba(203, 214, 216, 0.22);
+      --text: #eef2f3;
+      --muted: #a7b0b3;
+      --accent: #d18a4a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: Inter, Pretendard, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 10;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 8px 7px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(10px);
+    }
+
+    .identity {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .identity strong {
+      color: var(--text);
+      font-size: 0.98rem;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .identity span {
+      color: var(--muted);
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    button {
+      min-width: 36px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 0 10px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+      font: inherit;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+    }
+
+    button:hover {
+      border-color: rgba(209, 138, 74, 0.7);
+      background: rgba(209, 138, 74, 0.12);
+    }
+
+    button.active {
+      border-color: var(--accent);
+      color: #ffd6ae;
+      background: rgba(209, 138, 74, 0.18);
+    }
+
+    .status {
+      position: fixed;
+      z-index: 10;
+      left: 14px;
+      bottom: 14px;
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      background: var(--panel);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(10px);
+    }
+
+    .status span {
+      padding: 3px 7px;
+      border-right: 1px solid var(--line);
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+
+    .status span:last-child {
+      border-right: 0;
+    }
+
+    .error {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      color: #ffd4d4;
+      background: #111416;
+      text-align: center;
+    }
+
+    @media (max-width: 640px) {
+      .topbar {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        padding-left: 10px;
+      }
+
+      .identity span,
+      button span {
+        display: none;
+      }
+
+      button {
+        width: 34px;
+        padding: 0;
+      }
+
+      .status {
+        left: 8px;
+        bottom: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="identity">
+      <strong>AKS-74U</strong>
+      <span>Three.js primitive geometry</span>
+    </div>
+    <div class="controls">
+      <button id="rotateButton" class="active" type="button" title="자동 회전 켜기/끄기" aria-pressed="true">
+        <b aria-hidden="true">↻</b><span>회전</span>
+      </button>
+      <button id="gridButton" class="active" type="button" title="그리드 표시 켜기/끄기" aria-pressed="true">
+        <b aria-hidden="true">#</b><span>그리드</span>
+      </button>
+      <button id="resetButton" type="button" title="카메라 초기화">
+        <b aria-hidden="true">⌂</b><span>초기화</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="status" aria-label="모델 방향">
+    <span>총구 −X</span>
+    <span>개머리판 +X</span>
+  </div>
+
+  <div id="error" class="error"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="./AKS.js"></script>
+  <script>
+    const errorElement = document.getElementById("error");
+
+    if (typeof THREE === "undefined" || typeof window.createAKS74U !== "function") {
+      errorElement.style.display = "grid";
+      errorElement.textContent = "Three.js 또는 AKS.js를 불러오지 못했습니다.";
+      throw new Error("Viewer dependencies are unavailable");
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111416);
+    scene.fog = new THREE.Fog(0x111416, 18, 34);
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.body.prepend(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 5;
+    controls.maxDistance = 22;
+    controls.maxPolarAngle = Math.PI * 0.88;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.1;
+
+    const model = window.createAKS74U();
+    model.rotation.y = -0.28;
+    scene.add(model);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshStandardMaterial({ color: 0x171b1d, roughness: 0.92, metalness: 0.04 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1.72;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(40, 40, 0x5e6a6d, 0x2a3133);
+    grid.position.y = -1.71;
+    grid.material.opacity = 0.32;
+    grid.material.transparent = true;
+    scene.add(grid);
+
+    scene.add(new THREE.HemisphereLight(0xc9d8e6, 0x20170f, 1.45));
+
+    const keyLight = new THREE.DirectionalLight(0xffe2c4, 3.2);
+    keyLight.position.set(-5, 8, 7);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.left = -8;
+    keyLight.shadow.camera.right = 8;
+    keyLight.shadow.camera.top = 6;
+    keyLight.shadow.camera.bottom = -6;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xb9d8ff, 1.8);
+    fillLight.position.set(5, 3, -6);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.PointLight(0xff9a4a, 12, 18, 2);
+    rimLight.position.set(-4, 1, -4);
+    scene.add(rimLight);
+
+    function resetCamera() {
+      camera.position.set(8.8, 4.2, 10.2);
+      controls.target.set(0, 0.18, 0);
+      controls.update();
+    }
+
+    resetCamera();
+
+    const rotateButton = document.getElementById("rotateButton");
+    const gridButton = document.getElementById("gridButton");
+    const resetButton = document.getElementById("resetButton");
+
+    rotateButton.addEventListener("click", () => {
+      controls.autoRotate = !controls.autoRotate;
+      rotateButton.classList.toggle("active", controls.autoRotate);
+      rotateButton.setAttribute("aria-pressed", String(controls.autoRotate));
+    });
+
+    gridButton.addEventListener("click", () => {
+      grid.visible = !grid.visible;
+      gridButton.classList.toggle("active", grid.visible);
+      gridButton.setAttribute("aria-pressed", String(grid.visible));
+    });
+
+    resetButton.addEventListener("click", resetCamera);
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    renderer.setAnimationLoop(() => {
+      controls.update();
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

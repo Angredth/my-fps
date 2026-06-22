@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>DVL-10 Aligned Viewer</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
+    }
+
+    #info {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      color: white;
+      background: rgba(0, 0, 0, 0.58);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <b>DVL-10 Aligned Viewer</b><br>
+    좌클릭 드래그: 회전<br>
+    우클릭 드래그: 이동<br>
+    휠: 확대 / 축소<br>
+    총구: -X / 개머리판: +X
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x151515);
+
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(4.8, 2.2, 5.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, -0.1, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed = 0.7;
+    controls.zoomSpeed = 0.85;
+    controls.panSpeed = 0.7;
+    controls.minDistance = 2;
+    controls.maxDistance = 13;
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x222222, 1.8);
+    scene.add(hemi);
+
+    const key = new THREE.DirectionalLight(0xffffff, 2.8);
+    key.position.set(4, 6, 5);
+    key.castShadow = true;
+    key.shadow.mapSize.width = 2048;
+    key.shadow.mapSize.height = 2048;
+    scene.add(key);
+
+    const fill = new THREE.DirectionalLight(0xffffff, 1.2);
+    fill.position.set(-4, 3, -5);
+    scene.add(fill);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(12, 7),
+      new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        roughness: 0.85,
+        metalness: 0.08
+      })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1.35;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(12, 24, 0x444444, 0x2a2a2a);
+    grid.position.y = -1.34;
+    scene.add(grid);
+
+    function createDVL10Rifle() {
+      const rifle = new THREE.Group();
+      rifle.name = "DVL-10 Rifle - aligned build";
+
+      const MAT = {
+        body: new THREE.MeshStandardMaterial({
+          color: 0x4f552e,
+          roughness: 0.72,
+          metalness: 0.22
+        }),
+        dark: new THREE.MeshStandardMaterial({
+          color: 0x111111,
+          roughness: 0.68,
+          metalness: 0.28
+        }),
+        rubber: new THREE.MeshStandardMaterial({
+          color: 0x050505,
+          roughness: 0.9,
+          metalness: 0.04
+        }),
+        metal: new THREE.MeshStandardMaterial({
+          color: 0x2b2b2b,
+          roughness: 0.48,
+          metalness: 0.62
+        })
+      };
+
+      // =========================================================
+      // 기준값
+      // =========================================================
+      const A = {
+        // 총 중심축
+        boreY: 0,
+        boreZ: 0,
+
+        // X축 기준점
+        muzzleX: -4.85,
+
+        suppressorLength: 3.65,
+        connectorLength: 0.78,
+        receiverLength: 1.25,
+        stockConnectorLength: 0.72,
+        stockLength: 1.55,
+
+        receiverHeight: 0.48,
+        receiverDepth: 0.42
+      };
+
+      A.suppressorStartX = A.muzzleX;
+      A.suppressorEndX = A.suppressorStartX + A.suppressorLength;
+
+      A.connectorStartX = A.suppressorEndX;
+      A.connectorEndX = A.connectorStartX + A.connectorLength;
+
+      A.receiverStartX = A.connectorEndX;
+      A.receiverEndX = A.receiverStartX + A.receiverLength;
+      A.receiverCenterX = (A.receiverStartX + A.receiverEndX) / 2;
+
+      A.stockConnectorStartX = A.receiverEndX;
+      A.stockConnectorEndX = A.stockConnectorStartX + A.stockConnectorLength;
+
+      A.stockStartX = A.stockConnectorEndX;
+      A.stockEndX = A.stockStartX + A.stockLength;
+
+      function center(start, length) {
+        return start + length / 2;
+      }
+
+      function box(parent, name, size, pos, mat, rot = [0, 0, 0]) {
+        const geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = name;
+        mesh.position.set(pos[0], pos[1], pos[2]);
+        mesh.rotation.set(rot[0], rot[1], rot[2]);
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function cylX(parent, name, radiusTop, radiusBottom, length, centerX, y, z, mat, seg = 32) {
+        const geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, length, seg);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = name;
+        mesh.position.set(centerX, y, z);
+        mesh.rotation.z = Math.PI / 2;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function cylY(parent, name, radiusTop, radiusBottom, length, x, centerY, z, mat, seg = 24) {
+        const geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, length, seg);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = name;
+        mesh.position.set(x, centerY, z);
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function cylZ(parent, name, radiusTop, radiusBottom, length, x, y, centerZ, mat, seg = 24) {
+        const geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, length, seg);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = name;
+        mesh.position.set(x, y, centerZ);
+        mesh.rotation.x = Math.PI / 2;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function capsule(parent, name, radius, length, pos, mat, rot = [0, 0, 0]) {
+        const geo = new THREE.CapsuleGeometry(radius, length, 10, 18);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = name;
+        mesh.position.set(pos[0], pos[1], pos[2]);
+        mesh.rotation.set(rot[0], rot[1], rot[2]);
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function boltOnSide(parent, x, y, z, side = 1, r = 0.022) {
+        const geo = new THREE.CylinderGeometry(r, r, 0.025, 16);
+        const mesh = new THREE.Mesh(geo, MAT.metal);
+        mesh.name = "small side bolt / pin";
+        mesh.position.set(x, y, z);
+        mesh.rotation.x = Math.PI / 2;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function rail(parent, startX, endX, y, z, count, width = 0.18) {
+        const len = endX - startX;
+        box(
+          parent,
+          "picatinny rail base",
+          [len, 0.045, width],
+          [center(startX, len), y, z],
+          MAT.metal
+        );
+
+        const step = len / count;
+        for (let i = 0; i < count; i++) {
+          const x = startX + step * i + step / 2;
+          box(
+            parent,
+            "picatinny rail tooth",
+            [step * 0.55, 0.065, width * 0.95],
+            [x, y + 0.055, z],
+            MAT.metal
+          );
+        }
+      }
+
+      // =========================================================
+      // 1. 총열 축 기준 파츠
+      // =========================================================
+
+      // 긴 원통형 소음기
+      cylX(
+        rifle,
+        "long cylindrical suppressor",
+        0.19,
+        0.19,
+        A.suppressorLength,
+        center(A.suppressorStartX, A.suppressorLength),
+        A.boreY,
+        A.boreZ,
+        MAT.body,
+        40
+      );
+
+      cylX(
+        rifle,
+        "suppressor front cap",
+        0.205,
+        0.205,
+        0.12,
+        A.suppressorStartX + 0.06,
+        A.boreY,
+        A.boreZ,
+        MAT.body,
+        40
+      );
+
+      cylX(
+        rifle,
+        "suppressor rear cap",
+        0.205,
+        0.205,
+        0.12,
+        A.suppressorEndX - 0.06,
+        A.boreY,
+        A.boreZ,
+        MAT.body,
+        40
+      );
+
+      cylX(
+        rifle,
+        "dark muzzle hole",
+        0.07,
+        0.07,
+        0.035,
+        A.suppressorStartX - 0.02,
+        A.boreY,
+        A.boreZ,
+        MAT.dark,
+        24
+      );
+
+      // 얇은 배럴 연결부
+      cylX(
+        rifle,
+        "thin barrel connector",
+        0.075,
+        0.075,
+        A.connectorLength,
+        center(A.connectorStartX, A.connectorLength),
+        A.boreY,
+        A.boreZ,
+        MAT.metal,
+        32
+      );
+
+      // 배럴 연결 링들
+      cylX(
+        rifle,
+        "barrel connection ring at suppressor",
+        0.145,
+        0.145,
+        0.08,
+        A.connectorStartX + 0.04,
+        A.boreY,
+        A.boreZ,
+        MAT.body,
+        32
+      );
+
+      cylX(
+        rifle,
+        "barrel connection ring at receiver",
+        0.145,
+        0.145,
+        0.08,
+        A.connectorEndX - 0.04,
+        A.boreY,
+        A.boreZ,
+        MAT.body,
+        32
+      );
+
+      cylX(
+        rifle,
+        "suppressor lock ring",
+        0.22,
+        0.22,
+        0.075,
+        A.suppressorEndX - 0.14,
+        A.boreY,
+        A.boreZ,
+        MAT.metal,
+        32
+      );
+
+      // =========================================================
+      // 2. 리시버: 시작/끝 기준으로 정확히 배치
+      // =========================================================
+
+      box(
+        rifle,
+        "angular receiver main block",
+        [A.receiverLength, A.receiverHeight, A.receiverDepth],
+        [A.receiverCenterX, -0.03, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "receiver upper block",
+        [A.receiverLength * 0.92, 0.26, 0.35],
+        [A.receiverCenterX - 0.04, 0.29, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "lower angled receiver block",
+        [0.72, 0.22, 0.38],
+        [A.receiverStartX + 0.78, -0.33, 0],
+        MAT.body,
+        [0, 0, -0.05]
+      );
+
+      // 리시버 앞/뒤 링
+      cylX(
+        rifle,
+        "receiver front collar",
+        0.25,
+        0.25,
+        0.13,
+        A.receiverStartX + 0.06,
+        0.12,
+        0,
+        MAT.body,
+        32
+      );
+
+      cylX(
+        rifle,
+        "receiver rear collar",
+        0.25,
+        0.25,
+        0.13,
+        A.receiverEndX - 0.06,
+        0.12,
+        0,
+        MAT.body,
+        32
+      );
+
+      cylX(
+        rifle,
+        "receiver front metal ring detail",
+        0.285,
+        0.285,
+        0.045,
+        A.receiverStartX + 0.12,
+        0.12,
+        0,
+        MAT.metal,
+        32
+      );
+
+      cylX(
+        rifle,
+        "receiver rear metal ring detail",
+        0.265,
+        0.265,
+        0.045,
+        A.receiverEndX - 0.14,
+        0.12,
+        0,
+        MAT.metal,
+        32
+      );
+
+      // 리시버 측면 패널
+      function receiverPanel(side) {
+        const z = side * (A.receiverDepth / 2 + 0.012);
+        box(
+          rifle,
+          "receiver side rectangular panel",
+          [0.55, 0.32, 0.018],
+          [A.receiverStartX + 0.48, -0.05, z],
+          MAT.body
+        );
+
+        box(
+          rifle,
+          "receiver panel horizontal line",
+          [0.43, 0.012, 0.025],
+          [A.receiverStartX + 0.48, -0.05, z + side * 0.012],
+          MAT.metal
+        );
+
+        box(
+          rifle,
+          "receiver panel vertical line",
+          [0.012, 0.25, 0.025],
+          [A.receiverStartX + 0.48, -0.05, z + side * 0.014],
+          MAT.metal
+        );
+
+        const bx1 = A.receiverStartX + 0.25;
+        const bx2 = A.receiverStartX + 0.71;
+        const by1 = 0.08;
+        const by2 = -0.18;
+
+        boltOnSide(rifle, bx1, by1, z + side * 0.02, side, 0.018);
+        boltOnSide(rifle, bx2, by1, z + side * 0.02, side, 0.018);
+        boltOnSide(rifle, bx1, by2, z + side * 0.02, side, 0.018);
+        boltOnSide(rifle, bx2, by2, z + side * 0.02, side, 0.018);
+      }
+
+      receiverPanel(1);
+      receiverPanel(-1);
+
+      // 배출구 / 볼트 슬롯
+      box(
+        rifle,
+        "ejection port dark slot",
+        [0.42, 0.1, 0.035],
+        [A.receiverStartX + 0.42, 0.18, A.receiverDepth / 2 + 0.025],
+        MAT.dark
+      );
+
+      box(
+        rifle,
+        "bolt action slot",
+        [0.52, 0.075, 0.035],
+        [A.receiverStartX + 0.62, 0.2, -A.receiverDepth / 2 - 0.025],
+        MAT.dark
+      );
+
+      // 우측 볼트액션 손잡이 하나
+      cylZ(
+        rifle,
+        "single bolt handle stem",
+        0.035,
+        0.035,
+        0.38,
+        A.receiverStartX + 0.78,
+        0.04,
+        -0.39,
+        MAT.metal,
+        16
+      );
+
+      capsule(
+        rifle,
+        "single bolt handle knob",
+        0.075,
+        0.18,
+        [A.receiverStartX + 0.83, -0.12, -0.58],
+        MAT.metal,
+        [0.8, 0, 0]
+      );
+
+      // 상단 피카티니 레일
+      rail(
+        rifle,
+        A.receiverStartX + 0.06,
+        A.receiverEndX - 0.06,
+        0.56,
+        0,
+        17,
+        0.18
+      );
+
+      // 하부 레일
+      rail(
+        rifle,
+        A.receiverStartX + 0.12,
+        A.receiverEndX - 0.22,
+        -0.36,
+        0,
+        9,
+        0.13
+      );
+
+      // =========================================================
+      // 3. 탄창 / 그립 / 트리거: 리시버 기준
+      // =========================================================
+
+      const magX = A.receiverStartX + 0.55;
+
+      box(
+        rifle,
+        "magazine well",
+        [0.46, 0.32, 0.42],
+        [magX, -0.34, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "short magazine upper",
+        [0.34, 0.12, 0.33],
+        [magX, -0.49, 0],
+        MAT.dark
+      );
+
+      box(
+        rifle,
+        "short magazine body",
+        [0.42, 0.58, 0.36],
+        [magX + 0.02, -0.78, 0],
+        MAT.dark,
+        [0, 0, -0.04]
+      );
+
+      box(
+        rifle,
+        "magazine floor plate",
+        [0.48, 0.055, 0.4],
+        [magX + 0.02, -1.08, 0],
+        MAT.metal
+      );
+
+      const triggerX = A.receiverStartX + 1.02;
+
+      box(
+        rifle,
+        "trigger guard front",
+        [0.055, 0.34, 0.055],
+        [triggerX - 0.18, -0.47, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "trigger guard rear",
+        [0.055, 0.34, 0.055],
+        [triggerX + 0.17, -0.47, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "trigger guard bottom",
+        [0.4, 0.055, 0.055],
+        [triggerX, -0.64, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "black trigger",
+        [0.045, 0.23, 0.035],
+        [triggerX, -0.5, 0],
+        MAT.dark,
+        [0, 0, -0.25]
+      );
+
+      // 권총형 그립
+      capsule(
+        rifle,
+        "pistol grip main",
+        0.14,
+        0.56,
+        [A.receiverEndX - 0.08, -0.83, 0],
+        MAT.body,
+        [0, 0, -0.28]
+      );
+
+      box(
+        rifle,
+        "pistol grip neck",
+        [0.28, 0.18, 0.3],
+        [A.receiverEndX - 0.16, -0.48, 0],
+        MAT.body
+      );
+
+      for (let i = 0; i < 4; i++) {
+        box(
+          rifle,
+          "grip finger groove",
+          [0.035, 0.08, 0.32],
+          [A.receiverEndX - 0.28 + i * 0.065, -0.8 - i * 0.04, 0],
+          MAT.metal,
+          [0, 0, -0.28]
+        );
+      }
+
+      // =========================================================
+      // 4. 스톡: 별도 그룹, stockStartX 기준 상대배치
+      // =========================================================
+
+      const stock = new THREE.Group();
+      stock.name = "skeleton stock group";
+      stock.position.set(A.stockStartX, -0., 0);
+      rifle.add(stock);
+
+      // 리시버와 스톡 연결부
+      const connLen = A.stockConnectorLength;
+      box(
+        rifle,
+        "thin stock connector upper",
+        [connLen, 0.11, 0.17],
+        [center(A.stockConnectorStartX, connLen), 0.28, 0],
+        MAT.body
+      );
+
+      box(
+        rifle,
+        "thin stock connector lower",
+        [connLen * 0.82, 0.1, 0.15],
+        [A.stockConnectorStartX + connLen * 0.48, -0.28, 0],
+        MAT.body
+      );
+
+      cylX(
+        rifle,
+        "rear buffer tube",
+        0.13,
+        0.13,
+        connLen + 0.28,
+        A.stockConnectorStartX + (connLen + 0.28) / 2,
+        0.13,
+        0,
+        MAT.body,
+        32
+      );
+
+      // 스켈레톤 스톡 내부 상대좌표
+      box(
+        stock,
+        "stock top beam",
+        [1.3, 0.12, 0.18],
+        [0.63, 0.28, 0],
+        MAT.body
+      );
+
+      box(
+        stock,
+        "stock bottom beam",
+        [1.14, 0.12, 0.18],
+        [0.72, -0.42, 0],
+        MAT.body
+      );
+
+      box(
+        stock,
+        "stock front vertical brace",
+        [0.13, 0.58, 0.18],
+        [0.12, -0.1, 0],
+        MAT.body
+      );
+
+      box(
+        stock,
+        "stock rear vertical brace",
+        [0.13, 0.82, 0.2],
+        [1.36, -0.05, 0],
+        MAT.body
+      );
+
+      box(
+        stock,
+        "stock diagonal brace upper",
+        [0.88, 0.1, 0.16],
+        [0.72, 0.03, 0],
+        MAT.body,
+        [0, 0, -0.58]
+      );
+
+      box(
+        stock,
+        "stock diagonal brace lower",
+        [0.78, 0.1, 0.16],
+        [0.78, -0.23, 0],
+        MAT.body,
+        [0, 0, 0.45]
+      );
+
+      // 내부 구멍 느낌
+      box(
+        stock,
+        "stock upper opening shade front",
+        [0.58, 0.24, 0.03],
+        [0.72, 0.05, 0.105],
+        MAT.dark
+      );
+
+      box(
+        stock,
+        "stock lower opening shade front",
+        [0.72, 0.24, 0.03],
+        [0.86, -0.27, 0.105],
+        MAT.dark
+      );
+
+      box(
+        stock,
+        "stock upper opening shade back",
+        [0.58, 0.24, 0.03],
+        [0.72, 0.05, -0.105],
+        MAT.dark
+      );
+
+      box(
+        stock,
+        "stock lower opening shade back",
+        [0.72, 0.24, 0.03],
+        [0.86, -0.27, -0.105],
+        MAT.dark
+      );
+
+      // 검은 고무 버트패드
+      box(
+        stock,
+        "black rubber buttpad",
+        [0.24, 1.0, 0.36],
+        [1.58, -0.05, 0],
+        MAT.rubber
+      );
+
+      box(
+        stock,
+        "buttpad rear rounded block",
+        [0.08, 0.88, 0.4],
+        [1.74, -0.05, 0],
+        MAT.rubber
+      );
+
+      for (let i = 0; i < 4; i++) {
+        box(
+          stock,
+          "buttpad groove",
+          [0.035, 0.055, 0.42],
+          [1.79, -0.38 + i * 0.22, 0],
+          MAT.metal
+        );
+      }
+
+      boltOnSide(stock, 0.18, 0.2, 0.12, 1, 0.03);
+      boltOnSide(stock, 0.8, 0.2, 0.12, 1, 0.03);
+      boltOnSide(stock, 1.26, -0.02, 0.12, 1, 0.03);
+      boltOnSide(stock, 0.18, 0.2, -0.12, -1, 0.03);
+      boltOnSide(stock, 0.8, 0.2, -0.12, -1, 0.03);
+      boltOnSide(stock, 1.26, -0.02, -0.12, -1, 0.03);
+
+      // =========================================================
+      // 5. 하부 전술 악세서리 / 바이포드 느낌
+      // =========================================================
+
+      const acc = new THREE.Group();
+      acc.name = "lower tactical accessory / bipod style";
+      rifle.add(acc);
+
+      const accX = A.suppressorEndX + 0.35;
+
+      box(
+        acc,
+        "accessory rail clamp",
+        [0.62, 0.12, 0.22],
+        [accX, -0.35, 0],
+        MAT.dark
+      );
+
+      cylX(
+        acc,
+        "tactical lower cylinder",
+        0.105,
+        0.105,
+        0.68,
+        accX,
+        -0.54,
+        0,
+        MAT.dark,
+        24
+      );
+
+      cylX(
+        acc,
+        "tactical front cap",
+        0.12,
+        0.12,
+        0.06,
+        accX - 0.36,
+        -0.54,
+        0,
+        MAT.metal,
+        20
+      );
+
+      cylX(
+        acc,
+        "tactical rear cap",
+        0.12,
+        0.12,
+        0.06,
+        accX + 0.36,
+        -0.54,
+        0,
+        MAT.metal,
+        20
+      );
+
+      box(
+        acc,
+        "bipod hinge block",
+        [0.18, 0.12, 0.2],
+        [accX + 0.08, -0.69, 0],
+        MAT.metal
+      );
+
+      cylZ(
+        acc,
+        "bipod left leg",
+        0.025,
+        0.025,
+        0.46,
+        accX + 0.02,
+        -0.9,
+        0.2,
+        MAT.dark,
+        12
+      );
+
+      cylZ(
+        acc,
+        "bipod right leg",
+        0.025,
+        0.025,
+        0.46,
+        accX + 0.02,
+        -0.9,
+        -0.2,
+        MAT.dark,
+        12
+      );
+
+      box(
+        acc,
+        "bipod left foot",
+        [0.18, 0.035, 0.05],
+        [accX + 0.02, -1.1, 0.42],
+        MAT.dark
+      );
+
+      box(
+        acc,
+        "bipod right foot",
+        [0.18, 0.035, 0.05],
+        [accX + 0.02, -1.1, -0.42],
+        MAT.dark
+      );
+
+      // =========================================================
+      // 6. 추가 측면 디테일
+      // =========================================================
+
+      box(
+        rifle,
+        "side rectangular slot 1",
+        [0.22, 0.065, 0.035],
+        [A.receiverEndX + 0.18, 0.16, 0.19],
+        MAT.dark
+      );
+
+      box(
+        rifle,
+        "side rectangular slot 2",
+        [0.22, 0.065, 0.035],
+        [A.stockConnectorStartX + 0.35, 0.08, 0.15],
+        MAT.dark
+      );
+
+      box(
+        rifle,
+        "opposite side rectangular slot 1",
+        [0.22, 0.065, 0.035],
+        [A.receiverEndX + 0.18, 0.16, -0.19],
+        MAT.dark
+      );
+
+      box(
+        rifle,
+        "opposite side rectangular slot 2",
+        [0.22, 0.065, 0.035],
+        [A.stockConnectorStartX + 0.35, 0.08, -0.15],
+        MAT.dark
+      );
+
+      // 작은 볼트/핀 디테일
+      boltOnSide(rifle, A.receiverStartX + 0.1, 0.36, 0.22, 1, 0.024);
+      boltOnSide(rifle, A.receiverStartX + 0.52, 0.36, 0.22, 1, 0.024);
+      boltOnSide(rifle, A.receiverEndX - 0.18, 0.31, 0.22, 1, 0.024);
+
+      boltOnSide(rifle, A.receiverStartX + 0.1, 0.36, -0.22, -1, 0.024);
+      boltOnSide(rifle, A.receiverStartX + 0.52, 0.36, -0.22, -1, 0.024);
+      boltOnSide(rifle, A.receiverEndX - 0.18, 0.31, -0.22, -1, 0.024);
+
+      rifle.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+
+      return rifle;
+    }
+
+    const rifle = createDVL10Rifle();
+    rifle.position.y = 0;
+    scene.add(rifle);
+
+    const axes = new THREE.AxesHelper(1.5);
+    axes.position.set(-5, -1.2, -2.5);
+    scene.add(axes);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

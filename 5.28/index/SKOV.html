@@ -16,8 +16,10 @@
   --accent: #c7d1d9;
   --danger: #d35b4f;
   --ok: #9fe16b;
-  --slot: 46px;
-  --gap: 3px;
+  --grid-slot: 50px;
+  --grid-gap: 3px;
+  --slot: var(--grid-slot);
+  --gap: var(--grid-gap);
   }
 
   * { box-sizing: border-box; }
@@ -137,9 +139,10 @@
   .event-card { border-color: #755f32; background: rgba(76, 54, 20, 0.22); }
   .shop-grid, .item-list { display: grid; gap: 10px; margin-top: 12px; }
   .shop-card { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
-  .trader-layout { display: grid; grid-template-columns: minmax(470px, 0.95fr) minmax(360px, 0.72fr) minmax(560px, 1.12fr); gap: 6px; align-items: stretch; }
+  .trader-layout { display: grid; grid-template-columns: minmax(500px, 0.95fr) minmax(480px, 0.78fr) minmax(640px, 1.12fr); gap: 6px; align-items: stretch; }
   .trader-panel { min-height: calc(100vh - 128px); overflow: hidden; }
   .trader-grid-shell { max-height: calc(100vh - 220px); overflow: auto; padding-right: 6px; }
+  .trader-stash-grid-shell { display: grid; justify-content: end; }
   .trade-mode-strip { display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; align-items: stretch; gap: 3px; margin: -4px 0 8px; height: 30px; }
   .trade-mode-strip .trade-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0; min-width: 0; }
   .trade-tab, .trade-side-button { height: 30px; min-height: 30px; padding: 0 8px; border-radius: 0; border: 1px solid #697574; color: #c8d0cf; background: linear-gradient(180deg, #2b3434 0%, #101515 100%); font-size: 0.78rem; font-weight: 900; line-height: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.65); }
@@ -165,7 +168,7 @@
   .trade-flow-row--receive .trade-flow-content, .trade-flow-row--required .trade-flow-content { grid-area: content; }
   .trade-flow-title { color: #dce3df; font-size: 0.82rem; font-weight: 900; text-align: center; text-shadow: 1px 1px 2px #000; }
   .trade-arrow { color: #aeb9b6; font-size: 1.65rem; font-weight: 900; text-align: center; opacity: 0.82; text-shadow: 0 0 10px rgba(190,206,200,0.22); }
-  .trade-preview-box { min-height: 52px; display: flex; justify-content: center; align-items: center; gap: 7px; --slot: 46px; --gap: 3px; }
+  .trade-preview-box { min-height: calc(var(--slot) + 6px); display: flex; justify-content: center; align-items: center; gap: 7px; }
   .trade-buy-preview-line, .trade-required-preview-line { display: flex; align-items: flex-end; justify-content: center; gap: 8px; }
   .trade-buy-quantity-control { display: flex; align-items: center; gap: 4px; color: #dce3df; font-size: 0.82rem; font-weight: 900; }
   .trade-buy-quantity-control input { width: var(--quantity-input-width, 4ch); min-width: 36px; max-width: 96px; height: 26px; padding: 3px 5px; border: 1px solid #697574; border-radius: 0; color: #edf5f6; background: rgba(0, 0, 0, 0.68); font-size: 0.82rem; font-weight: 900; text-align: right; }
@@ -179,6 +182,34 @@
   .trade-preview-item--missing { outline: 2px solid #d35b4f; filter: saturate(0.7) brightness(0.75); }
   .trade-preview-insufficient .trade-preview-caption { color: #ffb8b0; }
   .trade-buy-status { margin-top: -8px; color: #ffb8b0; font-size: 0.78rem; font-weight: 900; text-align: center; }
+  .trade-sell-layout {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  }
+  .trade-sell-grid-shell {
+  width: 100%;
+  display: grid;
+  justify-content: center;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  overflow-x: auto;
+  }
+  .trade-sell-grid {
+  --slot: var(--grid-slot);
+  --gap: var(--grid-gap);
+  align-self: start;
+  background: rgba(3, 6, 6, 0.78);
+  }
+  .trade-sell-grid .slot {
+  border-color: rgba(58, 72, 72, 0.58);
+  background: linear-gradient(
+  180deg,
+  rgba(31, 39, 38, 0.44),
+  rgba(6, 8, 8, 0.72)
+  );
+  }
   .item .price-tag,
   .item .stock-tag { position: absolute; z-index: 7; max-width: calc(100% - 5px); overflow: hidden; padding: 1px 3px; border: 0; background: rgba(0, 0, 0, 0.76); font-size: 0.56rem; line-height: 1; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
   .item .price-tag { left: 2px; bottom: 2px; color: #ffe7a1; }
@@ -206,6 +237,51 @@
 
   .grid-section { min-width: 0; overflow-x: auto; }
   .grid-section + .grid-section { margin-top: 12px; }
+  .pockets-section {
+  --pocket-slot: var(--slot);
+  --pocket-gap: var(--gap);
+  width: fit-content;
+  min-width: 0;
+  overflow: visible;
+  }
+  .corpse-pockets-row {
+  --pocket-slot: var(--slot);
+  --pocket-gap: var(--gap);
+  }
+  .pockets-section h3,
+  .corpse-pockets-row h3 {
+  width: calc(var(--pocket-slot) + var(--pocket-slot) + var(--pocket-gap) + var(--pocket-gap) + var(--pocket-gap) + 2px);
+  min-height: 0;
+  margin: 0 0 3px;
+  padding: 2px 4px;
+  border: 1px solid rgba(80, 96, 100, 0.68);
+  border-bottom: 0;
+  color: #cfd7d9;
+  background: linear-gradient(180deg, rgba(35, 42, 45, 0.94), rgba(9, 12, 14, 0.92));
+  font-size: 0.66rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  }
+  .pockets-grid-viewport,
+  .corpse-pockets-row .corpse-container-body {
+  width: calc(var(--pocket-slot) + var(--pocket-slot) + var(--pocket-slot) + var(--pocket-slot) + var(--pocket-gap) + var(--pocket-gap) + var(--pocket-gap) + var(--pocket-gap) + var(--pocket-gap) + 2px);
+  max-width: 100%;
+  overflow-x: visible;
+  overflow-y: hidden;
+  }
+  .pockets-grid {
+  --slot: var(--pocket-slot);
+  --gap: var(--pocket-gap);
+  max-width: none;
+  background: rgba(4, 7, 8, 0.74);
+  }
+  .pockets-grid.segmented-grid {
+  --gap: var(--pocket-gap);
+  }
+  .pockets-grid .slot {
+  border-color: rgba(58, 72, 72, 0.7);
+  background: linear-gradient(180deg, rgba(31, 39, 38, 0.48), rgba(6, 8, 8, 0.78));
+  }
   .inventory-wrap {
   display: inline-grid;
   grid-template-columns: repeat(var(--cols), var(--slot));
@@ -217,9 +293,10 @@
   background: rgba(2, 4, 5, 0.58);
   position: relative;
   user-select: none;
-  max-width: 100%;
+  width: max-content;
+  max-width: none;
   }
-  .compact-grid { --slot: 40px; --gap: 5px; }
+  .compact-grid { --slot: var(--grid-slot); --gap: var(--grid-gap); }
   .slot { width: var(--slot); height: var(--slot); border: 1px solid rgba(84, 101, 106, 0.55); border-radius: 0; background: linear-gradient(180deg, rgba(42, 48, 49, 0.36), rgba(7, 9, 10, 0.55)); }
   .segmented-grid { --gap: 0px; }
   .segmented-grid .slot { border-color: rgba(68, 82, 88, 0.48); }
@@ -279,7 +356,7 @@
   .item-card-code { flex: 0 1 auto; max-width: 100%; text-align: right; }
   .item-card-visual {
   position: absolute;
-  inset: 12px 3px 11px;
+  inset: calc(var(--slot) * 0.24) calc(var(--slot) * 0.07) calc(var(--slot) * 0.22);
   z-index: 3;
   display: grid;
   place-items: center;
@@ -336,11 +413,11 @@
   }
   .item-card-secondary-status { flex: 0 1 auto; text-align: right; }
   .item-card--shop .item-card-footer { display: none; }
-  .item-card--shop .item-card-visual { bottom: 15px; }
+  .item-card--shop .item-card-visual { bottom: calc(var(--slot) * 0.3); }
   .item-card--one-cell .item-card-code { max-width: 100%; margin-left: auto; }
   .item-card--one-cell .item-card-placeholder { font-size: 0.52rem; }
-  .item-card--one-cell .item-card-visual { inset: 12px 2px 10px; }
-  .item-card--shop.item-card--one-cell .item-card-visual { inset: 12px 2px 15px; }
+  .item-card--one-cell .item-card-visual { inset: calc(var(--slot) * 0.24) calc(var(--slot) * 0.05) calc(var(--slot) * 0.2); }
+  .item-card--shop.item-card--one-cell .item-card-visual { inset: calc(var(--slot) * 0.24) calc(var(--slot) * 0.05) calc(var(--slot) * 0.3); }
   .item-card--narrow .stock-tag { display: none; }
   .item .item-stack-count {
   position: absolute;
@@ -715,7 +792,7 @@
   #splitStackAcceptButton { min-width: 120px; border-radius: 0; }
 
   @media (max-width: 1100px) { .three-pane, .raid-layout, .menu-grid { grid-template-columns: 1fr; } .three-pane > .panel { min-height: 0; max-height: none; } .topbar { align-items: flex-start; flex-direction: column; } .wallet { text-align: left; } }
-  @media (max-width: 700px) { :root { --slot: 40px; --gap: 4px; } .equipment-grid { grid-template-columns: 1fr; } .corpse-pair, .corpse-container-row, .gear-container-row { grid-template-columns: 1fr; } .poi-grid { grid-template-columns: 1fr; } .settings-row { grid-template-columns: 1fr; gap: 7px; } .settings-row input[type="number"] { width: 100%; } #settingsButton { right: 14px; bottom: 14px; } }
+  @media (max-width: 700px) { :root { --grid-slot: 42px; --grid-gap: 4px; } .equipment-grid { grid-template-columns: 1fr; } .corpse-pair, .corpse-container-row, .gear-container-row { grid-template-columns: 1fr; } .poi-grid { grid-template-columns: 1fr; } .settings-row { grid-template-columns: 1fr; gap: 7px; } .settings-row input[type="number"] { width: 100%; } #settingsButton { right: 14px; bottom: 14px; } }
   </style>
 </head>
 <body>
@@ -808,7 +885,7 @@
   <section class="panel trader-panel">
   <h2>플레이어 스태시</h2>
   <p class="hint">상점 화면에서는 장비 슬롯 없이 스태시 그리드만 표시합니다. Ctrl+좌클릭으로 판매 등록할 수 있습니다.</p>
-  <div class="trader-grid-shell"><div id="traderStashGrid" class="inventory-wrap compact-grid" aria-label="상점 스태시"></div></div>
+  <div class="trader-grid-shell trader-stash-grid-shell"><div id="traderStashGrid" class="inventory-wrap compact-grid" aria-label="상점 스태시"></div></div>
   </section>
   </div>
   </section>
@@ -1066,6 +1143,79 @@
 		  click: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Botton.mp3'],
 		  escape: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Esc.mp3']
 		  };
+		  const itemMoveSfxSources = {
+		  armor: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gear/ArmorGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gear/ArmorDrop.wav']
+		  },
+		  helmet: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gear/HelmetGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gear/HelmetDrop.wav']
+		  },
+		  rig: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gear/RigGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gear/RigDrop.wav']
+		  },
+		  ammo: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/BulletGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/BulletDrop.wav']
+		  },
+		  supp: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/FlashGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/FlashDrop.wav']
+		  },
+		  mp153: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SGGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SGDrop.wav']
+		  },
+		  mag: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SMGMagGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SMGMagDrop.wav']
+		  },
+		  dvl10: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SRGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SRDrop.wav']
+		  },
+		  fn57: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SwordoffGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SwordoffDrop.wav']
+		  },
+		  m4a1: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SGGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SGDrop.wav']
+		  },
+		  aks74u: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SGGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Gun/SGDrop.wav']
+		  },
+		  painkiller: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Therrafy/AnalginGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Therrafy/AnalginDrop.wav']
+		  },
+		  syr: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Therrafy/InjectorGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Therrafy/InjectorDrop.wav']
+		  },
+		  band: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Therrafy/FAKGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Therrafy/FAKDrop.wav']
+		  },
+		  key: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Utility/KeyGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Utility/KeyDrop.wav']
+		  },
+		  wlt: {
+		  grab: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Utility/WalletGrab.wav'],
+		  drop: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/Grab/Utility/WalletDrop.wav']
+		  }
+		  };
+		  const inventoryUiSfxSources = {
+		  rigOpen: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/UI/Rigopen.wav'],
+		  stashOpen: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/UI/Stashopen.wav'],
+		  stashClose: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/UI/Stashout.wav'],
+		  trade: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/UI/Trade.wav'],
+		  error: ['https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/FX/UI/Zzz.wav']
+		  };
 		  const buttonSfxStartOffsets = {
 		  escape: 0.18
 		  };
@@ -1253,6 +1403,95 @@
 			  tryPlaySource();
 			  }
 
+			  function playOneShotInterfaceSfx(sources, baseVolume = 1) {
+			  if (raidOutcomeSoundPlaying) return;
+			  const resolvedSources = (sources || []).map(resolveSfxUrl);
+			  if (!resolvedSources.length) return;
+
+			  let sourceIndex = 0;
+
+			  const tryPlaySource = () => {
+			  const audio = new Audio();
+			  audio.crossOrigin = 'anonymous';
+			  audio.src = resolvedSources[sourceIndex];
+			  audio.preload = 'auto';
+			  audio.volume = AudioManager.getVolume('interface', baseVolume);
+
+			  const trackedEntry = AudioManager.track(audio, 'interface', baseVolume);
+
+			  let settled = false;
+			  const cleanup = () => {
+			  if (trackedEntry) AudioManager.trackedAudio.delete(trackedEntry);
+			  };
+
+			  const tryFallback = () => {
+			  if (settled) return;
+			  settled = true;
+			  cleanup();
+			  if (sourceIndex >= resolvedSources.length - 1) {
+			  console.warn('인터페이스 효과음 재생 실패:', audio.currentSrc || resolvedSources[sourceIndex]);
+			  return;
+			  }
+			  sourceIndex++;
+			  tryPlaySource();
+			  };
+
+			  audio.addEventListener('ended', cleanup, { once: true });
+			  audio.addEventListener('error', tryFallback, { once: true });
+
+			  try {
+			  const playPromise = audio.play();
+			  if (playPromise) playPromise.catch(tryFallback);
+			  } catch {
+			  tryFallback();
+			  }
+			  };
+
+			  tryPlaySource();
+			  }
+
+			  function getItemSfxKey(item) {
+			  if (!item) return '';
+
+			  if (item.id === 'armor' || item.category === 'armor') return 'armor';
+			  if (item.id === 'helmet' || item.category === 'helmet') return 'helmet';
+			  if (item.category === 'rig' || item.id === 'bank-robber') return 'rig';
+
+			  if (item.id === 'ammo' || item.category === 'ammo') return 'ammo';
+			  if (item.id === 'suppressor') return 'supp';
+			  if (item.id === 'mp153') return 'mp153';
+			  if (item.id === 'magazine' || item.category === 'magazine') return 'mag';
+			  if (item.id === 'dvl10') return 'dvl10';
+			  if (item.id === 'pistol') return 'fn57';
+			  if (item.id === 'rifle') return 'm4a1';
+			  if (item.id === 'aks74u') return 'aks74u';
+
+			  if (item.id === 'painkiller') return 'painkiller';
+			  if (item.id === 'syringe') return 'syr';
+			  if (item.id === 'bandage') return 'band';
+
+			  if (item.id === 'key') return 'key';
+			  if (item.id === 'wallet') return 'wlt';
+
+			  return '';
+			  }
+
+			  function playItemMoveSfx(item, phase) {
+			  const key = getItemSfxKey(item);
+			  if (!key) return;
+
+			  const sources = itemMoveSfxSources[key]?.[phase];
+			  if (!sources?.length) return;
+
+			  playOneShotInterfaceSfx(sources, phase === 'grab' ? 0.9 : 1);
+			  }
+
+			  function playInventoryUiSfx(kind) {
+			  const sources = inventoryUiSfxSources[kind];
+			  if (!sources?.length) return;
+			  playOneShotInterfaceSfx(sources, 1);
+			  }
+
 			  function isInteractiveButtonTarget(target) {
 			  const button = target?.closest?.('button');
 			  return button && !button.disabled && !button.closest('[aria-hidden="true"]') ? button : null;
@@ -1269,7 +1508,10 @@
 
 			  document.addEventListener('pointerdown', (event) => {
 			  if (event.button !== 0) return;
-			  if (!isInteractiveButtonTarget(event.target)) return;
+			  const button = isInteractiveButtonTarget(event.target);
+			  if (!button) return;
+			  if (button.dataset.tradeExecute === 'true') return;
+			  if (button.dataset.closeWindow && isRigContainerItem(findContainerItem(button.dataset.closeWindow))) return;
 			  playButtonSfx('click');
 			  }, true);
 
@@ -1575,6 +1817,8 @@
   { id: 'helmet', name: '헬멧', shortName: 'HELM', rarity: 'Equipment', category: 'helmet', equipSlot: 'helmet', width: 2, height: 2, durability: 30, maxDurability: 30, value: 18000, weight: 2.4, description: '머리 보호 장비' },
   { id: 'armor', name: '방어구', shortName: 'ARMOR', rarity: 'Equipment', category: 'armor', equipSlot: 'armor', width: 3, height: 3, durability: 50, maxDurability: 50, value: 30000, weight: 7.8, description: '몸통 방어 장비' },
   { id: 'rifle', name: 'M4A1', shortName: 'M4A1', rarity: 'Military', category: 'primary', type: 'weapon', equipSlot: 'primary', width: 4, height: 2, value: 42000, weight: 3.1, description: '주무기. 1/2번 슬롯에 장착 가능' },
+  { id: 'aks74u', name: 'AKS-74U', shortName: 'AKS-74U', rarity: 'Military', category: 'primary', type: 'weapon', equipSlot: 'primary', width: 4, height: 2, value: 45000, weight: 2.7, mechanism: 'automatic', automatic: true, description: '단축형 돌격소총. M4A1과 동일한 연사 총기 구조를 사용한다.' },
+  { id: 'dvl10', name: 'DVL-10', shortName: 'DVL-10', rarity: 'Military', category: 'primary', type: 'weapon', equipSlot: 'primary', width: 5, height: 2, value: 135000, weight: 5.8, ammo: 10, maxAmmo: 10, mechanism: 'bolt-action', automatic: false, description: '볼트액션 저격소총. 10발 장탄, 매 발사 후 볼트 조작 필요.' },
   { id: 'mp153', name: 'MP-153', shortName: 'MP153', rarity: 'Military', category: 'primary', type: 'weapon', equipSlot: 'primary', width: 7, height: 1, value: 36000, weight: 3.4, description: '반자동 산탄총. 차지공간 7x1' },
   { id: 'pistol', name: 'FN 5-7', shortName: 'FN57', rarity: 'Equipment', category: 'pistol', type: 'weapon', equipSlot: 'pistol', width: 2, height: 1, value: 15000, weight: 1.1, description: '보조무기. 소음기 장착 가능, 장착 시 3x1' },
   { id: 'knife', name: '근접무기', shortName: 'KNIFE', rarity: 'Equipment', category: 'melee', type: 'weapon', equipSlot: 'melee', width: 1, height: 2, value: 5000, weight: 0.5, description: '기본 근접무기' },
@@ -1639,6 +1883,8 @@
   { itemId: 'helmet', cost: 18000, stock: '3/3', group: 'gear' },
   { itemId: 'armor', cost: 30000, stock: '2/2', group: 'gear' },
   { itemId: 'rifle', cost: 42000, stock: '2/2', group: 'weapon' },
+  { itemId: 'aks74u', cost: 45000, stock: '3/3', group: 'weapon' },
+  { itemId: 'dvl10', cost: 135000, stock: '1/1', group: 'weapon' },
   { itemId: 'mp153', cost: 36000, stock: '2/2', group: 'weapon' },
   { itemId: 'bank-robber', cost: 16000, stock: '5/5', group: 'gear' },
   { itemId: 'small-backpack', cost: 12000, stock: '5/5', group: 'gear' },
@@ -1650,7 +1896,9 @@
   const SHOP_COLS = 8;
   const SHOP_ROWS = 12;
   const SELL_COLS = 8;
-  const SELL_ROWS = 8;
+  const SELL_BASE_ROWS = 11;
+  const SELL_ROW_GROW_STEP = 4;
+  const SELL_MAX_ROWS = 60;
   const PLAYER_USABLE_ROUBLE_LIMIT = 200000;
 
   const LOOT_TABLES = {
@@ -1681,7 +1929,7 @@
   let selected = null;
   let openContainers = [];
   let movingWindow = null;
-  let trade = { mode: 'buy', selected: SHOP_ITEMS[0].itemId, sellItems: [], autoFillRequiredItems: true, buyQuantity: 1 };
+  let trade = { mode: 'buy', selected: SHOP_ITEMS[0].itemId, sellItems: [], autoFillRequiredItems: true, buyQuantity: 1, sellRows: SELL_BASE_ROWS };
   let modifierState = { ctrl: false };
   let suppressItemClickUntil = 0;
   let pendingStackSplit = null;
@@ -1923,7 +2171,7 @@
   const incoming = getIncomingUsableRoubleAmount(item, sourceArea, targetArea, amountOverride);
   if (incoming <= 0) return true;
   if (getUsableGearRoubleTotal() + incoming > PLAYER_USABLE_ROUBLE_LIMIT) {
-  if (!options.silent) showToast('실사용 장비에는 최대 200,000루블까지만 보관할 수 있습니다.');
+  if (!options.silent) showErrorToast('실사용 장비에는 최대 200,000루블까지만 보관할 수 있습니다.');
   return false;
   }
   return true;
@@ -2263,18 +2511,30 @@
   function formatMoney(value) { return `₽${Math.round(value).toLocaleString('ko-KR')}`; }
   function xpForNextLevel() { return state.level * 100; }
   function effectiveSize(item) { return item?.rotated ? { width: item.height, height: item.width } : { width: item.width, height: item.height }; }
-  function getItemCenterGridOffset(item) {
-  const size = effectiveSize(item);
+  function getGridPointerCoordinate(grid, event) {
+  const firstSlot = grid.querySelector('.slot');
+  if (!firstSlot) return null;
+  const firstRect = firstSlot.getBoundingClientRect();
+  const computed = getComputedStyle(grid);
+  const columnGap = parseFloat(computed.columnGap || computed.gap || '0') || 0;
+  const rowGap = parseFloat(computed.rowGap || computed.gap || '0') || 0;
+  const slotWidth = firstRect.width;
+  const slotHeight = firstRect.height;
+  const pitchX = slotWidth + columnGap;
+  const pitchY = slotHeight + rowGap;
+  if (pitchX <= 0 || pitchY <= 0) return null;
   return {
-  x: Math.floor(size.width / 2),
-  y: Math.floor(size.height / 2)
+  x: (event.clientX - firstRect.left) / pitchX,
+  y: (event.clientY - firstRect.top) / pitchY
   };
   }
-  function getCenteredGridDropPosition(item, hoveredX, hoveredY) {
-  const centerOffset = getItemCenterGridOffset(item);
+  function getShapeCenteredGridDropPosition(item, grid, event) {
+  const pointer = getGridPointerCoordinate(grid, event);
+  if (!pointer) return null;
+  const size = effectiveSize(item);
   return {
-  x: hoveredX - centerOffset.x,
-  y: hoveredY - centerOffset.y
+  x: Math.round(pointer.x - size.width / 2),
+  y: Math.round(pointer.y - size.height / 2)
   };
   }
   function itemCells(item) { const size = effectiveSize(item); return size.width * size.height; }
@@ -2309,7 +2569,20 @@
   try {
   const rect = node.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
-  event.dataTransfer.setDragImage(node, rect.width / 2, rect.height / 2);
+  const ghost = node.cloneNode(true);
+  ghost.style.position = 'fixed';
+  ghost.style.left = '-10000px';
+  ghost.style.top = '-10000px';
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.height = `${rect.height}px`;
+  ghost.style.pointerEvents = 'none';
+  ghost.style.opacity = '0.8';
+  ghost.style.transform = 'none';
+  document.body.appendChild(ghost);
+  event.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
+  requestAnimationFrame(() => {
+  ghost.remove();
+  });
   } catch (error) {
   console.warn('커스텀 드래그 고스트를 적용하지 못했습니다.', error);
   }
@@ -2388,6 +2661,10 @@
   return fragment;
   }
   function showToast(message) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 2400); }
+  function showErrorToast(message) {
+  playInventoryUiSfx('error');
+  showToast(message);
+  }
 
 	  function switchScreen(screen) {
 	  if (currentScreen === 'raid' && screen !== 'raid' && raid.active) {
@@ -2423,7 +2700,22 @@
   updateSettingsButtonVisibility();
   updateDamageVignette();
   window.pendingFpsRaidStart = true;
-  window.FPSRaid?.start(getRaidWeaponLoadout());
+  if (!window.FPSRaid || typeof window.FPSRaid.start !== 'function') {
+  console.error('[FPSRaid] FPS 모듈이 아직 준비되지 않았거나 초기화에 실패했습니다.', {
+  FPSRaid: window.FPSRaid
+  });
+  showToast('FPS 레이드 모듈 초기화 실패: 콘솔 오류를 확인하세요.');
+  raid.active = false;
+  document.body.classList.remove('in-fps-raid');
+  currentScreen = 'menu';
+  document.querySelectorAll('.screen').forEach((node) => {
+  node.classList.toggle('active', node.id === 'menu');
+  });
+  updateSettingsButtonVisibility();
+  render();
+  return;
+  }
+  window.FPSRaid.start(getRaidWeaponLoadout());
   }
 
   function cloneEquipment(equipment) {
@@ -2550,7 +2842,11 @@
 	  startSearchTarget(POIS[index], index, index);
 	  }
 	  function openWorldLootContainer({ key, name, table, searchTime } = {}) {
-	  if (!raid.active || !key || !table || raid.pendingEvent || raid.search || getPlayerHealth().dead) return false;
+	  if (raid.pendingEvent) {
+	  console.warn('루팅 상호작용을 막고 있던 pendingEvent를 정리했습니다.', raid.pendingEvent);
+	  raid.pendingEvent = null;
+	  }
+	  if (!raid.active || !key || !table || raid.search || getPlayerHealth().dead) return false;
 	  if (raid.containers[key]) {
 	  openLootContainer(key);
 	  return true;
@@ -2578,7 +2874,6 @@
   raid.risk = Math.min(85, raid.risk + 5 + Math.floor(Math.random() * 7));
   addLog(`${poi.name} 수색 완료. ${raid.lootContainer.cols}x${raid.lootContainer.rows} 컨테이너가 열렸습니다.`);
   raid.search = null;
-  if (Math.random() < eventChance()) triggerRiskEvent();
   render();
   }
   function generateLootContainer(poi) {
@@ -2967,7 +3262,7 @@
   if (!item?.container || !item.unsearched || item.searching) return;
   let activeSearch = false;
   visitNestedItems(ownedItemRoots(), (entry) => { if (entry.searching && entry.unsearched) activeSearch = true; });
-  if (activeSearch) return showToast('다른 컨테이너를 검색 중입니다.');
+  if (activeSearch) return showErrorToast('다른 컨테이너를 검색 중입니다.');
   item.searching = true;
   item.searchProgress = 0;
   item.searchStartedAt = Date.now();
@@ -2985,15 +3280,21 @@
   });
   }
 
+  function createEnemyWeaponItem(weaponType) {
+  if (weaponType === 'M4A1') return cloneItem(getTemplate('rifle'));
+  if (weaponType === 'MP153' || weaponType === 'MP-153') return cloneItem(getTemplate('mp153'));
+  if (weaponType === 'AKS74U') return cloneItem(getTemplate('aks74u'));
+  return null;
+  }
+
   function createEnemyCorpseLoot(weaponType = 'M4A1') {
-  const primaryId = weaponType === 'MP153' || weaponType === 'MP-153' ? 'mp153' : 'rifle';
   const equipmentItems = [];
   const place = (item, x, y, corpseSlot) => { if (item) equipmentItems.push({ ...item, x, y, corpseSlot }); };
   const rigItem = cloneItem(getTemplate('bank-robber'));
   const backpackItem = Math.random() < 0.55 ? cloneItem(getTemplate('small-backpack')) : null;
   place(cloneItem(getTemplate('helmet')), 0, 0, 'helmet');
   if (Math.random() < 0.75) place(cloneItem(getTemplate('armor')), 2, 0, 'armor');
-  place(cloneItem(getTemplate(primaryId)), 5, 0, 'primary1');
+  place(createEnemyWeaponItem(weaponType), 5, 0, 'primary1');
   place(cloneItem(getTemplate('knife')), 7, 2, 'melee');
   place(rigItem, 0, 2, 'rig');
   if (backpackItem) place(backpackItem, 3, 2, 'backpack');
@@ -3086,7 +3387,12 @@
   }
   if (area === 'stash') return { cols: STASH_COLS, rows: STASH_ROWS };
   if (area === 'shop') return { cols: SHOP_COLS, rows: SHOP_ROWS };
-  if (area === 'sell') return { cols: SELL_COLS, rows: SELL_ROWS };
+  if (area === 'sell') {
+  return {
+  cols: SELL_COLS,
+  rows: getSellRows()
+  };
+  }
   if (area === 'loot') return raid.lootContainer || { cols: 0, rows: 0 };
   if (area === 'pockets') return { cols: 4, rows: 1, maxWidth: 1, maxHeight: 1, segments: makeSegments(4, 1, 1, 1) };
   if (area === 'rig') return unrestrictedContainer((raid.active ? raid.loadout?.rig : state.equipment.rig)?.container);
@@ -3196,11 +3502,11 @@
   function openStackSplitModal({ sourceArea, sourceUid, targetArea, targetX, targetY }) {
   const sourceItem = findItemInAreaByUid(sourceArea, sourceUid);
   if (!sourceItem || !canOpenStackSplit(sourceItem)) {
-  showToast('분할할 수 없는 아이템입니다.');
+  showErrorToast('분할할 수 없는 아이템입니다.');
   return false;
   }
   if (!canPlaceSplitStackAt(sourceItem, targetArea, targetX, targetY)) {
-  showToast('해당 위치에 분할할 수 없습니다.');
+  showErrorToast('해당 위치에 분할할 수 없습니다.');
   return false;
   }
   const modal = document.getElementById('splitStackModal');
@@ -3213,7 +3519,7 @@
   maxAmount = Math.min(maxAmount, PLAYER_USABLE_ROUBLE_LIMIT - getUsableGearRoubleTotal());
   }
   if (maxAmount <= 0) {
-  showToast('실사용 장비에는 최대 200,000루블까지만 보관할 수 있습니다.');
+  showErrorToast('실사용 장비에는 최대 200,000루블까지만 보관할 수 있습니다.');
   return false;
   }
   const defaultAmount = Math.max(1, Math.min(maxAmount, Math.floor(sourceQuantity / 2)));
@@ -3243,23 +3549,23 @@
   const sourceItem = findItemInAreaByUid(sourceArea, sourceUid);
   if (!sourceItem) {
   closeStackSplitModal();
-  showToast('원본 아이템이 없습니다.');
+  showErrorToast('원본 아이템이 없습니다.');
   return;
   }
   const currentQuantity = getStackQuantity(sourceItem);
   if (currentQuantity !== sourceQuantityAtOpen) {
   closeStackSplitModal();
-  showToast('원본 수량이 변경되어 분할을 취소했습니다.');
+  showErrorToast('원본 수량이 변경되어 분할을 취소했습니다.');
   return;
   }
   const amount = clampSplitAmount(document.getElementById('splitStackNumber')?.value);
   if (amount <= 0 || amount >= currentQuantity) {
-  showToast('분할 수량이 올바르지 않습니다.');
+  showErrorToast('분할 수량이 올바르지 않습니다.');
   return;
   }
   if (!canPlaceSplitStackAt(sourceItem, targetArea, targetX, targetY)) {
   closeStackSplitModal();
-  showToast('대상 칸이 비어 있지 않습니다.');
+  showErrorToast('대상 칸이 비어 있지 않습니다.');
   return;
   }
   if (!canMoveRoublesIntoUsableGear(sourceItem, sourceArea, targetArea, amount)) return;
@@ -3272,6 +3578,7 @@
   };
   sourceItem.quantity = currentQuantity - amount;
   areaItems(targetArea).push(splitItem);
+  playItemMoveSfx(splitItem, 'drop');
   selected = { area: targetArea, uid: splitItem.uid };
   closeStackSplitModal();
   saveState();
@@ -3382,6 +3689,7 @@
   cleanupEmptyStacks(areaItems(targetArea));
   if (sourceArea === 'enemy:equipment' || targetArea === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
   selected = { area: targetArea, uid: targetItem.uid };
+  playItemMoveSfx(sourceItem, 'drop');
   saveState();
   render();
   return { handled: true, merged: true };
@@ -3413,6 +3721,7 @@
   cleanupEmptyStacks(areaItems(from));
   cleanupEmptyStacks(areaItems(to));
   if (from === 'enemy:equipment' || to === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
+  if (options.playDropSfx !== false) playItemMoveSfx(source, 'drop');
 
   if (!options.silent) {
   saveState();
@@ -3439,7 +3748,7 @@
   if (to === 'sell' && from !== 'sell') {
   const reason = getSellBlockReason(item);
   if (reason) {
-  showToast(reason);
+  showErrorToast(reason);
   return false;
   }
   }
@@ -3448,9 +3757,14 @@
   if (!canMoveRoublesIntoUsableGear(item, from, to)) return false;
   const spec = areaSpec(to);
   if (!canPlaceIn(item, x, y, areaItems(to), spec.cols, spec.rows, uid, to)) return false;
+  const movedToDifferentGridOrCell =
+  from !== to ||
+  Math.floor(Number(item.x) || 0) !== x ||
+  Math.floor(Number(item.y) || 0) !== y;
   if (from === 'enemy:equipment') markLootedContainerUnsearched(item);
   removeFromArea(from, uid);
   areaItems(to).push({ ...item, x, y });
+  if (movedToDifferentGridOrCell && options.playDropSfx !== false) playItemMoveSfx(item, 'drop');
   if (from === 'enemy:equipment' || to === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
   if (!options.silent && from !== 'sell' && to !== 'sell') saveState();
   if (!options.silent) render();
@@ -3467,11 +3781,12 @@
   if (!canMutateRaidItemsNow()) return false;
   const item = areaItems(from).find((entry) => entry.uid === uid);
   if (!item) return false;
-  if (!canEquipTarget(item, slotKey, equipmentTarget)) { showToast('장착 실패: 슬롯 타입이 맞지 않거나 슬롯이 비어 있지 않습니다.'); return false; }
+  if (!canEquipTarget(item, slotKey, equipmentTarget)) { showErrorToast('장착 실패: 슬롯 타입이 맞지 않거나 슬롯이 비어 있지 않습니다.'); return false; }
   if (!canMoveRoublesIntoUsableGear(item, from, equipmentArea(slotKey, equipmentTarget))) return false;
   if (from === 'enemy:equipment') markLootedContainerUnsearched(item);
   removeFromArea(from, uid);
   equipmentTarget[slotKey] = { ...item, x: undefined, y: undefined };
+  playItemMoveSfx(item, 'drop');
   if (from === 'enemy:equipment') syncActiveCorpseEquipmentRefs();
   syncEquipmentContainerArea(slotKey, equipmentTarget);
   if (raid.active && equipmentTarget === raid.loadout) window.InventoryBridge?.refreshFpsLoadout?.();
@@ -3492,13 +3807,14 @@
   if (!loot || !item) return false;
   if (!canDetachEquipmentToArea(from, `corpse:${slotKey}`)) return false;
   if (!canEquipCorpseSlot(item, slotKey, loot)) {
-  showToast('장착 실패: 시체 장비 슬롯 타입이 맞지 않거나 슬롯이 비어 있지 않습니다.');
+  showErrorToast('장착 실패: 시체 장비 슬롯 타입이 맞지 않거나 슬롯이 비어 있지 않습니다.');
   return false;
   }
   if (from === 'enemy:equipment') markLootedContainerUnsearched(item);
   const removed = removeFromArea(from, uid);
   if (!removed) return false;
   loot.equipmentItems.push({ ...removed, x: undefined, y: undefined, corpseSlot: slotKey });
+  playItemMoveSfx(removed, 'drop');
   syncActiveCorpseEquipmentRefs();
   saveState();
   render();
@@ -3510,12 +3826,12 @@
   const item = areaItems(area)[0];
   if (!item) return false;
   if (equipmentTarget === raid.loadout && slotKey === 'secure') {
-  showToast('레이드 중에는 POUCH를 해제할 수 없습니다.');
+  showErrorToast('레이드 중에는 POUCH를 해제할 수 없습니다.');
   return false;
   }
   const destinations = equipmentTarget === raid.loadout ? ['backpack', 'rig', 'pockets', 'secure'] : ['stash'];
   if (!quickMoveToAreas(area, item.uid, destinations)) {
-  showToast('공간 부족: 장비 해제 불가능.');
+  showErrorToast('공간 부족: 장비 해제 불가능.');
   return false;
   }
   showToast(`${item.name}을(를) 장비 슬롯에서 옮겼습니다.`);
@@ -3534,6 +3850,7 @@
   if (!spot) return false;
   removeFromArea(from, uid);
   target.containerItems.push({ ...item, x: spot.x, y: spot.y });
+  playItemMoveSfx(item, 'drop');
   saveState(); render(); showToast(`${item.name}을(를) ${target.name} 내부에 넣었습니다.`); return true;
   }
   function quickEquipItem(area, uid) {
@@ -3571,7 +3888,7 @@
   }
   const spec = areaSpec(area);
   const spot = findFreeSpotIn(remainingItem, areaItems(area), spec.cols, spec.rows, area);
-  if (spot && moveBetweenAreas(from, area, uid, spot.x, spot.y, { silent: changed })) {
+  if (spot && moveBetweenAreas(from, area, uid, spot.x, spot.y, { silent: changed, playDropSfx: !changed })) {
   if (changed) {
   saveState();
   render();
@@ -3584,7 +3901,7 @@
   return true;
   }
   }
-  if (blockedByRoubleLimit) showToast('실사용 장비에는 최대 200,000루블까지만 보관할 수 있습니다.');
+  if (blockedByRoubleLimit) showErrorToast('실사용 장비에는 최대 200,000루블까지만 보관할 수 있습니다.');
   return false;
   }
   function isItemInActiveCorpse(uid) {
@@ -3682,11 +3999,12 @@
   if (!canPlaceIn(pistol, pistol.x || 0, pistol.y || 0, areaItems(targetArea), spec.cols, spec.rows, pistol.uid, targetArea)) {
   Object.assign(pistol, original, { hasSuppressor: false });
   areaItems(from).push(originalSuppressor);
-  showToast('소음기 장착 후 공간이 부족합니다.');
+  showErrorToast('소음기 장착 후 공간이 부족합니다.');
   render();
   return false;
   }
   }
+  playItemMoveSfx(suppressor, 'drop');
   saveState(); render(); showToast('FN 5-7에 소음기를 장착했습니다.'); return true;
   }
 
@@ -3744,15 +4062,16 @@
   const template = getTemplate(itemId);
   if (!shop) return;
   trade.selected = itemId;
-  if (!template) return showToast('아이템 정보를 찾을 수 없습니다.');
-  if (shop.minLevel && state.level < shop.minLevel) return showToast(`${template.name}은(는) Lv.${shop.minLevel}부터 구매할 수 있습니다.`);
+  if (!template) return showErrorToast('아이템 정보를 찾을 수 없습니다.');
+  if (shop.minLevel && state.level < shop.minLevel) return showErrorToast(`${template.name}은(는) Lv.${shop.minLevel}부터 구매할 수 있습니다.`);
   const count = Math.max(1, Math.floor(Number(quantity) || 1));
   const totalCost = shop.cost * count;
   const placedItems = createPurchaseItemsForQuantity(template, count);
-  if (!placedItems) return showToast('공간이 부족합니다.');
-  if (getOwnedRoubleTotal() < totalCost) return showToast('루블이 부족합니다.');
-  if (!consumeRoubles(totalCost)) return showToast('루블이 부족합니다.');
+  if (!placedItems) return showErrorToast('공간이 부족합니다.');
+  if (getOwnedRoubleTotal() < totalCost) return showErrorToast('루블이 부족합니다.');
+  if (!consumeRoubles(totalCost)) return showErrorToast('루블이 부족합니다.');
   state.stash.push(...placedItems);
+  playInventoryUiSfx('trade');
   cleanupPlayerOwnedEmptyStacks();
   saveState(); render(); showToast(`${template.name} ${count}개 구매 완료. 우측 스태시에 지급되었습니다.`);
   }
@@ -3763,45 +4082,81 @@
   return Math.max(0, Math.floor(Number(item.value) || 0));
   }
   function saleValue(item) { return getItemSellValue(item); }
+  function getSellRows() {
+  return Math.max(
+  SELL_BASE_ROWS,
+  Math.floor(Number(trade.sellRows) || SELL_BASE_ROWS)
+  );
+  }
+  function findSellSpotWithAutoGrow(item) {
+  if (!item) return null;
+
+  let rows = getSellRows();
+  let spot = findFreeSpotIn(
+  item,
+  trade.sellItems,
+  SELL_COLS,
+  rows,
+  'sell'
+  );
+
+  while (!spot && rows < SELL_MAX_ROWS) {
+  rows = Math.min(SELL_MAX_ROWS, rows + SELL_ROW_GROW_STEP);
+  trade.sellRows = rows;
+
+  spot = findFreeSpotIn(
+  item,
+  trade.sellItems,
+  SELL_COLS,
+  rows,
+  'sell'
+  );
+  }
+
+  return spot;
+  }
   function registerSaleFromStash(uid, options = {}) {
   const item = typeof uid === 'object' ? uid : state.stash.find((entry) => entry.uid === uid);
   if (!item) return false;
   const reason = getSellBlockReason(item);
   if (reason) {
-  if (!options.silentBlock) showToast(reason);
+  if (!options.silentBlock) showErrorToast(reason);
   return false;
   }
-  const spot = findFreeSpotIn(item, trade.sellItems, SELL_COLS, SELL_ROWS, 'sell');
-  if (!spot) { showToast('판매 영역 공간이 부족합니다.'); return false; }
+  const spot = findSellSpotWithAutoGrow(item);
+  if (!spot) { showErrorToast('판매 영역 공간이 부족합니다.'); return false; }
   state.stash = state.stash.filter((entry) => entry.uid !== item.uid);
   trade.sellItems.push({ ...item, x: spot.x, y: spot.y });
+  playItemMoveSfx(item, 'drop');
   trade.mode = 'sell';
   render(); showToast(`${item.name} 판매 등록.`); return true;
   }
   function confirmSale() {
-  if (!trade.sellItems.length) return showToast('판매할 아이템이 없습니다.');
+  if (!trade.sellItems.length) return showErrorToast('판매할 아이템이 없습니다.');
   const invalidItem = trade.sellItems.map(resolveSaleItem).find((item) => item && !canSellItem(item));
   if (invalidItem) {
-  showToast(getSellBlockReason(invalidItem));
+  showErrorToast(getSellBlockReason(invalidItem));
   cleanupTradeSellItems();
   render();
   return;
   }
   cleanupTradeSellItems();
   const sellItems = trade.sellItems.map(resolveSaleItem).filter(Boolean).filter(canSellItem);
-  if (!sellItems.length) return showToast('판매 가능한 아이템이 없습니다.');
+  if (!sellItems.length) return showErrorToast('판매 가능한 아이템이 없습니다.');
   const total = sellItems.reduce((sum, item) => sum + getItemSellValue(item), 0);
-  if (total <= 0) return showToast('판매 금액이 없습니다.');
+  if (total <= 0) return showErrorToast('판매 금액이 없습니다.');
   if (!canStoreRoublesInStash(total)) {
-  showToast('판매 수익을 보관할 스태시 공간이 부족합니다.');
+  showErrorToast('판매 수익을 보관할 스태시 공간이 부족합니다.');
   return;
   }
   const count = sellItems.length;
   if (!addRoublesToStash(total)) {
-  showToast('판매 수익 지급에 실패했습니다.');
+  showErrorToast('판매 수익 지급에 실패했습니다.');
   return;
   }
+  playInventoryUiSfx('trade');
   trade.sellItems = [];
+  trade.sellRows = SELL_BASE_ROWS;
   cleanupPlayerOwnedEmptyStacks();
   saveState(); render(); showToast(`${count}개 아이템 판매 완료: ${formatMoney(total)}`);
   }
@@ -3809,9 +4164,13 @@
   const returning = [...trade.sellItems];
   for (const item of returning) {
   const spot = findFreeSpotIn(item, state.stash, STASH_COLS, STASH_ROWS, 'stash');
-  if (!spot) { showToast('스태시 공간이 부족해 판매 등록을 취소할 수 없습니다.'); break; }
+  if (!spot) { showErrorToast('스태시 공간이 부족해 판매 등록을 취소할 수 없습니다.'); break; }
   trade.sellItems = trade.sellItems.filter((entry) => entry.uid !== item.uid);
   state.stash.push({ ...item, x: spot.x, y: spot.y });
+  playItemMoveSfx(item, 'drop');
+  }
+  if (trade.sellItems.length === 0) {
+  trade.sellRows = SELL_BASE_ROWS;
   }
   saveState(); render();
   }
@@ -3819,7 +4178,7 @@
   function sellAll() {
   const sellableItems = state.stash.slice().filter(canSellItem);
   if (!sellableItems.length) {
-  showToast('판매 가능한 아이템이 없습니다.');
+  showErrorToast('판매 가능한 아이템이 없습니다.');
   return false;
   }
   let moved = 0;
@@ -3869,7 +4228,7 @@
   event.stopPropagation();
   if (performance.now() < suppressItemClickUntil) return;
   if (event.ctrlKey || event.metaKey) {
-  if (!quickMoveItem(area, item.uid)) showToast(secureLocked ? '레이드 중에는 POUCH를 해제할 수 없습니다.' : '공간 부족');
+  if (!quickMoveItem(area, item.uid)) showErrorToast(secureLocked ? '레이드 중에는 POUCH를 해제할 수 없습니다.' : '공간 부족');
   return;
   }
   selected = { area, uid: item.uid };
@@ -3879,6 +4238,7 @@
   card.addEventListener('dragstart', (event) => {
   dragData = createItemDragData(area, item);
   selected = dragData;
+  playItemMoveSfx(item, 'grab');
   event.dataTransfer.effectAllowed = 'move';
   event.dataTransfer.setData('text/plain', JSON.stringify(dragData));
   setCenteredDragImage(event, card);
@@ -3982,7 +4342,7 @@
   if (!root) return;
   root.innerHTML = '';
   renderGearContainerRow(root, USABLE_SLOTS[0], 'rig', '', '');
-  renderInventoryArea(root, 'pockets', 'POCKETS · 1x1 슬롯 4칸', '', 'compact-grid');
+  renderInventoryArea(root, 'pockets', 'POCKETS', '', 'compact-grid');
   renderGearContainerRow(root, USABLE_SLOTS[1], 'backpack', '', '');
   renderGearContainerRow(root, USABLE_SLOTS[2], 'secure', '', '');
   }
@@ -3992,16 +4352,23 @@
   if (!root) return;
   root.innerHTML = '';
   renderGearContainerRow(root, USABLE_SLOTS[0], 'rig', '', '', raid.loadout || {}, true);
-  renderInventoryArea(root, 'pockets', '주머니 · 1x1 독립 슬롯 4개', '', 'compact-grid');
+  renderInventoryArea(root, 'pockets', 'POCKETS', '', 'compact-grid');
   renderGearContainerRow(root, USABLE_SLOTS[1], 'backpack', '', '', raid.loadout || {}, true);
   renderGearContainerRow(root, USABLE_SLOTS[2], 'secure', '', '', raid.loadout || {}, true);
   }
 
   function renderInventoryArea(root, area, title, description, extraClass = '') {
   const spec = areaSpec(area);
+  const isPockets = area === 'pockets';
   const section = document.createElement('section');
-  section.className = 'grid-section';
-  section.innerHTML = `${title ? `<h3>${title}</h3>` : ''}${description ? `<p class="hint">${description}</p>` : ''}${spec.cols && spec.rows ? `<div class="inventory-wrap ${extraClass}" id="grid-${area}"></div>` : '<div class="empty-note">사용 가능한 공간 없음</div>'}`;
+  section.className = `grid-section${isPockets ? ' pockets-section' : ''}`;
+  const gridClass = `inventory-wrap ${extraClass}${isPockets ? ' pockets-grid' : ''}`.trim();
+  const gridMarkup = spec.cols && spec.rows
+  ? isPockets
+  ? `<div class="pockets-grid-viewport"><div class="${gridClass}" id="grid-${area}"></div></div>`
+  : `<div class="${gridClass}" id="grid-${area}"></div>`
+  : '<div class="empty-note">사용 가능한 공간 없음</div>';
+  section.innerHTML = `${title ? `<h3>${title}</h3>` : ''}${description ? `<p class="hint">${description}</p>` : ''}${gridMarkup}`;
   root.appendChild(section);
   if (spec.cols && spec.rows) renderGrid(section.querySelector(`#grid-${CSS.escape(area)}`), spec.cols, spec.rows, areaItems(area), { area, draggable: true, drop: true });
   }
@@ -4064,9 +4431,15 @@
   }
   function renderOverlayStorageArea(root, area, title) {
   const spec = areaSpec(area);
+  const isPockets = area === 'pockets';
   const section = document.createElement('section');
-  section.className = 'grid-section';
-  section.innerHTML = `<h3>${title}</h3>${spec.cols && spec.rows ? `<div class="inventory-wrap compact-grid" id="overlay-grid-${area}"></div>` : '<div class="empty-note">사용 가능한 공간 없음</div>'}`;
+  section.className = `grid-section${isPockets ? ' pockets-section' : ''}`;
+  const gridMarkup = spec.cols && spec.rows
+  ? isPockets
+  ? `<div class="pockets-grid-viewport"><div class="inventory-wrap compact-grid pockets-grid" id="overlay-grid-${area}"></div></div>`
+  : `<div class="inventory-wrap compact-grid" id="overlay-grid-${area}"></div>`
+  : '<div class="empty-note">사용 가능한 공간 없음</div>';
+  section.innerHTML = `<h3>${title}</h3>${gridMarkup}`;
   root.appendChild(section);
   if (spec.cols && spec.rows) renderGrid(section.querySelector(`#overlay-grid-${CSS.escape(area)}`), spec.cols, spec.rows, areaItems(area), { area, draggable: true, drop: true });
   }
@@ -4137,7 +4510,7 @@
   actions.className = 'corpse-transfer-actions';
   actions.innerHTML = `<button class="primary" data-corpse-selected-move>${isEnemyInventoryArea(selected.area) ? '선택 아이템 가져오기' : '선택 아이템 시체로 이동'}</button>`;
   actions.querySelector('[data-corpse-selected-move]').addEventListener('click', () => {
-  if (!quickMoveItem(selected.area, selected.uid)) showToast('빠른 이동할 공간이 없습니다.');
+  if (!quickMoveItem(selected.area, selected.uid)) showErrorToast('빠른 이동할 공간이 없습니다.');
   });
   layout.appendChild(actions);
   }
@@ -4162,11 +4535,11 @@
   node.addEventListener('click', (event) => {
   if (performance.now() < suppressItemClickUntil) return;
   if (event.altKey) {
-  if (!quickEquipItem('enemy:equipment', item.uid)) showToast('빠른 장착할 슬롯이 없습니다.');
+  if (!quickEquipItem('enemy:equipment', item.uid)) showErrorToast('빠른 장착할 슬롯이 없습니다.');
   return;
   }
   if (event.ctrlKey || event.metaKey) {
-  if (!quickMoveItem('enemy:equipment', item.uid)) showToast('빠른 이동할 공간이 없습니다.');
+  if (!quickMoveItem('enemy:equipment', item.uid)) showErrorToast('빠른 이동할 공간이 없습니다.');
   return;
   }
   selected = { area: 'enemy:equipment', uid: item.uid };
@@ -4187,12 +4560,13 @@
   event.preventDefault();
   node.classList.remove('valid');
   if (!dragData) return;
-  if (!insertIntoContainer(dragData.area, dragData.uid, item.uid)) showToast('컨테이너 내부에 넣을 수 없습니다.');
+  if (!insertIntoContainer(dragData.area, dragData.uid, item.uid)) showErrorToast('컨테이너 내부에 넣을 수 없습니다.');
   });
   }
   node.addEventListener('dragstart', (event) => {
   dragData = createItemDragData('enemy:equipment', item);
   selected = dragData;
+  playItemMoveSfx(item, 'grab');
   event.dataTransfer.effectAllowed = 'move';
   event.dataTransfer.setData('text/plain', JSON.stringify(dragData));
   setCenteredDragImage(event, node);
@@ -4282,7 +4656,7 @@
   return;
   }
   const spec = areaSpec(`enemy:${key}`);
-  body.innerHTML = spec.cols && spec.rows ? `<div id="enemy-${key}-grid" class="inventory-wrap compact-grid"></div>` : '<div class="empty-note">사용 가능한 공간 없음</div>';
+  body.innerHTML = spec.cols && spec.rows ? `<div id="enemy-${key}-grid" class="inventory-wrap compact-grid${key === 'pockets' ? ' pockets-grid' : ''}"></div>` : '<div class="empty-note">사용 가능한 공간 없음</div>';
   if (spec.cols && spec.rows) renderGrid(body.querySelector(`#enemy-${key}-grid`), spec.cols, spec.rows, areaItems(`enemy:${key}`), { area: `enemy:${key}`, draggable: true, drop: true });
   }
 
@@ -4333,7 +4707,8 @@
   event.preventDefault();
   const draggedItem = getDraggedItem();
   if (!draggedItem) return;
-  const target = getCenteredGridDropPosition(draggedItem, x, y);
+  const target = getShapeCenteredGridDropPosition(draggedItem, grid, event);
+  if (!target) return;
   markSlots(grid, target.x, target.y, draggedItem, canDropOn(options.area, target.x, target.y));
   });
   slot.addEventListener('dragleave', clearSlotMarks);
@@ -4343,11 +4718,12 @@
   if (!dragData) return;
   const item = findItemInAreaByUid(dragData.area, dragData.uid);
   if (!item) return;
-  const target = getCenteredGridDropPosition(item, x, y);
+  const target = getShapeCenteredGridDropPosition(item, grid, event);
+  if (!target) return;
   if (options.area === 'sell') {
   const reason = getSellBlockReason(item);
   if (reason) {
-  showToast(reason);
+  showErrorToast(reason);
   return;
   }
   }
@@ -4363,7 +4739,7 @@
   });
   if (opened) return;
   }
-  if (!moveItemBetweenInventories({ item, sourceInventory: dragData.area, targetInventory: options.area, targetX: target.x, targetY: target.y })) showToast('공간 또는 컨테이너 제한 때문에 배치할 수 없습니다.');
+  if (!moveItemBetweenInventories({ item, sourceInventory: dragData.area, targetInventory: options.area, targetX: target.x, targetY: target.y })) showErrorToast('공간 또는 컨테이너 제한 때문에 배치할 수 없습니다.');
   });
   }
   grid.appendChild(slot);
@@ -4408,9 +4784,9 @@
   node.addEventListener('click', (event) => {
   if (performance.now() < suppressItemClickUntil) return;
   if (options.onItemClick) return options.onItemClick(item, event);
-  if (event.altKey) { if (!quickEquipItem(options.area, item.uid)) showToast('빠른 장착할 슬롯이 없습니다.'); return; }
+  if (event.altKey) { if (!quickEquipItem(options.area, item.uid)) showErrorToast('빠른 장착할 슬롯이 없습니다.'); return; }
   if (event.ctrlKey || event.metaKey) {
-  if (!quickMoveItem(options.area, item.uid) && !(currentScreen === 'trader' && options.area === 'stash')) showToast('빠른 이동할 공간이 없습니다.');
+  if (!quickMoveItem(options.area, item.uid) && !(currentScreen === 'trader' && options.area === 'stash')) showErrorToast('빠른 이동할 공간이 없습니다.');
   return;
   }
   selected = { area: options.area, uid: item.uid }; render();
@@ -4445,11 +4821,11 @@
   attachSuppressor(dragData.area, dragData.uid, item.uid);
   return;
   }
-  if (item.container && !insertIntoContainer(dragData.area, dragData.uid, item.uid)) showToast('컨테이너 내부에 넣을 수 없습니다.');
+  if (item.container && !insertIntoContainer(dragData.area, dragData.uid, item.uid)) showErrorToast('컨테이너 내부에 넣을 수 없습니다.');
   });
   }
   if (options.draggable) {
-  node.addEventListener('dragstart', (event) => { dragData = createItemDragData(options.area, item); selected = dragData; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', JSON.stringify(dragData)); setCenteredDragImage(event, node); markNodeDraggingAfterNativeDragStarts(node); });
+  node.addEventListener('dragstart', (event) => { dragData = createItemDragData(options.area, item); selected = dragData; playItemMoveSfx(item, 'grab'); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', JSON.stringify(dragData)); setCenteredDragImage(event, node); markNodeDraggingAfterNativeDragStarts(node); });
   node.addEventListener('dragend', () => {
   suppressPostDragClick();
   const sourceItem = areaItems(options.area).find((entry) => entry.uid === item.uid);
@@ -4537,6 +4913,7 @@
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'trade-execute-button';
+  button.dataset.tradeExecute = 'true';
   button.disabled = Boolean(disabled);
 
   const label = document.createElement('span');
@@ -4630,41 +5007,44 @@
   return card;
   }
   function renderSellTradePanel(panel) {
-  const stateInfo = getSellTradeButtonState();
+  const sellItems = Array.isArray(trade.sellItems) ? trade.sellItems : [];
+  const total = sellItems.reduce((sum, item) => sum + saleValue(item), 0);
+  const canStoreSaleTotal = canStoreRoublesInStash(total);
+  const disabled = total <= 0 || !canStoreSaleTotal;
+
+  panel.innerHTML = '';
+
   panel.appendChild(createTradeExecuteButton({
-  valueText: stateInfo.valueText,
-  disabled: stateInfo.disabled,
+  valueText: formatMoney(total),
+  disabled,
   onClick: confirmSale
   }));
 
-  const sellItems = Array.isArray(trade.sellItems)
-  ? trade.sellItems.map(resolveSaleItem).filter(Boolean).filter(canSellItem)
-  : [];
-  const total = sellItems.reduce((sum, item) => sum + getItemSellValue(item), 0);
-  const header = document.createElement('div');
-  header.innerHTML = '<strong>판매 영역</strong><p class="hint">우측 스태시에서 아이템을 드래그하거나 Ctrl+좌클릭으로 등록합니다.</p>';
-  panel.appendChild(header);
+  const layout = document.createElement('div');
+  layout.className = 'trade-sell-layout';
+  layout.innerHTML = `
+  <div class="trade-sell-grid-shell">
+  <div id="sellGrid" class="inventory-wrap trade-sell-grid" aria-label="판매 영역"></div>
+  </div>
+  ${total > 0 && !canStoreSaleTotal ? '<p class="hint danger">판매 수익을 보관할 스태시 공간이 부족합니다.</p>' : ''}
+  `;
+  panel.appendChild(layout);
 
-  const sellGrid = document.createElement('div');
-  sellGrid.id = 'sellGrid';
-  sellGrid.className = 'inventory-wrap compact-grid';
-  sellGrid.setAttribute('aria-label', '판매 영역');
-  panel.appendChild(sellGrid);
+  const sellGrid = panel.querySelector('#sellGrid');
+  if (!sellGrid) return;
 
-  const totalNode = document.createElement('div');
-  totalNode.className = 'trade-total';
-  totalNode.innerHTML = `<span>예상 매입가</span><strong>${formatMoney(total)}</strong>`;
-  panel.appendChild(totalNode);
-
-  renderGrid(sellGrid, SELL_COLS, SELL_ROWS, trade.sellItems, { area: 'sell', draggable: true, drop: true, itemClass: () => 'sell-registered' });
-
-  if (stateInfo.reason && stateInfo.disabled && trade.sellItems.length > 0) {
-  const hint = document.createElement('p');
-  hint.className = 'hint danger';
-  hint.textContent = stateInfo.reason;
-  panel.appendChild(hint);
+  renderGrid(
+  sellGrid,
+  SELL_COLS,
+  getSellRows(),
+  sellItems,
+  {
+  area: 'sell',
+  draggable: true,
+  drop: true,
+  itemClass: () => 'sell-registered'
   }
-  return;
+  );
   }
   function renderBuyTradePanel(panel) {
   const entry = SHOP_ITEMS.find((shopItem) => shopItem.itemId === trade.selected) || SHOP_ITEMS[0];
@@ -4821,18 +5201,27 @@
   }
   function createItemRow(item, buttons = []) { const row = document.createElement('div'); row.className = 'row'; const info = document.createElement('div'); info.innerHTML = `<strong>${item.name}</strong><small>${item.width ? itemMeta(item) : item.description}${item.containerItems?.length ? ` · 내부 ${item.containerItems.length}개` : ''}</small>`; row.appendChild(info); buttons.forEach((button) => row.appendChild(button)); return row; }
   function createSmallButton(label, onClick, className = '') { const button = document.createElement('button'); button.textContent = label; button.className = className; button.addEventListener('click', onClick); return button; }
+  function isRigContainerItem(item) {
+  return item?.category === 'rig' || item?.container?.type === 'rig';
+  }
 
   function openContainer(uid, toggle = false) {
   const item = findContainerItem(uid);
   if (!item?.container) return;
   const existing = openContainers.find((win) => win.uid === uid);
   if (existing) {
-  if (toggle) openContainers = openContainers.filter((win) => win.uid !== uid);
+  if (toggle) {
+  if (isRigContainerItem(item)) playButtonSfx('escape');
+  openContainers = openContainers.filter((win) => win.uid !== uid);
+  }
   else {
   openContainers = openContainers.filter((win) => win.uid !== uid);
   openContainers.push(existing);
   }
-  } else openContainers.push({ uid, x: 80 + openContainers.length * 34, y: 90 + openContainers.length * 34 });
+  } else {
+  if (isRigContainerItem(item)) playInventoryUiSfx('rigOpen');
+  openContainers.push({ uid, x: 80 + openContainers.length * 34, y: 90 + openContainers.length * 34 });
+  }
   renderContainerWindows();
   }
   function closeTopContainerWindow() {
@@ -4861,7 +5250,12 @@
   renderGrid(body.querySelector(`#window-grid-${CSS.escape(win.uid)}`), item.container.cols, item.container.rows, item.containerItems, { area, draggable: true, drop: true, context: currentScreen === 'trader' ? 'trader' : '' });
   }
   });
-  root.querySelectorAll('[data-close-window]').forEach((button) => button.addEventListener('click', () => { openContainers = openContainers.filter((win) => win.uid !== button.dataset.closeWindow); renderContainerWindows(); }));
+  root.querySelectorAll('[data-close-window]').forEach((button) => button.addEventListener('click', () => {
+  const item = findContainerItem(button.dataset.closeWindow);
+  if (isRigContainerItem(item)) playButtonSfx('escape');
+  openContainers = openContainers.filter((win) => win.uid !== button.dataset.closeWindow);
+  renderContainerWindows();
+  }));
   root.querySelectorAll('[data-window-drag]').forEach((title) => title.addEventListener('pointerdown', startWindowDrag));
   }
   function startWindowDrag(event) {
@@ -4874,6 +5268,7 @@
   window.addEventListener('pointermove', (event) => { if (!movingWindow) return; const win = openContainers.find((entry) => entry.uid === movingWindow.uid); if (!win) return; win.x = Math.max(8, event.clientX - movingWindow.dx); win.y = Math.max(8, event.clientY - movingWindow.dy); renderContainerWindows(); });
   window.addEventListener('pointerup', () => { movingWindow = null; });
   function closeRaidInventoryOverlay() {
+  const wasOpen = raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse;
   cancelActiveDrag();
   if (raid.search) {
   clearSearchTimer();
@@ -4886,6 +5281,7 @@
   raid.inventoryOpen = false;
   raid.lootContainer = null;
   raid.corpse = null;
+  if (wasOpen) playInventoryUiSfx('stashClose');
   render();
   window.FPSRaid?.resumePointerPrompt?.();
   }
@@ -4894,11 +5290,21 @@
 	  if (raid.active && getPlayerHealth().dead) return;
 	  if (raid.active && currentScreen === 'raid') {
   if (raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse) closeRaidInventoryOverlay();
-  else { raid.inventoryOpen = true; window.FPSRaid?.unlockPointer?.(); render(); }
+  else {
+  raid.inventoryOpen = true;
+  playInventoryUiSfx('stashOpen');
+  window.FPSRaid?.unlockPointer?.();
+  render();
+  }
   return;
   }
-  if (currentScreen === 'inventory') switchScreen(previousScreen === 'raid' ? 'menu' : previousScreen || 'menu');
-  else switchScreen('inventory');
+  if (currentScreen === 'inventory') {
+  playInventoryUiSfx('stashClose');
+  switchScreen(previousScreen === 'raid' ? 'menu' : previousScreen || 'menu');
+  } else {
+  playInventoryUiSfx('stashOpen');
+  switchScreen('inventory');
+  }
 	  }
 	  function handleEscape() {
 	  if (raid.active && (raidOutcomeFinalizing || window.FPSRaid?.isRaidEnded?.())) return false;
@@ -4912,7 +5318,7 @@
   }
   if (raid.active && (raid.inventoryOpen || raid.search || raid.lootContainer || raid.corpse)) {
   closeRaidInventoryOverlay();
-  return true;
+  return 'stash-close';
   }
   if (raid.active && currentScreen === 'raid') {
   raid.menuOpen = true;
@@ -4921,8 +5327,9 @@
   return true;
   }
   if (currentScreen === 'inventory') {
+  playInventoryUiSfx('stashClose');
   switchScreen(previousScreen === 'raid' ? 'menu' : previousScreen || 'menu');
-  return true;
+  return 'stash-close';
   }
   if (currentScreen !== 'menu') {
   switchScreen('menu');
@@ -4936,6 +5343,7 @@
   const handled = handleEscape();
   if (handled) {
   event.preventDefault();
+  if (handled === 'stash-close') return;
   playButtonSfx('escape');
   }
   return;
@@ -5011,6 +5419,7 @@
   {
   "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
   "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
   }
   }
@@ -5018,16 +5427,28 @@
 
 	  <script type="module">
 	  import * as THREE from 'three';
+	  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 	  import * as CANNON from 'cannon-es';
 
 	  const WEAPON_MODEL_CDN_BASE = 'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/';
 	  const FN57_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}57.js`;
 	  const ER_FULCRUM_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}er-fulcrum.js`;
+	  const AKS74U_MODEL_URLS = [
+	  'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/Suck/low-poly_aks-74u.glb',
+	  'https://raw.githubusercontent.com/Angredth/my-fps/main/Suck/low-poly_aks-74u.glb'
+	  ];
+	  const DVL10_MODEL_URLS = [
+	  '../../dvl-10-edited%20(1).glb',
+	  'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/Suck/dvl-10.glb',
+	  'https://raw.githubusercontent.com/Angredth/my-fps/main/Suck/dvl-10.glb'
+	  ];
 	  const POSE_BRIDGE_STORAGE_KEY = 'skov.weaponPose.v1';
 	  const FN57_MODEL_SCALE = 0.355 / 9.285;
 	  const KNIFE_MODEL_SCALE = 0.310 / 11.679;
 
 	  window.THREE = THREE;
+
+  const REMOTE_MODEL_LOAD_TIMEOUT_MS = 3500;
 
 	  function loadClassicScript(src) {
 	  return new Promise((resolve, reject) => {
@@ -5037,36 +5458,40 @@
 	  return;
 	  }
 	  const script = document.createElement('script');
+  const timer = setTimeout(() => {
+  script.remove();
+  reject(new Error(`Timed out loading ${src}`));
+  }, REMOTE_MODEL_LOAD_TIMEOUT_MS);
 	  script.src = src;
 	  script.async = true;
 	  script.crossOrigin = 'anonymous';
-	  script.onload = () => resolve();
-	  script.onerror = () => reject(new Error(`Failed to load ${src}`));
+	  script.onload = () => {
+  clearTimeout(timer);
+  resolve();
+  };
+	  script.onerror = () => {
+  clearTimeout(timer);
+  reject(new Error(`Failed to load ${src}`));
+  };
 	  document.head.append(script);
 	  });
 	  }
 
-	  let createRemoteFN57Model = null;
-	  try {
-	  await loadClassicScript(FN57_MODEL_CDN_URL);
-	  createRemoteFN57Model = window.createFN57HighQuality;
-	  if (typeof createRemoteFN57Model !== 'function') {
-	  throw new Error('createFN57HighQuality global not found');
-	  }
-	  } catch (error) {
-	  console.error('FN57 CDN 모델을 불러오지 못했습니다. 내장 FN57 모델을 사용합니다.', error);
+	  function loadGLTF(loader, url) {
+	  return new Promise((resolve, reject) => {
+	  loader.load(url, resolve, undefined, reject);
+	  });
 	  }
 
+  function withTimeout(promise, label, timeoutMs = REMOTE_MODEL_LOAD_TIMEOUT_MS) {
+  return Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`Timed out loading ${label}`)), timeoutMs))
+  ]);
+  }
+
+	  let createRemoteFN57Model = null;
 	  let createFulcrumKnifeModel = null;
-	  try {
-	  const fulcrumModule = await import(ER_FULCRUM_MODEL_CDN_URL);
-	  createFulcrumKnifeModel = fulcrumModule.createTacticalBayonetModel || fulcrumModule.default;
-	  if (typeof createFulcrumKnifeModel !== 'function') {
-	  throw new Error('createTacticalBayonetModel export not found');
-	  }
-		  } catch (error) {
-		  console.error('ER Fulcrum 모델을 불러오지 못했습니다. 기본 근접무기 모델을 사용합니다.', error);
-		  }
 
 		  const WORLD_LOOT_MODEL_BASE = 'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/';
 		  const WORLD_LOOT_DISPLAY_SCALE = 3;
@@ -5078,7 +5503,10 @@
 		  ];
 		  async function loadWorldLootFactory(spec) {
 		  try {
-		  const response = await fetch(WORLD_LOOT_MODEL_BASE + spec.file);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_MODEL_LOAD_TIMEOUT_MS);
+		  const response = await fetch(WORLD_LOOT_MODEL_BASE + spec.file, { signal: controller.signal });
+  clearTimeout(timer);
 		  if (!response.ok) throw new Error(`${spec.file} ${response.status}`);
 		  const source = (await response.text()).replace(`export function ${spec.factoryName}`, `function ${spec.factoryName}`);
 		  const factory = new Function('THREE', `${source}; return ${spec.factoryName};`)(THREE);
@@ -5120,7 +5548,7 @@
 		  });
 		  return model;
 		  }
-		  const worldLootFactories = Object.fromEntries(await Promise.all(WORLD_LOOT_MODEL_SPECS.map(async (spec) => [spec.type, await loadWorldLootFactory(spec)])));
+		  const worldLootFactories = Object.fromEntries(WORLD_LOOT_MODEL_SPECS.map((spec) => [spec.type, null]));
 
 
 	  const WORLD_UNIT_METERS = 1;
@@ -5884,6 +6312,8 @@
   const WORLD_UNITS_PER_METER = 1;
   const M4A1_REAL_LENGTH = 0.838 * WORLD_UNITS_PER_METER;
   const MP153_REAL_LENGTH = 1.25 * WORLD_UNITS_PER_METER;
+  const AKS74U_REAL_LENGTH = 0.730 * WORLD_UNITS_PER_METER;
+  const DVL10_REAL_LENGTH = 1.13 * WORLD_UNITS_PER_METER;
 
   function normalizeWeaponLength(model, targetLength) {
   model.updateMatrixWorld(true);
@@ -5902,6 +6332,15 @@
 
   model.updateMatrixWorld(true);
   return model;
+  }
+
+  function setShadows(root) {
+  root.traverse((child) => {
+  if (child instanceof THREE.Mesh || child.isMesh) {
+  child.castShadow = true;
+  child.receiveShadow = true;
+  }
+  });
   }
 
   function debugWeaponModelSize(name, model) {
@@ -6351,6 +6790,273 @@ function createFallbackFN57HighQuality() {
   return mp153;
   }
 
+  async function createAKS74UModel() {
+  const loader = new GLTFLoader();
+  for (const url of AKS74U_MODEL_URLS) {
+  try {
+  const gltf = await loadGLTF(loader, url);
+  const aks = gltf.scene || gltf.scenes?.[0];
+  if (!aks) throw new Error('AKS-74U scene not found');
+  aks.name = 'AKS-74U GLB';
+  setShadows(aks);
+  normalizeWeaponLength(aks, AKS74U_REAL_LENGTH);
+  aks.rotation.y = -Math.PI / 2;
+  const pivot = typeof centerModelOnPivot === 'function' ? centerModelOnPivot(aks, 'AKS-74U Pivot') : aks;
+  pivot.userData.recoilPivot = 'center-after-forward-axis-fix';
+  pivot.userData.modelSource = url;
+  return pivot;
+  } catch (error) {
+  console.error(`AKS-74U GLB를 불러오지 못했습니다: ${url}`, error);
+  }
+  }
+  console.error('AKS-74U GLB 로딩 실패. fallback 모델을 사용합니다.');
+  return createFallbackAKS74UModel();
+  }
+
+  function createFallbackAKS74UModel() {
+  const aks = new THREE.Group();
+  aks.name = 'AKS-74U Fallback';
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.16, 0.18), bodyMaterial);
+  body.position.set(0, 0.08, 0);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 12), steelMaterial);
+  barrel.rotation.z = Math.PI / 2;
+  barrel.position.set(0.42, 0.1, 0);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.14), accessoryMaterial);
+  stock.position.set(-0.42, 0.08, 0);
+  const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.34, 0.13), darkPlasticMaterial);
+  magazine.position.set(-0.02, -0.14, 0);
+  magazine.rotation.z = 0.18;
+  aks.add(body, barrel, stock, magazine);
+  setShadows(aks);
+  normalizeWeaponLength(aks, AKS74U_REAL_LENGTH);
+  aks.rotation.y = -Math.PI / 2;
+  return aks;
+  }
+
+  const DVL10_BOLT_ACTION = {
+  duration: 0.95,
+  travel: 65.0,
+  travelAxis: 'x',
+  travelSign: 1
+  };
+  const DVL10_BOLT_PIVOT = {
+  offset: new THREE.Vector3(40.0000, 13.6290, 17.5620),
+  rotateAxis: 'x',
+  liftSign: 0.9,
+  liftAngle: THREE.MathUtils.degToRad(70)
+  };
+  const dvl10ActionWeaponOffsetPos = new THREE.Vector3();
+  const dvl10ActionWeaponOffsetRot = new THREE.Euler();
+  const DVL10_ACTION_POSE = {
+  yawAmount: THREE.MathUtils.degToRad(4.5),
+  yawSign: 1,
+  pitchAmount: THREE.MathUtils.degToRad(3.0),
+  pitchSign: 2,
+  rollAmount: THREE.MathUtils.degToRad(5.5),
+  rollSign: 1,
+  screenSideAmount: 0.018,
+  screenSideSign: -1,
+  down: -0.018,
+  back: 0.025,
+  poseAmount: 1.0
+  };
+
+  let dvl10BoltMesh = null;
+  let dvl10BoltSlide = null;
+  let dvl10BoltRotate = null;
+  let dvl10BoltOriginalParent = null;
+  const dvl10BoltBasePosition = new THREE.Vector3();
+  const dvl10BoltBaseRotation = new THREE.Euler();
+  const dvl10BoltRawPivotLocal = new THREE.Vector3();
+
+  function normalizeDVL10NodeName(name) {
+  return String(name || '')
+  .replace(/_/g, '.')
+  .replace(/^Cylinder(\d{3})(?=\.|$)/, 'Cylinder.$1');
+  }
+
+  function findDVL10BoltNode(dvl10Root) {
+  const exact = dvl10Root.getObjectByName('Cylinder.006');
+  if (exact) return exact;
+
+  let materialChildMatch = null;
+  let sanitizedMatch = null;
+  dvl10Root.traverse((object) => {
+  const normalizedName = normalizeDVL10NodeName(object.name);
+  const compactName = normalizedName.toLowerCase().replace(/[\s._-]+/g, '');
+  if (!sanitizedMatch && (normalizedName === 'Cylinder.006' || compactName.includes('cylinder006') || compactName.includes('bolt'))) {
+  sanitizedMatch = object;
+  }
+  if (!materialChildMatch && normalizedName.startsWith('Cylinder.006.Material')) {
+  materialChildMatch = object.parent || object;
+  }
+  });
+  return sanitizedMatch || materialChildMatch;
+  }
+
+  function getDVL10BoltChildMeshNames(bolt) {
+  const names = [];
+  bolt.traverse((object) => {
+  if (object.isMesh) names.push(normalizeDVL10NodeName(object.name) || '(unnamed mesh)');
+  });
+  return names;
+  }
+
+  function getDVL10BoltBodyMeshes(bolt) {
+  const bodyMeshes = [];
+  bolt.traverse((object) => {
+  if (!object.isMesh) return;
+  const normalizedName = normalizeDVL10NodeName(object.name);
+  if (
+  normalizedName.includes('Cylinder.006') &&
+  (
+  normalizedName.includes('Material.003') ||
+  normalizedName.includes('Material.004')
+  ) &&
+  !normalizedName.includes('Material.005')
+  ) {
+  bodyMeshes.push(object);
+  }
+  });
+  return bodyMeshes;
+  }
+
+  function computeDVL10BoltAxisPivotWorld(bolt) {
+  const bodyMeshes = getDVL10BoltBodyMeshes(bolt);
+  if (bodyMeshes.length === 0) {
+  console.warn('[DVL-10] 볼트 원통 몸체 mesh를 찾지 못했습니다. 전체 Box3 fallback을 사용합니다.', getDVL10BoltChildMeshNames(bolt));
+  const fallbackBox = new THREE.Box3().setFromObject(bolt);
+  return fallbackBox.getCenter(new THREE.Vector3());
+  }
+
+  const bodyBox = new THREE.Box3();
+  bodyMeshes.forEach((mesh) => {
+  mesh.updateWorldMatrix(true, false);
+  bodyBox.expandByObject(mesh);
+  });
+  return bodyBox.getCenter(new THREE.Vector3());
+  }
+
+  function setupDVL10BoltRig(dvl10Root) {
+  if (!dvl10Root) return;
+
+  const bolt = findDVL10BoltNode(dvl10Root);
+  if (!bolt) {
+  const dvlNames = [];
+  dvl10Root.traverse((object) => {
+  if (object.name) dvlNames.push(object.name);
+  });
+  console.warn('[DVL-10] Cylinder.006 볼트 메쉬를 찾지 못했습니다.', dvlNames);
+  dvl10BoltMesh = null;
+  dvl10BoltSlide = null;
+  dvl10BoltRotate = null;
+  return;
+  }
+
+  if (bolt.userData?.isDVL10Bolt && dvl10BoltSlide && dvl10BoltRotate) return;
+
+  dvl10BoltMesh = bolt;
+  dvl10BoltMesh.userData.dvl10BoltName = 'Cylinder.006';
+  bolt.updateWorldMatrix(true, false);
+
+  const oldParent = bolt.parent;
+  if (!oldParent) {
+  console.warn('[DVL-10] Cylinder.006 parent가 없습니다.');
+  return;
+  }
+
+  oldParent.updateWorldMatrix(true, false);
+
+  const pivotWorld = computeDVL10BoltAxisPivotWorld(bolt);
+  const rawPivotLocal = pivotWorld.clone();
+  oldParent.worldToLocal(rawPivotLocal);
+
+  dvl10BoltOriginalParent = oldParent;
+  dvl10BoltRawPivotLocal.copy(rawPivotLocal);
+
+  const pivotLocal = rawPivotLocal.clone().add(DVL10_BOLT_PIVOT.offset);
+
+  dvl10BoltSlide = new THREE.Group();
+  dvl10BoltSlide.name = 'DVL10_BoltSlide';
+  dvl10BoltSlide.position.copy(pivotLocal);
+
+  dvl10BoltRotate = new THREE.Group();
+  dvl10BoltRotate.name = 'DVL10_BoltRotate';
+
+  oldParent.add(dvl10BoltSlide);
+  dvl10BoltSlide.add(dvl10BoltRotate);
+  dvl10BoltRotate.attach(bolt);
+
+  dvl10BoltBasePosition.copy(dvl10BoltSlide.position);
+  dvl10BoltBaseRotation.copy(dvl10BoltRotate.rotation);
+  bolt.userData.isDVL10Bolt = true;
+  }
+
+  async function createDVL10Model() {
+  const loader = new GLTFLoader();
+  for (const url of DVL10_MODEL_URLS) {
+  try {
+  const gltf = await loadGLTF(loader, url);
+  const rifle = gltf.scene || gltf.scenes?.[0];
+  if (!rifle) throw new Error('DVL-10 scene not found');
+  rifle.name = 'DVL-10 GLB';
+  setShadows(rifle);
+  normalizeWeaponLength(rifle, DVL10_REAL_LENGTH);
+  rifle.rotation.y = Math.PI / 2;
+  const pivot = typeof centerModelOnPivot === 'function' ? centerModelOnPivot(rifle, 'DVL-10 Pivot') : rifle;
+  setupDVL10BoltRig(pivot);
+  pivot.userData.modelSource = url;
+  return pivot;
+  } catch (error) {
+  console.warn(`DVL-10 GLB를 불러오지 못했습니다: ${url}`, error);
+  }
+  }
+  console.warn('DVL-10 GLB 로딩 실패. fallback 모델을 사용합니다.');
+  const fallback = createFallbackDVL10Model();
+  setupDVL10BoltRig(fallback);
+  return fallback;
+  }
+
+  function createFallbackDVL10Model() {
+  const rifle = new THREE.Group();
+  rifle.name = 'DVL-10 Fallback';
+  const suppressor = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.54, 28), bodyMaterial);
+  suppressor.rotation.z = Math.PI / 2;
+  suppressor.position.set(0.34, 0.13, 0);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.34, 20), steelMaterial);
+  barrel.rotation.z = Math.PI / 2;
+  barrel.position.set(0.0, 0.13, 0);
+  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.17, 0.16), bodyMaterial);
+  receiver.position.set(-0.27, 0.11, 0);
+  const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.15), bodyMaterial);
+  handguard.position.set(0.02, 0.02, 0);
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.035, 0.09), steelMaterial);
+  rail.position.set(-0.16, 0.225, 0);
+  const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.34, 24), darkPlasticMaterial);
+  scope.rotation.z = Math.PI / 2;
+  scope.position.set(-0.22, 0.31, 0);
+  const stockTube = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 18), bodyMaterial);
+  stockTube.rotation.z = Math.PI / 2;
+  stockTube.position.set(-0.58, 0.12, 0);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.14), bodyMaterial);
+  stock.position.set(-0.79, 0.05, 0);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.28, 0.11), darkPlasticMaterial);
+  grip.position.set(-0.36, -0.11, 0);
+  grip.rotation.z = -0.24;
+  const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.24, 0.12), darkPlasticMaterial);
+  magazine.position.set(-0.16, -0.12, 0);
+  magazine.rotation.z = -0.06;
+  const bolt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.045, 0.045), steelMaterial);
+  bolt.name = 'Cylinder.006';
+  bolt.position.set(-0.34, 0.18, 0.09);
+  rifle.add(suppressor, barrel, receiver, handguard, rail, scope, stockTube, stock, grip, magazine, bolt);
+  setShadows(rifle);
+  normalizeWeaponLength(rifle, DVL10_REAL_LENGTH);
+  rifle.rotation.y = -Math.PI / 2;
+  setupDVL10BoltRig(rifle);
+  return rifle;
+  }
+
 
 
 	  function createFallbackKnifeModel() {
@@ -6608,6 +7314,49 @@ function createFallbackFN57HighQuality() {
 
 
   const enemies = [];
+  const BASIC_ENEMY_STATE = {
+  IDLE: 'IDLE',
+  PATROL: 'PATROL',
+  INVESTIGATE: 'INVESTIGATE',
+  ALERT: 'ALERT',
+  CHASE: 'CHASE',
+  ATTACK: 'ATTACK',
+  RELOAD: 'RELOAD',
+  FLEE: 'FLEE',
+  DEAD: 'DEAD'
+  };
+  const BASIC_ENEMY_AI_CONFIG = {
+  patrolSpeed: 1.35,
+  investigateSpeed: 1.65,
+  chaseSpeed: 2.7,
+  fleeSpeed: 3.1,
+  viewDistanceMin: 24,
+  viewDistanceMax: 42,
+  viewAngleMinDeg: 60,
+  viewAngleMaxDeg: 95,
+  hearingDistanceWalk: 7,
+  hearingDistanceRun: 18,
+  hearingDistanceGunshot: 70,
+  hearingDistanceSuppressedGunshot: 22,
+  attackDistance: 34,
+  chaseGiveUpDistance: 58,
+  memoryMin: 3.0,
+  memoryMax: 7.0,
+  reactionMin: 0.45,
+  reactionMax: 1.35,
+  patrolWaitMin: 0.7,
+  patrolWaitMax: 2.4,
+  investigateWaitMin: 1.6,
+  investigateWaitMax: 3.4,
+  reloadMin: 2.0,
+  reloadMax: 3.4,
+  lowHealthThreshold: 150,
+  thinkIntervalMin: 0.10,
+  thinkIntervalMax: 0.28
+  };
+  const playerNoiseEvents = [];
+  let playerRunNoiseTimer = 0;
+  window.DEBUG_BASIC_ENEMY_AI = false;
   const SCAV_MIN_PLAYER_DISTANCE = 30;
   const SCAV_MAX_PLAYER_DISTANCE = 100;
   const SCAV_MIN_ENEMY_DISTANCE = 5;
@@ -6626,7 +7375,7 @@ function createFallbackFN57HighQuality() {
   );
 
 
-  function createRagdoll(position, isM4Weapon) {
+  function createRagdoll(position, weaponType = 'M4A1') {
   const ragdoll = {
   bodies: [],
   constraints: [],
@@ -6689,7 +7438,7 @@ function createFallbackFN57HighQuality() {
   physicsWorld.addBody(weaponBody);
 
 
-  const weaponModel = isM4Weapon ? createM4A1Model() : createMP153Model();
+  const weaponModel = createScavWeaponModel(weaponType);
   weaponModel.scale.set(weaponScale, weaponScale, weaponScale);
   weaponModel.position.copy(weaponBody.position);
   weaponModel.userData = { ragdollBody: weaponBody };
@@ -6879,6 +7628,93 @@ function createFallbackFN57HighQuality() {
   }
 
 
+  function pickScavWeaponType() {
+  const roll = Math.random();
+  if (roll < 0.40) return 'MP153';
+  if (roll < 0.75) return 'AKS74U';
+  return 'M4A1';
+  }
+
+  function cloneWeaponModelForScav(sourceModel, fallbackFactory) {
+  try {
+  if (!sourceModel || typeof sourceModel.clone !== 'function') {
+  throw new Error('source model missing');
+  }
+
+  const clone = sourceModel.clone(true);
+
+  // 플레이어용 모델이 hidden 상태여도 적 복제본은 반드시 보이게 한다.
+  clone.visible = true;
+
+  clone.traverse((child) => {
+  if (child.isObject3D) {
+  child.visible = true;
+  }
+
+  if (child.isMesh) {
+  child.castShadow = true;
+  child.receiveShadow = true;
+  }
+  });
+  return clone;
+  } catch (error) {
+  console.warn('스캐브 무기 모델 복제 실패. fallback 사용', error);
+  const fallback = fallbackFactory();
+  if (fallback) {
+  fallback.visible = true;
+  fallback.traverse?.((child) => {
+  if (child.isObject3D) child.visible = true;
+  if (child.isMesh) {
+  child.castShadow = true;
+  child.receiveShadow = true;
+  }
+  });
+  }
+  return fallback;
+  }
+  }
+
+  function createScavWeaponModel(weaponType) {
+  let model;
+
+  if (weaponType === 'MP153') {
+  model = createMP153Model();
+  } else if (weaponType === 'AKS74U') {
+  model = cloneWeaponModelForScav(aks74u, createFallbackAKS74UModel);
+  } else {
+  model = createM4A1Model();
+  }
+
+  if (model) {
+  model.visible = true;
+  model.userData.weaponType = weaponType;
+  }
+
+  return model;
+  }
+
+  async function createSafeWeaponModel(factory, fallbackFactory, label) {
+  try {
+  const model = await factory();
+  if (model && model.isObject3D !== false && typeof model.add === 'function') {
+  return model;
+  }
+  throw new Error(`${label} factory returned invalid Object3D`);
+  } catch (error) {
+  console.error(`[FPSRaid] ${label} 모델 생성 실패. fallback 사용`, error);
+  try {
+  const fallback = fallbackFactory();
+  if (fallback && fallback.isObject3D !== false && typeof fallback.add === 'function') {
+  return fallback;
+  }
+  throw new Error(`${label} fallback returned invalid Object3D`);
+  } catch (fallbackError) {
+  console.error(`[FPSRaid] ${label} fallback 모델 생성도 실패했습니다. EMPTY 모델을 사용합니다.`, fallbackError);
+  return new THREE.Group();
+  }
+  }
+  }
+
   function spawnEnemy() {
   const spawnPoint = findScavSpawnPointOutsideView();
 
@@ -6908,8 +7744,8 @@ function createFallbackFN57HighQuality() {
   enemyGroup.add(head);
 
 
-  const isM4 = Math.random() < 0.5;
-  const enemyWeapon = isM4 ? createM4A1Model() : createMP153Model();
+  const weaponType = pickScavWeaponType();
+  const enemyWeapon = createScavWeaponModel(weaponType);
   enemyWeapon.position.set(-0.3, 1.5, 0.5);
   enemyWeapon.scale.set(0.35, 0.35, 0.35);
   enemyWeapon.rotation.y = -Math.PI / 2;
@@ -6936,7 +7772,7 @@ function createFallbackFN57HighQuality() {
   lostSightTimer: 0,
   shootCooldown: 0,
   forcedEngage: false,
-  weaponType: isM4 ? 'M4A1' : 'MP153',
+  weaponType,
   ragdoll: null,
   isRagdoll: false
   };
@@ -6977,6 +7813,34 @@ function createFallbackFN57HighQuality() {
   mpMuzzleMarker.position.set(3.3, 0.7, 0);
   mpMuzzleMarker.scale.set(0.2, 0.2, 0.2);
   mp153.add(mpMuzzleMarker);
+
+
+  const aks74u = await createSafeWeaponModel(
+  createAKS74UModel,
+  createFallbackAKS74UModel,
+  'AKS-74U'
+  );
+  aks74u.visible = false;
+  weaponGroup.add(aks74u);
+
+
+  const aksMuzzleMarker = new THREE.Object3D();
+  aksMuzzleMarker.position.set(0.52, 0.1, 0);
+  aks74u.add(aksMuzzleMarker);
+
+
+  const dvl10 = await createSafeWeaponModel(
+  createDVL10Model,
+  createFallbackDVL10Model,
+  'DVL-10'
+  );
+  dvl10.visible = false;
+  weaponGroup.add(dvl10);
+
+
+  const dvl10MuzzleMarker = new THREE.Object3D();
+  dvl10MuzzleMarker.position.set(0.58, 0.13, 0);
+  dvl10.add(dvl10MuzzleMarker);
 
 
   const fn57Model = createFN57HighQuality();
@@ -7125,11 +7989,70 @@ function createFallbackFN57HighQuality() {
 
   const WEAPONS = {
   M4A1: { name: 'M4A1', mesh: m4a1, marker: m4MuzzleMarker, fireRate: 0.075, automatic: true, recoil: 0.018, damage: 54, pellets: 1, spread: 0.0, range: 150 },
+  AKS74U: { name: 'AKS-74U', mesh: aks74u, marker: aksMuzzleMarker, fireRate: 0.085, automatic: true, boltAction: false, recoil: 0.04, damage: 32, pellets: 1, spread: 0.008, range: 140 },
+  DVL10: { name: 'DVL-10', mesh: dvl10, marker: dvl10MuzzleMarker, fireRate: 0.9, automatic: false, boltAction: true, recoil: 0.14, damage: 90, pellets: 1, spread: 0.0015, range: 250, maxAmmo: 10 },
   MP153: { name: 'MP-153', mesh: mp153, marker: mpMuzzleMarker, fireRate: 0.6, automatic: false, recoil: 0.1, damage: 39, pellets: 6, spread: 0.04, range: 25 },
   FN57: { name: 'FN 5-7', mesh: fn57, marker: fnMuzzleMarker, fireRate: 0.24, automatic: false, recoil: 0.035, damage: 40, pellets: 1, spread: 0.004, range: 90 },
   MELEE: { name: '근접무기', mesh: knife, marker: knifeMarker, fireRate: 0.45, automatic: false, recoil: 0.0, damage: 65, pellets: 0, spread: 0, range: 2.2, melee: true },
   EMPTY: { name: '장착 무기 없음', mesh: emptyWeapon, marker: emptyMarker, fireRate: 0.5, automatic: false, recoil: 0, damage: 0, pellets: 0, spread: 0, range: 0, disabled: true }
   };
+
+  function hideAllPlayerWeaponMeshes() {
+  Object.values(WEAPONS).forEach((weapon) => {
+  if (weapon?.mesh) {
+  weapon.mesh.visible = false;
+  }
+  });
+  }
+
+  function setPlayerCurrentWeapon(nextWeapon) {
+  hideAllPlayerWeaponMeshes();
+
+  if (!nextWeapon || !nextWeapon.mesh) {
+  console.error('[FPSRaid] 잘못된 currentWeapon. EMPTY로 대체합니다.', nextWeapon);
+  currentWeapon = WEAPONS.EMPTY;
+  } else {
+  currentWeapon = nextWeapon;
+  }
+
+  if (currentWeapon.mesh) {
+  currentWeapon.mesh.visible = !currentWeapon.disabled;
+  }
+
+  if (typeof fullScope !== 'undefined' && fullScope) {
+  fullScope.visible = currentWeapon === WEAPONS.M4A1;
+  }
+
+  updateWeaponUI();
+
+  console.log('[FPSRaid] current weapon changed:', currentWeapon?.name, {
+  M4A1: WEAPONS.M4A1?.mesh?.visible,
+  AKS74U: WEAPONS.AKS74U?.mesh?.visible,
+  DVL10: WEAPONS.DVL10?.mesh?.visible,
+  MP153: WEAPONS.MP153?.mesh?.visible,
+  FN57: WEAPONS.FN57?.mesh?.visible,
+  MELEE: WEAPONS.MELEE?.mesh?.visible
+  });
+  }
+
+  function validateWeaponRegistry() {
+  const required = ['M4A1', 'MP153', 'FN57', 'MELEE', 'EMPTY', 'AKS74U', 'DVL10'];
+  required.forEach((key) => {
+  const weapon = WEAPONS[key];
+  if (!weapon) {
+  console.error(`[FPSRaid] WEAPONS.${key} 누락`);
+  return;
+  }
+  if (!weapon.mesh) {
+  console.error(`[FPSRaid] WEAPONS.${key}.mesh 누락`, weapon);
+  }
+  if (!weapon.marker) {
+  console.warn(`[FPSRaid] WEAPONS.${key}.marker 누락`, weapon);
+  }
+  });
+  }
+
+  validateWeaponRegistry();
 
   const WEAPON_VIEW_POSES = {
   M4A1: {
@@ -7139,6 +8062,28 @@ function createFallbackFN57HighQuality() {
   ads: { 
   position: new THREE.Vector3(0.001, -0.081, -0.200), 
   rotation: new THREE.Euler(0.017, -0.005, 0.000) }
+  },
+
+  AKS74U: {
+  hip: {
+  position: new THREE.Vector3(0.12, -0.18, -0.32),
+  rotation: new THREE.Euler(-0.025, -0.08, 0.01)
+  },
+  ads: {
+  position: new THREE.Vector3(0.006, -0.105, -0.265),
+  rotation: new THREE.Euler(0.012, -0.004, 0.0)
+  }
+  },
+
+  DVL10: {
+  hip: {
+  position: new THREE.Vector3(0.088, -0.131, -0.295),
+  rotation: new THREE.Euler(0.038, 0.000, 0.000)
+  },
+  ads: {
+  position: new THREE.Vector3(0.012, -0.107, -0.232),
+  rotation: new THREE.Euler(0.029, -0.002, 0.000)
+  }
   },
 
   MP153: {
@@ -7244,6 +8189,279 @@ function createFallbackFN57HighQuality() {
   let scopeMagnification = 4;
   let scopeZoomMotionTimer = 0;
   const scopeZoomMotionDuration = 0.24;
+  const DVL10_MAX_AMMO = 10;
+  const dvl10State = {
+  chambered: true,
+  needsBolt: false,
+  cyclingBolt: false,
+  ammoInMag: DVL10_MAX_AMMO - 1,
+  reloading: false,
+  reloadTime: 1.2,
+  reloadTimer: 0,
+  cycleTime: 0,
+  autoBoltPending: false,
+  autoBoltDelay: 0,
+  autoBoltTimer: 0
+  };
+  const boltActionState = {
+  DVL10: dvl10State
+  };
+
+  function clamp01(value) {
+  return THREE.MathUtils.clamp(value, 0, 1);
+  }
+
+  function smooth01(value) {
+  const x = clamp01(value);
+  return x * x * (3 - 2 * x);
+  }
+
+  function segmentProgress(t, start, end) {
+  return smooth01((t - start) / (end - start));
+  }
+
+  function isBoltActionWeapon(weapon = currentWeapon) {
+  return !!weapon?.boltAction;
+  }
+
+  function getBoltActionStateForWeapon(weapon = currentWeapon) {
+  if (weapon === WEAPONS.DVL10) return boltActionState.DVL10;
+  return null;
+  }
+
+  function getDVL10LoadedAmmo() {
+  return dvl10State.ammoInMag + (dvl10State.chambered ? 1 : 0);
+  }
+
+  function getDVL10StatusText() {
+  if (dvl10State.reloading) return 'RELOADING';
+  if (dvl10State.cyclingBolt) return 'BOLT';
+  if (dvl10State.needsBolt) return 'NEED BOLT';
+  if (!dvl10State.chambered) return 'EMPTY';
+  return 'READY';
+  }
+
+  function canFireDVL10() {
+  return currentWeapon === WEAPONS.DVL10 && canFireCurrentWeapon();
+  }
+
+  function canFireCurrentWeapon() {
+  const state = getBoltActionStateForWeapon(currentWeapon);
+  if (!state) return true;
+  return (
+  state.chambered &&
+  !state.needsBolt &&
+  !state.cyclingBolt &&
+  !state.reloading
+  );
+  }
+
+  function resetDVL10BoltVisualIfNeeded() {
+  if (dvl10BoltSlide) dvl10BoltSlide.position.copy(dvl10BoltBasePosition);
+  if (dvl10BoltRotate) dvl10BoltRotate.rotation.copy(dvl10BoltBaseRotation);
+  dvl10ActionWeaponOffsetPos.set(0, 0, 0);
+  dvl10ActionWeaponOffsetRot.set(0, 0, 0);
+  }
+
+  function resetDVL10AmmoState() {
+  dvl10State.chambered = true;
+  dvl10State.needsBolt = false;
+  dvl10State.cyclingBolt = false;
+  dvl10State.reloading = false;
+  dvl10State.reloadTimer = 0;
+  dvl10State.cycleTime = 0;
+  dvl10State.ammoInMag = DVL10_MAX_AMMO - 1;
+  dvl10State.autoBoltPending = false;
+  dvl10State.autoBoltTimer = 0;
+  resetDVL10BoltVisualIfNeeded();
+  }
+
+  function cancelDVL10ActionState() {
+  dvl10State.reloading = false;
+  dvl10State.reloadTimer = 0;
+  dvl10State.cyclingBolt = false;
+  dvl10State.cycleTime = 0;
+  dvl10State.autoBoltPending = false;
+  dvl10State.autoBoltTimer = 0;
+  resetDVL10BoltVisualIfNeeded();
+  }
+
+  function onDVL10Fired() {
+  dvl10State.chambered = false;
+  dvl10State.needsBolt = true;
+  dvl10State.autoBoltPending = false;
+  dvl10State.autoBoltTimer = 0;
+  updateWeaponUI();
+  }
+
+  function startDVL10BoltCycle() {
+  if (currentWeapon !== WEAPONS.DVL10) return;
+  if (!dvl10State.needsBolt || dvl10State.cyclingBolt || dvl10State.reloading) return;
+  if (!dvl10BoltSlide || !dvl10BoltRotate) {
+  console.warn('[DVL-10] 볼트 리그를 찾지 못했습니다. 상태 로직만 진행합니다.');
+  }
+  dvl10State.cyclingBolt = true;
+  dvl10State.cycleTime = 0;
+  Sound.playDvl10BoltSample?.(DVL10_BOLT_ACTION.duration, 1);
+  updateWeaponUI();
+  }
+
+  function finishDVL10BoltCycle() {
+  dvl10State.cyclingBolt = false;
+  dvl10State.cycleTime = 0;
+  dvl10State.needsBolt = false;
+  if (dvl10State.ammoInMag > 0) {
+  dvl10State.ammoInMag -= 1;
+  dvl10State.chambered = true;
+  } else {
+  dvl10State.chambered = false;
+  }
+  resetDVL10BoltVisualIfNeeded();
+  updateWeaponUI();
+  }
+
+  function updateDVL10ActionWeaponPoseFromBoltT(t) {
+  if (!dvl10State.cyclingBolt) {
+  dvl10ActionWeaponOffsetPos.set(0, 0, 0);
+  dvl10ActionWeaponOffsetRot.set(0, 0, 0);
+  return;
+  }
+
+  const enter = segmentProgress(t, 0.00, 0.18);
+  const exit = segmentProgress(t, 0.78, 1.00);
+  const hold = enter * (1 - exit);
+  const amount = hold * DVL10_ACTION_POSE.poseAmount;
+
+  dvl10ActionWeaponOffsetPos.set(
+  DVL10_ACTION_POSE.screenSideAmount * DVL10_ACTION_POSE.screenSideSign * amount,
+  DVL10_ACTION_POSE.down * amount,
+  DVL10_ACTION_POSE.back * amount
+  );
+
+  dvl10ActionWeaponOffsetRot.set(
+  0,
+  DVL10_ACTION_POSE.yawAmount * DVL10_ACTION_POSE.yawSign * amount,
+  DVL10_ACTION_POSE.rollAmount * DVL10_ACTION_POSE.rollSign * amount
+  );
+  }
+
+  function applyDVL10BoltTravel(travel01) {
+  if (!dvl10BoltSlide) return;
+
+  dvl10BoltSlide.position.copy(dvl10BoltBasePosition);
+  const offset = DVL10_BOLT_ACTION.travel * DVL10_BOLT_ACTION.travelSign * travel01;
+
+  if (DVL10_BOLT_ACTION.travelAxis === 'x') {
+  dvl10BoltSlide.position.x += offset;
+  } else if (DVL10_BOLT_ACTION.travelAxis === 'y') {
+  dvl10BoltSlide.position.y += offset;
+  } else {
+  dvl10BoltSlide.position.z += offset;
+  }
+  }
+
+  function updateDVL10Bolt(delta) {
+  if (!dvl10State.cyclingBolt) {
+  resetDVL10BoltVisualIfNeeded();
+  return;
+  }
+
+  dvl10State.cycleTime += delta;
+  const t = clamp01(dvl10State.cycleTime / DVL10_BOLT_ACTION.duration);
+  updateDVL10ActionWeaponPoseFromBoltT(t);
+
+  const liftUp = segmentProgress(t, 0.18, 0.34);
+  const pullBack = segmentProgress(t, 0.34, 0.56);
+  const pushForward = segmentProgress(t, 0.56, 0.74);
+  const liftDown = segmentProgress(t, 0.74, 0.88);
+
+  let lift = 0;
+  let travel = 0;
+
+  if (t < 0.18) {
+  lift = 0;
+  travel = 0;
+  } else if (t < 0.34) {
+  lift = liftUp;
+  travel = 0;
+  } else if (t < 0.56) {
+  lift = 1;
+  travel = pullBack;
+  } else if (t < 0.74) {
+  lift = 1;
+  travel = 1 - pushForward;
+  } else if (t < 0.88) {
+  lift = 1 - liftDown;
+  travel = 0;
+  }
+
+  applyDVL10BoltTravel(travel);
+
+  if (dvl10BoltRotate) {
+  dvl10BoltRotate.rotation.copy(dvl10BoltBaseRotation);
+  const angle =
+  DVL10_BOLT_PIVOT.liftAngle *
+  DVL10_BOLT_PIVOT.liftSign *
+  lift;
+
+  if (DVL10_BOLT_PIVOT.rotateAxis === 'x') {
+  dvl10BoltRotate.rotation.x += angle;
+  } else if (DVL10_BOLT_PIVOT.rotateAxis === 'y') {
+  dvl10BoltRotate.rotation.y += angle;
+  } else {
+  dvl10BoltRotate.rotation.z += angle;
+  }
+  }
+
+  if (t >= 1) finishDVL10BoltCycle();
+  }
+
+  function startDVL10Reload() {
+  if (currentWeapon !== WEAPONS.DVL10) return;
+  if (dvl10State.reloading || dvl10State.cyclingBolt) return;
+  if (getDVL10LoadedAmmo() >= DVL10_MAX_AMMO) return;
+  dvl10State.reloading = true;
+  dvl10State.reloadTimer = dvl10State.reloadTime;
+  dvl10State.needsBolt = false;
+  dvl10State.chambered = false;
+  updateWeaponUI();
+  }
+
+  function updateDVL10Reload(delta) {
+  if (!dvl10State.reloading) return;
+  dvl10State.reloadTimer -= delta;
+  if (dvl10State.reloadTimer > 0) return;
+  dvl10State.reloading = false;
+  dvl10State.reloadTimer = 0;
+  dvl10State.chambered = true;
+  dvl10State.ammoInMag = DVL10_MAX_AMMO - 1;
+  dvl10State.needsBolt = false;
+  updateWeaponUI();
+  }
+
+  function handleDVL10ReloadOrBolt() {
+  if (currentWeapon !== WEAPONS.DVL10) return;
+  if (dvl10State.reloading || dvl10State.cyclingBolt || isSwapping) return;
+  const loadedAmmo = getDVL10LoadedAmmo();
+  if (loadedAmmo <= 0) {
+  startDVL10Reload();
+  return;
+  }
+  if (dvl10State.needsBolt) return;
+  if (loadedAmmo < DVL10_MAX_AMMO) startDVL10Reload();
+  }
+
+  function onBoltActionFired(weapon = currentWeapon) {
+  if (weapon === WEAPONS.DVL10) onDVL10Fired();
+  }
+
+  function startBoltCycle(weapon = currentWeapon) {
+  if (weapon === WEAPONS.DVL10) startDVL10BoltCycle();
+  }
+
+  function updateBoltAction(delta) {
+  updateDVL10Bolt(delta);
+  }
 
   function getWeaponPoseKey(weapon) {
   if (!weapon) return 'M4A1';
@@ -7252,6 +8470,8 @@ function createFallbackFN57HighQuality() {
   const name = String(weapon.name || weapon.id || '').toUpperCase();
 
   if (name.includes('MP153') || name.includes('MP-153')) return 'MP153';
+  if (name.includes('AKS74U') || name.includes('AKS-74U')) return 'AKS74U';
+  if (name.includes('DVL10') || name.includes('DVL-10')) return 'DVL10';
   if (name.includes('FN57') || name.includes('FN 5-7') || name.includes('FIVE')) return 'FN57';
   if (name.includes('KNIFE') || name.includes('MELEE') || name.includes('근접')) return 'MELEE';
 
@@ -7435,6 +8655,27 @@ function createFallbackFN57HighQuality() {
   let fn57SampleStartOffset = 0;
   let activeFn57SampleSrc = '';
   const activeFn57Sources = new Set();
+  const DVL10_SAMPLE_SOURCES = [
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/GunFx/DVL10/DVLR.wav',
+  'https://github.com/Angredth/my-fps/raw/main/GunFx/DVL10/DVLR.wav'
+  ];
+  let dvl10SamplePool = [];
+  let dvl10SampleReady = false;
+  let dvl10SampleLoadAttempted = false;
+  let dvl10SampleIndex = 0;
+  let activeDvl10SampleSrc = '';
+  const DVL10_SAMPLE_FADE_START_SECONDS = 0.32;
+  const DVL10_SAMPLE_FADE_DURATION_SECONDS = 0.62;
+  const DVL10_BOLT_SAMPLE_SOURCES = [
+  'https://raw.githubusercontent.com/Angredth/my-fps/main/GunFx/DVL10/Bolt.wav',
+  'https://github.com/Angredth/my-fps/raw/main/GunFx/DVL10/Bolt.wav'
+  ];
+  const DVL10_BOLT_SAMPLE_FALLBACK_DURATION = 0.942625;
+  let dvl10BoltSamplePool = [];
+  let dvl10BoltSampleReady = false;
+  let dvl10BoltSampleLoadAttempted = false;
+  let dvl10BoltSampleIndex = 0;
+  let activeDvl10BoltSampleSrc = '';
 
 
   function ensureContext() {
@@ -7516,6 +8757,8 @@ function createFallbackFN57HighQuality() {
   preloadShotgunSample();
   preloadArSample();
   preloadFn57Sample();
+  preloadDvl10Sample();
+  preloadDvl10BoltSample();
   startAmbience();
   }
 
@@ -7695,6 +8938,162 @@ function createFallbackFN57HighQuality() {
   }
   }
 
+  function cancelDvl10SampleFade(audio) {
+  if (!audio) return;
+  if (audio._dvl10FadeTimeout) {
+  clearTimeout(audio._dvl10FadeTimeout);
+  audio._dvl10FadeTimeout = null;
+  }
+  if (audio._dvl10FadeFrame) {
+  cancelAnimationFrame(audio._dvl10FadeFrame);
+  audio._dvl10FadeFrame = null;
+  }
+  }
+
+  function scheduleDvl10SampleFade(audio, startVolume) {
+  cancelDvl10SampleFade(audio);
+
+  audio._dvl10FadeTimeout = setTimeout(() => {
+  const fadeStartMs = performance.now();
+
+  const step = (nowMs) => {
+  const progress = THREE.MathUtils.clamp(
+  (nowMs - fadeStartMs) / (DVL10_SAMPLE_FADE_DURATION_SECONDS * 1000),
+  0,
+  1
+  );
+  audio.volume = Math.max(0, startVolume * (1 - progress));
+  if (progress < 1 && !audio.paused) {
+  audio._dvl10FadeFrame = requestAnimationFrame(step);
+  return;
+  }
+  audio._dvl10FadeFrame = null;
+  if (!audio.paused) {
+  try { audio.pause(); } catch {}
+  }
+  };
+  }, DVL10_SAMPLE_FADE_START_SECONDS * 1000);
+  }
+
+  function preloadDvl10Sample() {
+  if (dvl10SampleLoadAttempted) return;
+  dvl10SampleLoadAttempted = true;
+
+  DVL10_SAMPLE_SOURCES.forEach((source) => {
+  const probe = new Audio(source);
+  probe.preload = 'auto';
+
+  const activateSource = () => {
+  if (activeDvl10SampleSrc) return;
+  activeDvl10SampleSrc = source;
+  dvl10SampleReady = true;
+  dvl10SamplePool = Array.from({ length: 4 }, () => {
+  const audio = new Audio(source);
+  audio.preload = 'auto';
+  audio.volume = AudioManager.getVolume('gameplay', 0.98);
+  audio.load();
+  return audio;
+  });
+  };
+
+  probe.addEventListener('loadeddata', activateSource, { once: true });
+  probe.addEventListener('canplaythrough', activateSource, { once: true });
+  probe.addEventListener('error', () => {}, { once: true });
+  probe.load();
+  });
+  }
+
+  function playDvl10Sample(volumeScale = 1) {
+  if (raidAudioMuted) return false;
+  if (!dvl10SampleReady || dvl10SamplePool.length === 0) return false;
+
+  const audio = dvl10SamplePool[dvl10SampleIndex % dvl10SamplePool.length];
+  dvl10SampleIndex++;
+
+  try {
+  cancelDvl10SampleFade(audio);
+  audio.pause();
+  audio.currentTime = 0;
+  const startVolume = AudioManager.getVolume('gameplay', 0.98 * volumeScale);
+  audio.volume = startVolume;
+  audio.playbackRate = 0.98 + Math.random() * 0.025;
+  const playPromise = audio.play();
+  if (playPromise) playPromise.catch(() => {});
+  scheduleDvl10SampleFade(audio, startVolume);
+  return true;
+  } catch {
+  return false;
+  }
+  }
+
+  function preloadDvl10BoltSample() {
+  if (dvl10BoltSampleLoadAttempted) return;
+  dvl10BoltSampleLoadAttempted = true;
+
+  DVL10_BOLT_SAMPLE_SOURCES.forEach((source) => {
+  const probe = new Audio(source);
+  probe.preload = 'auto';
+
+  const activateSource = () => {
+  if (activeDvl10BoltSampleSrc) return;
+
+  activeDvl10BoltSampleSrc = source;
+  dvl10BoltSampleReady = true;
+
+  dvl10BoltSamplePool = Array.from({ length: 3 }, () => {
+  const audio = new Audio(source);
+  audio.preload = 'auto';
+  audio.volume = AudioManager.getVolume('gameplay', 0.9);
+  audio.load();
+  return audio;
+  });
+  };
+
+  probe.addEventListener('loadeddata', activateSource, { once: true });
+  probe.addEventListener('canplaythrough', activateSource, { once: true });
+  probe.addEventListener('error', () => {}, { once: true });
+  probe.load();
+  });
+  }
+
+  function playDvl10BoltSample(targetDuration = 0.95, volumeScale = 1) {
+  if (raidAudioMuted) return false;
+  if (!dvl10BoltSampleReady || dvl10BoltSamplePool.length === 0) return false;
+
+  const audio = dvl10BoltSamplePool[dvl10BoltSampleIndex % dvl10BoltSamplePool.length];
+  dvl10BoltSampleIndex++;
+
+  try {
+  audio.pause();
+  audio.currentTime = 0;
+
+  const sourceDuration =
+  Number.isFinite(audio.duration) && audio.duration > 0
+  ? audio.duration
+  : DVL10_BOLT_SAMPLE_FALLBACK_DURATION;
+
+  const safeTargetDuration = Math.max(
+  0.05,
+  Number(targetDuration) || DVL10_BOLT_ACTION.duration || 0.95
+  );
+
+  const playbackRate = THREE.MathUtils.clamp(
+  sourceDuration / safeTargetDuration,
+  0.75,
+  1.35
+  );
+
+  audio.volume = AudioManager.getVolume('gameplay', 0.9 * volumeScale);
+  audio.playbackRate = playbackRate;
+
+  const playPromise = audio.play();
+  if (playPromise) playPromise.catch(() => {});
+  return true;
+  } catch {
+  return false;
+  }
+  }
+
 
   function createNoiseBuffer(duration) {
   const sampleRate = ctx.sampleRate;
@@ -7845,6 +9244,7 @@ function createFallbackFN57HighQuality() {
   function stopAudioPool(pool) {
   pool.forEach((audio) => {
   try {
+  cancelDvl10SampleFade(audio);
   audio.pause();
   audio.currentTime = 0;
   } catch {}
@@ -7874,6 +9274,8 @@ function createFallbackFN57HighQuality() {
   raidAudioMuted = true;
   stopAudioPool(shotgunSamplePool);
   stopAudioPool(arSamplePool);
+  stopAudioPool(dvl10SamplePool);
+  stopAudioPool(dvl10BoltSamplePool);
   stopFn57Sources();
   stopAmbience();
   setRaidBusLevels(false);
@@ -7986,10 +9388,20 @@ function createFallbackFN57HighQuality() {
   tone({ start: t, duration: 0.05, gain: 0.09 * volumeScale, type: 'square', from: 165, to: 82 });
   }
 
+  function playDvl10Shot(volumeScale = 1) {
+  if (!ctx) return;
+  if (playDvl10Sample(volumeScale)) return;
+  playM4Shot(false, Math.min(1.15, volumeScale * 1.08));
+  }
+
 
   function playGunshot(weaponName, isAutoFollowUp = false, volumeScale = 1) {
   if (!ctx || ctx.state !== 'running' || raidAudioMuted) return;
   if (weaponName === 'FN 5-7' || weaponName === 'FN 5-7 SD') { playPistolShot(volumeScale); return; }
+  if (weaponName === 'DVL-10' || weaponName === 'DVL10') {
+  playDvl10Shot(volumeScale);
+  return;
+  }
   if (weaponName === 'MP-153' || weaponName === 'MP153') {
   playShotgunShot(volumeScale);
   return;
@@ -8123,6 +9535,7 @@ function createFallbackFN57HighQuality() {
   playWeaponSwitch,
   playHit,
   playAimToggle,
+  playDvl10BoltSample,
   refreshSettings,
   stopAll
   };
@@ -8138,6 +9551,14 @@ function createFallbackFN57HighQuality() {
 
 
   function updateWeaponUI() {
+  if (currentWeapon === WEAPONS.DVL10) {
+  const slotText = Object.entries(weaponSlots).filter(([, key]) => key).map(([slot, key]) => `${slot}:${WEAPONS[key].name}`).join(' ');
+  weaponUI.innerText = `WEAPON: DVL-10
+AMMO: ${getDVL10LoadedAmmo()}/${DVL10_MAX_AMMO}
+${getDVL10StatusText()}${slotText ? `
+${slotText}` : ''}`;
+  return;
+  }
   const scopeText = currentWeapon === WEAPONS.M4A1 ? ` | SCOPE: ${scopeMagnification/4}x` : '';
   const slotText = Object.entries(weaponSlots).filter(([, key]) => key).map(([slot, key]) => `${slot}:${WEAPONS[key].name}`).join(' ');
   weaponUI.innerText = `WEAPON: ${currentWeapon.name}${scopeText}${slotText ? `
@@ -8242,6 +9663,12 @@ ${slotText}` : ''}`;
 
 
 	  document.addEventListener('keydown', (event) => {
+	  if (event.code === 'F8') {
+	  event.preventDefault();
+	  window.DEBUG_BASIC_ENEMY_AI = !window.DEBUG_BASIC_ENEMY_AI;
+	  console.log('DEBUG_BASIC_ENEMY_AI:', window.DEBUG_BASIC_ENEMY_AI);
+	  return;
+	  }
 	  if (!fpsRaidActive || fpsInventoryOpen || deathState.active || raidEnded) return;
 	  if (event.code === 'KeyO') {
 	  event.preventDefault();
@@ -8281,6 +9708,11 @@ ${slotText}` : ''}`;
 	  });
 	  return;
 	  }
+
+  if (event.code === 'KeyR') {
+  handleDVL10ReloadOrBolt();
+  return;
+  }
 
 
   if (!isSwapping) {
@@ -8383,6 +9815,13 @@ ${slotText}` : ''}`;
   fireTimer = currentWeapon.fireRate;
   return;
   }
+  const boltState = getBoltActionStateForWeapon(currentWeapon);
+  if (isBoltActionWeapon(currentWeapon) && boltState && (boltState.needsBolt || boltState.cyclingBolt || boltState.reloading)) {
+  isFiring = false;
+  hasFiredSingle = false;
+  fireTimer = currentWeapon.fireRate;
+  return;
+  }
   isFiring = true;
   hasFiredSingle = false;
   shotSequence = 0;
@@ -8403,6 +9842,10 @@ ${slotText}` : ''}`;
   if (event.button === 0) {
   isFiring = false;
   shotSequence = 0;
+  const boltState = getBoltActionStateForWeapon(currentWeapon);
+  if (isBoltActionWeapon(currentWeapon) && boltState?.needsBolt && !boltState.cyclingBolt) {
+  startBoltCycle(currentWeapon);
+  }
   }
   });
 
@@ -8411,6 +9854,8 @@ ${slotText}` : ''}`;
   function weaponKeyFromItem(item) {
   if (!item) return null;
   if (item.id === 'rifle') return 'M4A1';
+  if (item.id === 'aks74u') return 'AKS74U';
+  if (item.id === 'dvl10') return 'DVL10';
   if (item.id === 'mp153') return 'MP153';
   if (item.id === 'pistol') return 'FN57';
   if (item.id === 'knife') return 'MELEE';
@@ -8427,11 +9872,8 @@ ${slotText}` : ''}`;
   };
   const currentKey = Object.keys(WEAPONS).find((key) => WEAPONS[key] === currentWeapon);
   const nextKey = Object.values(weaponSlots).includes(currentKey) ? currentKey : (weaponSlots.primary1 || weaponSlots.primary2 || weaponSlots.pistol || weaponSlots.melee || 'EMPTY');
-  Object.values(WEAPONS).forEach((weapon) => { weapon.mesh.visible = false; });
-  currentWeapon = WEAPONS[nextKey] || WEAPONS.EMPTY;
-  currentWeapon.mesh.visible = !currentWeapon.disabled;
-  fullScope.visible = currentWeapon === WEAPONS.M4A1;
-  updateWeaponUI();
+  if (currentWeapon === WEAPONS.DVL10 && currentKey !== nextKey) cancelDVL10ActionState();
+  setPlayerCurrentWeapon(WEAPONS[nextKey] || WEAPONS.EMPTY);
   }
 
 
@@ -8444,6 +9886,11 @@ ${slotText}` : ''}`;
 
 
   function triggerWeaponSwap(targetWeapon) {
+  if (!targetWeapon || !targetWeapon.mesh) {
+  console.error('[FPSRaid] 잘못된 무기 교체 요청', targetWeapon);
+  return;
+  }
+  if (currentWeapon === WEAPONS.DVL10) cancelDVL10ActionState();
   Sound.playWeaponSwitch();
   isSwapping = true;
   swapProgress = 0;
@@ -8618,6 +10065,23 @@ ${slotText}` : ''}`;
 	  return playerHead.clone().add(new THREE.Vector3(horizontalOffset, verticalOffset, depthOffset));
 	  }
 
+  function createBasicEnemyAimTarget(enemy, playerHead, distanceToPlayer) {
+  const ai = ensureBasicEnemyAI(enemy);
+  const baseSpread = getEnemyAimSpread(enemy, distanceToPlayer);
+  const distancePenalty = THREE.MathUtils.clamp(distanceToPlayer / 45, 0, 1.6);
+  const lowAccuracyPenalty = ai ? (1 - ai.accuracy) * 2.2 : 1.0;
+  const finalSpread = baseSpread * (1 + distancePenalty) * lowAccuracyPenalty;
+  const horizontalOffset = (Math.random() - 0.5) * finalSpread;
+  const verticalOffset = (Math.random() - 0.5) * finalSpread * 0.65;
+  const depthOffset = (Math.random() - 0.5) * finalSpread;
+
+  return playerHead.clone().add(new THREE.Vector3(
+  horizontalOffset,
+  verticalOffset,
+  depthOffset
+  ));
+  }
+
 	  function findEnemyRayHit(origin, direction, maxDistance) {
   let best = null;
   enemies.forEach((enemy) => {
@@ -8677,16 +10141,23 @@ ${slotText}` : ''}`;
   handleObjectHit({ userData: { parentGroup: hit.enemy, part: hit.part } }, damage);
   }
 
+  function getPlayerGunshotNoiseRadius(weapon = currentWeapon) {
+  if (weapon === WEAPONS.DVL10) return BASIC_ENEMY_AI_CONFIG.hearingDistanceSuppressedGunshot;
+  return BASIC_ENEMY_AI_CONFIG.hearingDistanceGunshot;
+  }
+
 
   function shootWeapon() {
   if (isSwapping || currentWeapon.disabled) return;
   if (isSprintBlockingFire()) return;
   if (currentWeapon.melee) { performMeleeAttack(); return; }
+  if (isBoltActionWeapon(currentWeapon) && !canFireCurrentWeapon()) return;
 
 
-  const isAutoFollowUp = currentWeapon === WEAPONS.M4A1 && shotSequence > 0;
-  Sound.playGunshot(currentWeapon.name, isAutoFollowUp);
-  shotSequence++;
+    const isAutoFollowUp = (currentWeapon === WEAPONS.M4A1 || currentWeapon === WEAPONS.AKS74U) && shotSequence > 0;
+    Sound.playGunshot(currentWeapon.name, isAutoFollowUp);
+    emitPlayerNoise(camera.position, getPlayerGunshotNoiseRadius(currentWeapon), 'gunshot');
+    shotSequence++;
 
 
   recoilCounter++;
@@ -8740,6 +10211,7 @@ ${slotText}` : ''}`;
   damage: currentWeapon.damage
   });
   }
+  if (isBoltActionWeapon(currentWeapon)) onBoltActionFired(currentWeapon);
   }
 
 
@@ -8774,10 +10246,23 @@ ${slotText}` : ''}`;
   parent.userData.hp -= damage;
 
 
-  parent.userData.forcedEngage = true;
-  parent.userData.lostSightTimer = 0;
-  parent.userData.shootCooldown = 0;
-  parent.userData.state = parent.position.distanceTo(camera.position) <= 50 ? 'ATTACK' : 'CHASE';
+    parent.userData.forcedEngage = true;
+    parent.userData.lostSightTimer = 0;
+    parent.userData.shootCooldown = 0;
+    const ai = ensureBasicEnemyAI(parent);
+    if (ai) {
+    ai.lastKnownPlayerPos = camera.position.clone();
+    ai.memoryTimer = THREE.MathUtils.randFloat(3.0, 6.0);
+    ai.reactionTimer = Math.min(ai.reactionDelay, 0.35);
+    ai.shootCooldown = 0;
+    if (parent.position.distanceTo(camera.position) <= 50) {
+    setBasicEnemyState(parent, BASIC_ENEMY_STATE.ALERT);
+    } else {
+    setBasicEnemyState(parent, BASIC_ENEMY_STATE.CHASE);
+    }
+    } else {
+    parent.userData.state = parent.position.distanceTo(camera.position) <= 50 ? 'ATTACK' : 'CHASE';
+    }
 
 
   parent.children.forEach((mesh) => {
@@ -8789,7 +10274,7 @@ ${slotText}` : ''}`;
   if (parent.userData.hp <= 0) {
   if (!parent.userData.isRagdoll) {
   parent.userData.isRagdoll = true;
-  parent.userData.ragdoll = createRagdoll(parent.position, parent.userData.weaponType === 'M4A1');
+  parent.userData.ragdoll = createRagdoll(parent.position, parent.userData.weaponType);
   activateRagdoll(parent.userData.ragdoll);
   tagRagdollForLoot(parent.userData.ragdoll, parent.userData.weaponType);
 
@@ -9021,8 +10506,8 @@ ${slotText}` : ''}`;
   const screenZ = center + (enemy.position.z - camera.position.z) * scale;
 
 
-  const fov = Math.PI / 3;
-  const visionRange = 25 * scale;
+    const fov = enemy.userData.ai?.viewAngle || Math.PI / 3;
+    const visionRange = (enemy.userData.ai?.viewDistance || 25) * scale;
 
 
   minimapCtx.fillStyle = 'rgba(255, 50, 50, 0.25)';
@@ -9089,6 +10574,8 @@ ${slotText}` : ''}`;
   };
   const WEAPON_VIEW_MOTION_SCALE = {
   M4A1: { hip: 0.62, ads: 0.18, sprint: 0.56 },
+  AKS74U: { hip: 0.62, ads: 0.18, sprint: 0.56 },
+  DVL10: { hip: 0.44, ads: 0.12, sprint: 0.42 },
   MP153: { hip: 0.52, ads: 0.16, sprint: 0.48 },
   FN57: { hip: 0.72, ads: 0.22, sprint: 0.66 },
   MELEE: { hip: 0.86, ads: 0.86, sprint: 0.78 }
@@ -9106,6 +10593,7 @@ ${slotText}` : ''}`;
   const moveWeaponOffsetRot = new THREE.Euler();
   const targetMoveWeaponOffsetPos = new THREE.Vector3();
   const targetMoveWeaponOffsetRot = new THREE.Euler();
+  const ZERO_EULER = new THREE.Euler();
   const weaponPivotCompensation = new THREE.Vector3();
   const weaponPivotBasePos = new THREE.Vector3();
   const weaponPivotMovedPos = new THREE.Vector3();
@@ -9226,6 +10714,547 @@ ${slotText}` : ''}`;
   }
 
 
+  function emitPlayerNoise(position, radius, type = 'unknown') {
+  if (!position) return;
+  playerNoiseEvents.push({
+  position: position.clone(),
+  radius,
+  type,
+  createdAt: performance.now() / 1000
+  });
+  if (playerNoiseEvents.length > 16) {
+  playerNoiseEvents.splice(0, playerNoiseEvents.length - 16);
+  }
+  }
+
+  function cleanupPlayerNoiseEvents() {
+  const now = performance.now() / 1000;
+  for (let i = playerNoiseEvents.length - 1; i >= 0; i--) {
+  if (now - playerNoiseEvents[i].createdAt > 2.0) {
+  playerNoiseEvents.splice(i, 1);
+  }
+  }
+  }
+
+  function ensureBasicEnemyAI(enemy) {
+  if (!enemy?.userData) return null;
+  if (!enemy.userData.ai) {
+  const weaponType = enemy.userData.weaponType || 'M4A1';
+  const magSize = weaponType === 'MP153' ? 5 : weaponType === 'AKS74U' ? 30 : 10;
+  enemy.userData.ai = {
+  role: 'basicEnemy',
+  state: enemy.userData.state || BASIC_ENEMY_STATE.PATROL,
+  previousState: null,
+  stateTime: 0,
+  nextThinkTime: 0,
+  viewDistance: THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.viewDistanceMin,
+  BASIC_ENEMY_AI_CONFIG.viewDistanceMax
+  ),
+  viewAngle: THREE.MathUtils.degToRad(
+  THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.viewAngleMinDeg,
+  BASIC_ENEMY_AI_CONFIG.viewAngleMaxDeg
+  )
+  ),
+  reactionDelay: THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.reactionMin,
+  BASIC_ENEMY_AI_CONFIG.reactionMax
+  ),
+  reactionTimer: 0,
+  bravery: THREE.MathUtils.randFloat(0.25, 0.75),
+  accuracy: weaponType === 'MP153'
+  ? THREE.MathUtils.randFloat(0.18, 0.34)
+  : THREE.MathUtils.randFloat(0.20, 0.42),
+  canSeePlayer: false,
+  heardNoise: false,
+  currentNoise: null,
+  lastKnownPlayerPos: null,
+  lastHeardPos: null,
+  investigateTarget: null,
+  memoryTimer: 0,
+  patrolTarget: enemy.userData.patrolTarget || getRandomPatrolTarget(enemy.position.x, enemy.position.z, 30),
+  waitTimer: 0,
+  desiredWaitTime: THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.patrolWaitMin,
+  BASIC_ENEMY_AI_CONFIG.patrolWaitMax
+  ),
+  ammo: magSize,
+  magSize,
+  reloadTimer: 0,
+  burstShotsLeft: 0,
+  shootCooldown: enemy.userData.shootCooldown || 0,
+  stuckTimer: 0,
+  lastPosition: enemy.position.clone(),
+  hasFledLowHealth: false,
+  debugStateChangedAt: 0
+  };
+  }
+  enemy.userData.state = enemy.userData.ai.state;
+  return enemy.userData.ai;
+  }
+
+  function setBasicEnemyState(enemy, nextState) {
+  const ai = ensureBasicEnemyAI(enemy);
+  if (!ai) return;
+  if (ai.state === nextState) {
+  enemy.userData.state = ai.state;
+  return;
+  }
+  ai.previousState = ai.state;
+  ai.state = nextState;
+  ai.stateTime = 0;
+  enemy.userData.state = nextState;
+
+  if (nextState === BASIC_ENEMY_STATE.PATROL || nextState === BASIC_ENEMY_STATE.IDLE) {
+  ai.waitTimer = 0;
+  ai.desiredWaitTime = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.patrolWaitMin,
+  BASIC_ENEMY_AI_CONFIG.patrolWaitMax
+  );
+  } else if (nextState === BASIC_ENEMY_STATE.INVESTIGATE) {
+  ai.waitTimer = 0;
+  ai.desiredWaitTime = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.investigateWaitMin,
+  BASIC_ENEMY_AI_CONFIG.investigateWaitMax
+  );
+  } else if (nextState === BASIC_ENEMY_STATE.RELOAD) {
+  ai.burstShotsLeft = 0;
+  }
+
+  if (window.DEBUG_BASIC_ENEMY_AI) {
+  console.log('[BASIC ENEMY AI]', ai.previousState, '->', nextState);
+  }
+  }
+
+  function updateBasicEnemyPerception(enemy, delta) {
+  const ai = ensureBasicEnemyAI(enemy);
+  if (!ai) return;
+  ai.canSeePlayer = false;
+  ai.heardNoise = false;
+  ai.currentNoise = null;
+
+  const distToPlayer = enemy.position.distanceTo(camera.position);
+  const enemyEyePos = enemy.position.clone().add(new THREE.Vector3(0, 1.9, 0));
+  const playerEyePos = camera.position.clone();
+  const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(enemy.quaternion).normalize();
+  const toPlayer = new THREE.Vector3().subVectors(playerEyePos, enemyEyePos);
+  const angleToPlayer = toPlayer.lengthSq() > 0.0001
+  ? enemyForward.angleTo(toPlayer.normalize())
+  : 0;
+
+  ai.canSeePlayer =
+  distToPlayer <= ai.viewDistance &&
+  angleToPlayer <= ai.viewAngle / 2 &&
+  hasClearLineOfSight(enemyEyePos, playerEyePos);
+
+  if (ai.canSeePlayer) {
+  ai.lastKnownPlayerPos = camera.position.clone();
+  ai.memoryTimer = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.memoryMin,
+  BASIC_ENEMY_AI_CONFIG.memoryMax
+  );
+  enemy.userData.lostSightTimer = 0;
+  } else {
+  ai.memoryTimer = Math.max(0, ai.memoryTimer - delta);
+  enemy.userData.lostSightTimer = (enemy.userData.lostSightTimer || 0) + delta;
+  }
+
+  for (let i = playerNoiseEvents.length - 1; i >= 0; i--) {
+  const noise = playerNoiseEvents[i];
+  const distToNoise = enemy.position.distanceTo(noise.position);
+  if (distToNoise <= noise.radius) {
+  ai.heardNoise = true;
+  ai.currentNoise = noise;
+  ai.lastHeardPos = noise.position.clone();
+  ai.investigateTarget = noise.position.clone();
+  break;
+  }
+  }
+
+  if (enemy.userData.forcedEngage === true && !ai.lastKnownPlayerPos) {
+  ai.lastKnownPlayerPos = camera.position.clone();
+  ai.memoryTimer = THREE.MathUtils.randFloat(2.5, 5.0);
+  }
+  }
+
+  function updateBasicEnemyState(enemy, delta) {
+  const ai = ensureBasicEnemyAI(enemy);
+  if (!ai) return;
+  ai.stateTime += delta;
+  const distToPlayer = enemy.position.distanceTo(camera.position);
+
+  if (enemy.userData.hp <= 0 || enemy.userData.isRagdoll) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.DEAD);
+  return;
+  }
+
+  if (
+  enemy.userData.forcedEngage === true &&
+  ai.lastKnownPlayerPos &&
+  (
+  ai.state === BASIC_ENEMY_STATE.PATROL ||
+  ai.state === BASIC_ENEMY_STATE.IDLE ||
+  ai.state === BASIC_ENEMY_STATE.INVESTIGATE
+  )
+  ) {
+  ai.reactionTimer = Math.min(ai.reactionDelay, Math.max(ai.reactionTimer, 0.2));
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.ALERT);
+  }
+
+  if (
+  enemy.userData.hp <= BASIC_ENEMY_AI_CONFIG.lowHealthThreshold &&
+  ai.bravery < 0.45 &&
+  !ai.hasFledLowHealth &&
+  ai.state !== BASIC_ENEMY_STATE.FLEE &&
+  ai.state !== BASIC_ENEMY_STATE.RELOAD
+  ) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.FLEE);
+  return;
+  }
+
+  switch (ai.state) {
+  case BASIC_ENEMY_STATE.IDLE:
+  if (ai.canSeePlayer) {
+  ai.reactionTimer = ai.reactionDelay;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.ALERT);
+  } else if (ai.heardNoise) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.INVESTIGATE);
+  } else if (ai.stateTime > ai.desiredWaitTime) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.PATROL:
+  if (ai.canSeePlayer) {
+  ai.reactionTimer = ai.reactionDelay;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.ALERT);
+  } else if (ai.heardNoise) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.INVESTIGATE);
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.INVESTIGATE:
+  if (ai.canSeePlayer) {
+  ai.reactionTimer = ai.reactionDelay;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.ALERT);
+  } else if (!ai.investigateTarget && ai.stateTime > ai.desiredWaitTime) {
+  enemy.userData.forcedEngage = false;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  } else if (ai.stateTime > 7.0) {
+  ai.investigateTarget = null;
+  enemy.userData.forcedEngage = false;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.ALERT:
+  ai.reactionTimer -= delta;
+  if (!ai.canSeePlayer && ai.memoryTimer <= 0) {
+  setBasicEnemyState(enemy, ai.lastKnownPlayerPos ? BASIC_ENEMY_STATE.CHASE : BASIC_ENEMY_STATE.INVESTIGATE);
+  } else if (ai.reactionTimer <= 0) {
+  setBasicEnemyState(
+  enemy,
+  ai.canSeePlayer && distToPlayer <= BASIC_ENEMY_AI_CONFIG.attackDistance
+  ? BASIC_ENEMY_STATE.ATTACK
+  : BASIC_ENEMY_STATE.CHASE
+  );
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.CHASE:
+  if (ai.canSeePlayer && distToPlayer <= BASIC_ENEMY_AI_CONFIG.attackDistance) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.ATTACK);
+  } else if (!ai.canSeePlayer && ai.lastKnownPlayerPos) {
+  const flatLastKnown = ai.lastKnownPlayerPos.clone();
+  flatLastKnown.y = enemy.position.y;
+  const distToKnown = enemy.position.distanceTo(flatLastKnown);
+  if (distToKnown <= 2.3 && ai.memoryTimer <= 0) {
+  ai.investigateTarget = ai.lastKnownPlayerPos.clone();
+  ai.lastKnownPlayerPos = null;
+  enemy.userData.forcedEngage = false;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.INVESTIGATE);
+  } else if (distToPlayer > BASIC_ENEMY_AI_CONFIG.chaseGiveUpDistance && ai.memoryTimer <= 0) {
+  ai.investigateTarget = ai.lastKnownPlayerPos.clone();
+  ai.lastKnownPlayerPos = null;
+  enemy.userData.forcedEngage = false;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.INVESTIGATE);
+  }
+  } else if (!ai.canSeePlayer && ai.memoryTimer <= 0) {
+  enemy.userData.forcedEngage = false;
+  setBasicEnemyState(enemy, ai.lastHeardPos ? BASIC_ENEMY_STATE.INVESTIGATE : BASIC_ENEMY_STATE.PATROL);
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.ATTACK:
+  if (ai.ammo <= 0) {
+  ai.reloadTimer = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.reloadMin,
+  BASIC_ENEMY_AI_CONFIG.reloadMax
+  );
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.RELOAD);
+  } else if (!ai.canSeePlayer) {
+  setBasicEnemyState(enemy, ai.lastKnownPlayerPos ? BASIC_ENEMY_STATE.CHASE : BASIC_ENEMY_STATE.PATROL);
+  } else if (distToPlayer > BASIC_ENEMY_AI_CONFIG.attackDistance) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.CHASE);
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.RELOAD:
+  ai.reloadTimer -= delta;
+  if (ai.reloadTimer <= 0) {
+  ai.ammo = ai.magSize;
+  if (ai.canSeePlayer && distToPlayer <= BASIC_ENEMY_AI_CONFIG.attackDistance) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.ATTACK);
+  } else if (ai.lastKnownPlayerPos) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.CHASE);
+  } else if (ai.lastHeardPos || ai.investigateTarget) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.INVESTIGATE);
+  } else {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  }
+  }
+  break;
+
+  case BASIC_ENEMY_STATE.FLEE:
+  if (ai.stateTime > 3.5) {
+  ai.hasFledLowHealth = true;
+  if (ai.ammo <= 0) {
+  ai.reloadTimer = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.reloadMin,
+  BASIC_ENEMY_AI_CONFIG.reloadMax
+  );
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.RELOAD);
+  } else {
+  enemy.userData.forcedEngage = false;
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  }
+  }
+  break;
+  }
+  }
+
+  function moveBasicEnemyToward(enemy, target, speed, delta) {
+  if (!target) return false;
+  const flatTarget = target.clone();
+  flatTarget.y = enemy.position.y;
+  const dir = new THREE.Vector3().subVectors(flatTarget, enemy.position);
+  dir.y = 0;
+  const distance = dir.length();
+  if (distance < 0.001) return true;
+  dir.normalize();
+  enemy.lookAt(flatTarget.x, enemy.position.y, flatTarget.z);
+  return tryMoveEnemy(enemy, dir.multiplyScalar(speed * delta));
+  }
+
+  function updateBasicEnemyMovement(enemy, delta) {
+  const ai = ensureBasicEnemyAI(enemy);
+  if (!ai) return;
+  const previousPosition = enemy.position.clone();
+
+  if (ai.state === BASIC_ENEMY_STATE.PATROL) {
+  if (!ai.patrolTarget) {
+  ai.patrolTarget = getRandomPatrolTarget(enemy.position.x, enemy.position.z, 30);
+  }
+  const target = ai.patrolTarget;
+  const distToTarget = enemy.position.distanceTo(new THREE.Vector3(target.x, enemy.position.y, target.z));
+  if (distToTarget < 2) {
+  ai.waitTimer += delta;
+  if (ai.waitTimer > ai.desiredWaitTime) {
+  ai.patrolTarget = getRandomPatrolTarget(enemy.position.x, enemy.position.z, 40);
+  ai.waitTimer = 0;
+  ai.desiredWaitTime = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.patrolWaitMin,
+  BASIC_ENEMY_AI_CONFIG.patrolWaitMax
+  );
+  }
+  } else {
+  const moved = moveBasicEnemyToward(enemy, target, BASIC_ENEMY_AI_CONFIG.patrolSpeed, delta);
+  if (!moved) {
+  ai.patrolTarget = getRandomPatrolTarget(enemy.position.x, enemy.position.z, 40);
+  ai.waitTimer = 0;
+  }
+  }
+  } else if (ai.state === BASIC_ENEMY_STATE.INVESTIGATE) {
+  const target = ai.investigateTarget || ai.lastHeardPos;
+  if (target) {
+  const dist = enemy.position.distanceTo(new THREE.Vector3(target.x, enemy.position.y, target.z));
+  if (dist > 2) {
+  moveBasicEnemyToward(enemy, target, BASIC_ENEMY_AI_CONFIG.investigateSpeed, delta);
+  } else {
+  ai.investigateTarget = null;
+  ai.waitTimer += delta;
+  if (ai.waitTimer > ai.desiredWaitTime) {
+  ai.waitTimer = 0;
+  ai.desiredWaitTime = THREE.MathUtils.randFloat(
+  BASIC_ENEMY_AI_CONFIG.investigateWaitMin,
+  BASIC_ENEMY_AI_CONFIG.investigateWaitMax
+  );
+  }
+  }
+  }
+  } else if (ai.state === BASIC_ENEMY_STATE.ALERT) {
+  const lookTarget = ai.lastKnownPlayerPos || ai.lastHeardPos;
+  if (lookTarget) {
+  enemy.lookAt(lookTarget.x, enemy.position.y, lookTarget.z);
+  }
+  } else if (ai.state === BASIC_ENEMY_STATE.CHASE) {
+  const target = ai.lastKnownPlayerPos || ai.lastHeardPos;
+  if (target) {
+  moveBasicEnemyToward(enemy, target, BASIC_ENEMY_AI_CONFIG.chaseSpeed, delta);
+  } else {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  }
+  } else if (ai.state === BASIC_ENEMY_STATE.ATTACK) {
+  const targetPos = camera.position.clone();
+  targetPos.y = enemy.position.y;
+  enemy.lookAt(targetPos);
+  const distToPlayer = enemy.position.distanceTo(camera.position);
+  if (distToPlayer < 10) {
+  const away = new THREE.Vector3().subVectors(enemy.position, camera.position);
+  away.y = 0;
+  if (away.lengthSq() > 0.001) {
+  away.normalize();
+  tryMoveEnemy(enemy, away.multiplyScalar(1.25 * delta));
+  }
+  }
+  } else if (ai.state === BASIC_ENEMY_STATE.RELOAD) {
+  const away = new THREE.Vector3().subVectors(enemy.position, camera.position);
+  away.y = 0;
+  if (away.lengthSq() > 0.001) {
+  away.normalize();
+  tryMoveEnemy(enemy, away.multiplyScalar(1.2 * delta));
+  }
+  } else if (ai.state === BASIC_ENEMY_STATE.FLEE) {
+  const away = new THREE.Vector3().subVectors(enemy.position, camera.position);
+  away.y = 0;
+  if (away.lengthSq() > 0.001) {
+  away.normalize();
+  tryMoveEnemy(enemy, away.multiplyScalar(BASIC_ENEMY_AI_CONFIG.fleeSpeed * delta));
+  enemy.lookAt(enemy.position.x + away.x, enemy.position.y, enemy.position.z + away.z);
+  }
+  }
+
+  if (isEnemyPositionBlocked(enemy.position, 0.85)) {
+  enemy.position.copy(previousPosition);
+  ai.patrolTarget = getRandomPatrolTarget(enemy.position.x, enemy.position.z, 30);
+  if (ai.state !== BASIC_ENEMY_STATE.ATTACK && ai.state !== BASIC_ENEMY_STATE.RELOAD) {
+  setBasicEnemyState(enemy, BASIC_ENEMY_STATE.PATROL);
+  }
+  }
+
+  enemy.position.y = getTerrainHeight(enemy.position.x, enemy.position.z);
+  const movedDistance = enemy.position.distanceTo(previousPosition);
+  if (movedDistance < 0.02 && [
+  BASIC_ENEMY_STATE.PATROL,
+  BASIC_ENEMY_STATE.CHASE,
+  BASIC_ENEMY_STATE.INVESTIGATE,
+  BASIC_ENEMY_STATE.FLEE
+  ].includes(ai.state)) {
+  ai.stuckTimer += delta;
+  if (ai.stuckTimer > 1.0) {
+  ai.patrolTarget = getRandomPatrolTarget(enemy.position.x, enemy.position.z, 40);
+  ai.investigateTarget = null;
+  ai.stuckTimer = 0;
+  }
+  } else {
+  ai.stuckTimer = 0;
+  }
+  ai.lastPosition.copy(enemy.position);
+  }
+
+  function spawnEnemyTracer(from, to, color = 0xff3300) {
+  const eTracerGeo = new THREE.BufferGeometry().setFromPoints([from, to]);
+  const eTracerMat = new THREE.LineBasicMaterial({
+  color,
+  transparent: true,
+  opacity: 0.9
+  });
+  const eTracerLine = new THREE.Line(eTracerGeo, eTracerMat);
+  scene.add(eTracerLine);
+  enemyTracers.push({
+  element: eTracerLine,
+  material: eTracerMat,
+  life: 0.05
+  });
+  }
+
+  function updateBasicEnemyCombat(enemy, delta) {
+  const ai = ensureBasicEnemyAI(enemy);
+  if (!ai) return;
+  if (ai.state !== BASIC_ENEMY_STATE.ATTACK) return;
+  if (!ai.canSeePlayer) return;
+  if (ai.ammo <= 0) return;
+
+  const distToPlayer = enemy.position.distanceTo(camera.position);
+  const weaponType = enemy.userData.weaponType || 'M4A1';
+  const enemyWeaponStats = WEAPONS[weaponType] || WEAPONS.M4A1;
+  const cooldownLimit = weaponType === 'MP153'
+  ? THREE.MathUtils.randFloat(1.0, 1.45)
+  : weaponType === 'AKS74U'
+  ? THREE.MathUtils.randFloat(0.22, 0.36)
+  : ai.burstShotsLeft > 0
+  ? THREE.MathUtils.randFloat(0.12, 0.18)
+  : THREE.MathUtils.randFloat(0.34, 0.58);
+
+  ai.shootCooldown += delta;
+  enemy.userData.shootCooldown = ai.shootCooldown;
+  if (ai.shootCooldown < cooldownLimit) return;
+
+  const enemyMuzzle = enemy.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+  const playerHead = camera.position.clone().add(new THREE.Vector3(0, -0.4, 0));
+
+  if (weaponType === 'MP153') {
+  for (let p = 0; p < 3; p++) {
+  const aimTarget = createBasicEnemyAimTarget(enemy, playerHead, distToPlayer);
+  applyEnemyShotToPlayer(enemyMuzzle, aimTarget, 'MP153', WEAPONS.MP153.damage);
+  spawnEnemyTracer(enemyMuzzle, aimTarget, 0xffaa00);
+  }
+  ai.ammo -= 1;
+  ai.burstShotsLeft = 0;
+  } else {
+  if (ai.burstShotsLeft <= 0) {
+  ai.burstShotsLeft = weaponType === 'AKS74U' ? THREE.MathUtils.randInt(3, 6) : THREE.MathUtils.randInt(2, 4);
+  }
+  const aimTarget = createBasicEnemyAimTarget(enemy, playerHead, distToPlayer);
+  applyEnemyShotToPlayer(enemyMuzzle, aimTarget, weaponType, enemyWeaponStats.damage);
+  spawnEnemyTracer(enemyMuzzle, aimTarget, 0xff3300);
+  ai.ammo -= 1;
+  ai.burstShotsLeft = Math.max(0, ai.burstShotsLeft - 1);
+  }
+
+  Sound.playEnemyShot(weaponType, distToPlayer);
+  ai.shootCooldown = 0;
+  enemy.userData.shootCooldown = 0;
+  }
+
+  function updateBasicEnemyHitFlash(enemy, delta) {
+  if (enemy.parent && enemy.userData.hitTimer > 0) {
+  enemy.userData.hitTimer -= delta;
+  if (enemy.userData.hitTimer <= 0) {
+  enemy.children.forEach((mesh) => {
+  if (mesh.material && mesh.material.color && mesh !== enemy.children[2]) {
+  mesh.material.color.setHex(0xcc2222);
+  }
+  });
+  }
+  }
+  }
+
+  function updateBasicEnemyAI(enemy, delta) {
+  if (!enemy || !enemy.parent || enemy.userData?.isRagdoll) return;
+  const ai = ensureBasicEnemyAI(enemy);
+  if (!ai) return;
+  updateBasicEnemyPerception(enemy, delta);
+  updateBasicEnemyState(enemy, delta);
+  updateBasicEnemyMovement(enemy, delta);
+  updateBasicEnemyCombat(enemy, delta);
+  updateBasicEnemyHitFlash(enemy, delta);
+  enemy.userData.state = ai.state;
+  enemy.userData.patrolTarget = ai.patrolTarget;
+  enemy.userData.shootCooldown = ai.shootCooldown;
+  }
+
   function isPlayerPositionBlocked(position) {
   if (!isInsideMap(position.x, position.z, playerRadius + 0.2)) return true;
 
@@ -9291,6 +11320,7 @@ ${slotText}` : ''}`;
   return;
   }
   animationFrameId = requestAnimationFrame(animate);
+  try {
   const delta = Math.min(clock.getDelta(), 0.05);
   camera.position.sub(appliedLeanOffset);
   appliedLeanOffset.set(0, 0, 0);
@@ -9340,145 +11370,9 @@ ${slotText}` : ''}`;
   }
 
 
+  cleanupPlayerNoiseEvents();
   enemies.forEach((enemy) => {
-  const distToPlayer = enemy.position.distanceTo(camera.position);
-  const enemyPreviousPosition = enemy.position.clone();
-
-
-  const enemyEyePos = enemy.position.clone().add(new THREE.Vector3(0, 1.9, 0));
-  const playerEyePos = camera.position.clone();
-  const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(enemy.quaternion).normalize();
-  const toPlayer = new THREE.Vector3().subVectors(playerEyePos, enemyEyePos).normalize();
-  const enemyFOV = Math.PI / 3;
-  const angleToPlayer = enemyForward.angleTo(toPlayer);
-  const canSeePlayer = (
-  distToPlayer < 25 &&
-  angleToPlayer < enemyFOV / 2 &&
-  hasClearLineOfSight(enemyEyePos, playerEyePos)
-  );
-  const forcedEngage = enemy.userData.forcedEngage === true;
-  const hasCombatAwareness = canSeePlayer || forcedEngage;
-
-
-  if (hasCombatAwareness) {
-  enemy.userData.lostSightTimer = 0;
-  if (enemy.userData.state === 'PATROL') {
-  enemy.userData.state = 'CHASE';
-  }
-  } else if (enemy.userData.state !== 'PATROL') {
-  enemy.userData.lostSightTimer += delta;
-  if (enemy.userData.lostSightTimer > 0.65) {
-  enemy.userData.state = 'PATROL';
-  enemy.userData.shootCooldown = 0;
-  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 24));
-  }
-  }
-
-
-  if (enemy.userData.state === 'CHASE' && hasCombatAwareness && distToPlayer <= 50) {
-  enemy.userData.state = 'ATTACK';
-  } else if (enemy.userData.state === 'ATTACK' && (!hasCombatAwareness || distToPlayer > 53)) {
-  enemy.userData.state = hasCombatAwareness ? 'CHASE' : 'PATROL';
-  enemy.userData.shootCooldown = 0;
-  }
-
-
-  if (enemy.userData.state === 'PATROL') {
-  const target = enemy.userData.patrolTarget;
-  const distToTarget = enemy.position.distanceTo(new THREE.Vector3(target.x, enemy.position.y, target.z));
-
-
-  if (distToTarget < 2) {
-  enemy.userData.patrolWaitTimer += delta;
-  if (enemy.userData.patrolWaitTimer > 2) {
-  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 40));
-  enemy.userData.patrolWaitTimer = 0;
-  }
-  } else {
-  enemy.lookAt(target.x, enemy.position.y, target.z);
-  const patrolDir = new THREE.Vector3().subVectors(target, enemy.position);
-  patrolDir.y = 0;
-  patrolDir.normalize();
-  if (!tryMoveEnemy(enemy, patrolDir.multiplyScalar(1.5 * delta))) {
-  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 40));
-  enemy.userData.patrolWaitTimer = 0;
-  }
-  }
-  } else if (enemy.userData.state === 'CHASE') {
-  const targetPos = new THREE.Vector3().copy(camera.position);
-  targetPos.y = enemy.position.y;
-  enemy.lookAt(targetPos);
-
-
-  const chaseDir = new THREE.Vector3().subVectors(camera.position, enemy.position);
-  chaseDir.y = 0;
-  chaseDir.normalize();
-  if (!tryMoveEnemy(enemy, chaseDir.multiplyScalar(3.2 * delta))) {
-  enemy.userData.state = forcedEngage ? 'CHASE' : 'PATROL';
-  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 30));
-  }
-  } else if (enemy.userData.state === 'ATTACK') {
-  const targetPos = new THREE.Vector3().copy(camera.position);
-  targetPos.y = enemy.position.y;
-  enemy.lookAt(targetPos);
-
-
-  const cooldownLimit = enemy.userData.weaponType === 'MP153' ? 1.2 : 0.4;
-  enemy.userData.shootCooldown += delta;
-
-
-  if (enemy.userData.shootCooldown >= cooldownLimit) {
-  const enemyMuzzle = new THREE.Vector3().copy(enemy.position).add(new THREE.Vector3(0, 1.5, 0));
-  const playerHead = new THREE.Vector3().copy(camera.position).add(new THREE.Vector3(0, -0.4, 0));
-
-
-	  if (enemy.userData.weaponType === 'MP153') {
-	  for (let p = 0; p < 3; p++) {
-	  const aimTarget = createEnemyAimTarget(enemy, playerHead, distToPlayer);
-	  applyEnemyShotToPlayer(enemyMuzzle, aimTarget, 'MP153', WEAPONS.MP153.damage);
-	  const eTracerGeo = new THREE.BufferGeometry().setFromPoints([enemyMuzzle, aimTarget]);
-	  const eTracerMat = new THREE.LineBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.9 });
-	  const eTracerLine = new THREE.Line(eTracerGeo, eTracerMat);
-	  scene.add(eTracerLine);
-	  enemyTracers.push({ element: eTracerLine, material: eTracerMat, life: 0.05 });
-	  }
-	  } else {
-	  const aimTarget = createEnemyAimTarget(enemy, playerHead, distToPlayer);
-	  applyEnemyShotToPlayer(enemyMuzzle, aimTarget, enemy.userData.weaponType || 'M4A1', WEAPONS.M4A1.damage);
-	  const eTracerGeo = new THREE.BufferGeometry().setFromPoints([enemyMuzzle, aimTarget]);
-	  const eTracerMat = new THREE.LineBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.9 });
-	  const eTracerLine = new THREE.Line(eTracerGeo, eTracerMat);
-	  scene.add(eTracerLine);
-  enemyTracers.push({ element: eTracerLine, material: eTracerMat, life: 0.05 });
-  }
-
-
-  Sound.playEnemyShot(enemy.userData.weaponType, distToPlayer);
-  enemy.userData.shootCooldown = 0;
-  }
-  }
-
-
-  if (isEnemyPositionBlocked(enemy.position, 0.85)) {
-  enemy.position.copy(enemyPreviousPosition);
-  enemy.userData.patrolTarget.copy(getRandomPatrolTarget(enemy.position.x, enemy.position.z, 30));
-  enemy.userData.state = forcedEngage ? 'CHASE' : 'PATROL';
-  }
-
-
-  enemy.position.y = getTerrainHeight(enemy.position.x, enemy.position.z);
-
-
-  if (enemy.parent && enemy.userData.hitTimer > 0) {
-  enemy.userData.hitTimer -= delta;
-  if (enemy.userData.hitTimer <= 0) {
-  enemy.children.forEach((mesh) => {
-  if (mesh.material && mesh.material.color && mesh !== enemy.children[2]) {
-  mesh.material.color.setHex(0xcc2222);
-  }
-  });
-  }
-  }
+  updateBasicEnemyAI(enemy, delta);
   });
 
 
@@ -9562,8 +11456,21 @@ ${slotText}` : ''}`;
   camera.position.y = groundEyeY;
   }
 
-  if (!isGrounded) playerIsSprinting = false;
-  }
+    if (!isGrounded) playerIsSprinting = false;
+    }
+
+    playerRunNoiseTimer = Math.max(0, playerRunNoiseTimer - delta);
+    if (
+    playerIsMoving &&
+    playerIsSprinting &&
+    playerRunNoiseTimer <= 0 &&
+    !deathState.active &&
+    !raidEnded &&
+    fpsRaidActive
+    ) {
+    emitPlayerNoise(camera.position, BASIC_ENEMY_AI_CONFIG.hearingDistanceRun, 'sprint');
+    playerRunNoiseTimer = 0.45;
+    }
 
 	  if (deathState.active || raidEnded) {
   leanTarget = 0;
@@ -9594,9 +11501,11 @@ ${slotText}` : ''}`;
 
 	  updateExtractionProgress(delta);
 	  updateRaidEndFade(delta);
-	  updateExtractionListUI();
-	  drawMinimap();
+  updateExtractionListUI();
+  drawMinimap();
   updateCorpseInteractionPrompt();
+  if (typeof updateBoltAction === 'function') updateBoltAction(delta);
+  if (typeof updateDVL10Reload === 'function') updateDVL10Reload(delta);
 
 
   if (isSwapping) {
@@ -9608,11 +11517,7 @@ ${slotText}` : ''}`;
 
 
   if (swapDirection === -1) {
-  currentWeapon.mesh.visible = false;
-  currentWeapon = pendingWeapon;
-  currentWeapon.mesh.visible = true;
-  updateWeaponUI();
-  fullScope.visible = currentWeapon === WEAPONS.M4A1;
+  setPlayerCurrentWeapon(pendingWeapon);
   swapDirection = 1;
   } else {
   isSwapping = false;
@@ -9638,6 +11543,12 @@ ${slotText}` : ''}`;
 
 
   if (isFiring && isSprintBlockingFire()) {
+  isFiring = false;
+  hasFiredSingle = false;
+  fireTimer = currentWeapon.fireRate;
+  }
+
+  if (isBoltActionWeapon(currentWeapon) && !canFireCurrentWeapon()) {
   isFiring = false;
   hasFiredSingle = false;
   fireTimer = currentWeapon.fireRate;
@@ -9802,6 +11713,10 @@ ${slotText}` : ''}`;
   targetLocalRot.x += -scopeZoomMotionAmount * 0.015;
   }
 
+  if (weaponPoseKey === 'DVL10') {
+  targetLocalPos.add(dvl10ActionWeaponOffsetPos);
+  }
+
   const weaponPoseRotLerp = isAiming ? 0.24 : 0.2;
   aimOffsetRot.x = THREE.MathUtils.lerp(aimOffsetRot.x, targetLocalRot.x, weaponPoseRotLerp);
   aimOffsetRot.y = THREE.MathUtils.lerp(aimOffsetRot.y, targetLocalRot.y, weaponPoseRotLerp);
@@ -9847,10 +11762,12 @@ ${slotText}` : ''}`;
   weaponPivotBaseQuat.identity()
   .multiply(weaponPivotTempQuat.setFromEuler(swapOffsetRot))
   .multiply(weaponPivotTempQuat.setFromEuler(aimOffsetRot))
+  .multiply(weaponPivotTempQuat.setFromEuler(weaponPoseKey === 'DVL10' ? dvl10ActionWeaponOffsetRot : ZERO_EULER))
   .multiply(r180Y);
   weaponPivotMovedQuat.identity()
   .multiply(weaponPivotTempQuat.setFromEuler(swapOffsetRot))
   .multiply(weaponPivotTempQuat.setFromEuler(aimOffsetRot))
+  .multiply(weaponPivotTempQuat.setFromEuler(weaponPoseKey === 'DVL10' ? dvl10ActionWeaponOffsetRot : ZERO_EULER))
   .multiply(weaponPivotTempQuat.setFromEuler(moveWeaponOffsetRot))
   .multiply(r180Y);
   weaponPivotBasePos.copy(WEAPON_PLAYER_SIDE_PIVOT).applyQuaternion(weaponPivotBaseQuat);
@@ -9878,6 +11795,7 @@ ${slotText}` : ''}`;
   const combinedQuat = camera.quaternion.clone()
   .multiply(new THREE.Quaternion().setFromEuler(swapOffsetRot))
   .multiply(new THREE.Quaternion().setFromEuler(aimOffsetRot))
+  .multiply(new THREE.Quaternion().setFromEuler(weaponPoseKey === 'DVL10' ? dvl10ActionWeaponOffsetRot : ZERO_EULER))
   .multiply(new THREE.Quaternion().setFromEuler(moveWeaponOffsetRot))
   .multiply(new THREE.Quaternion().setFromEuler(leanWeaponOffsetRot));
   weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
@@ -9922,6 +11840,20 @@ ${slotText}` : ''}`;
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
 
+
+  } catch (error) {
+  console.error('[FPSRaid] animate 루프 오류로 렌더링이 중단되었습니다.', error);
+  if (weaponUI) {
+  weaponUI.innerText = `FPS ERROR\n${error?.message || error}`;
+  }
+  if (blocker) {
+  blocker.style.display = 'flex';
+  blocker.textContent = `FPS 렌더 오류\n콘솔을 확인하세요\n${error?.message || error}`;
+  }
+  fpsRaidActive = false;
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  animationFrameId = null;
+  }
 
 
   }
@@ -10026,6 +11958,8 @@ ${slotText}` : ''}`;
   const enemySet = new Set(enemies);
   removeEnemyTargets(enemySet);
   enemies.splice(0).forEach((enemy) => scene.remove(enemy));
+  playerNoiseEvents.splice(0);
+  playerRunNoiseTimer = 0;
 
   ragdollBodies.splice(0).forEach((ragdoll) => removeRagdoll(ragdoll));
 
@@ -10083,6 +12017,7 @@ ${slotText}` : ''}`;
   moveWeaponOffsetRot.set(0, 0, 0);
   targetMoveWeaponOffsetPos.set(0, 0, 0);
   targetMoveWeaponOffsetRot.set(0, 0, 0);
+  resetDVL10AmmoState();
   weaponMoveMotionTime = 0;
   verticalVelocity = 0;
   isGrounded = true;
@@ -10121,6 +12056,7 @@ ${slotText}` : ''}`;
 
   window.FPSRaid = {
 	  start(loadout = {}) {
+	  try {
 	  resetRaidWorld();
 	  fpsRaidActive = true;
 	  fpsInventoryOpen = false;
@@ -10133,6 +12069,18 @@ ${slotText}` : ''}`;
   updateWeaponUI();
   clock.getDelta();
   if (!animationFrameId) animate();
+  window.pendingFpsRaidStart = false;
+  } catch (error) {
+  console.error('[FPSRaid] start 실패', error);
+  fpsRaidActive = false;
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  animationFrameId = null;
+  if (blocker) {
+  blocker.style.display = 'flex';
+  blocker.textContent = `FPS 시작 실패\n콘솔을 확인하세요\n${error?.message || error}`;
+  }
+  throw error;
+  }
   },
   stop() {
   fpsRaidActive = false;
@@ -10178,9 +12126,20 @@ ${slotText}` : ''}`;
 	  resumePointerPrompt() { if (raidEnded) return; fpsInventoryOpen = false; refreshBlocker(); requestRaidPointerLock(); }
 	  };
 
+  window.FPSRaidReady = true;
+  window.dispatchEvent(new Event('FPSRaidReady'));
+  console.info('[FPSRaid] ready');
 
+  try {
   applyWeaponLoadout(window.InventoryBridge?.getWeaponLoadout?.() || {});
-  if (window.pendingFpsRaidStart) window.FPSRaid.start(window.InventoryBridge?.getWeaponLoadout?.() || {});
+  if (window.pendingFpsRaidStart) {
+  console.info('[FPSRaid] pending start detected');
+  window.FPSRaid.start(window.InventoryBridge?.getWeaponLoadout?.() || {});
+  }
+  } catch (error) {
+  console.error('[FPSRaid] 초기 loadout 적용 또는 pending start 처리 실패', error);
+  window.pendingFpsRaidStart = false;
+  }
 
   scene.updateMatrixWorld(true);
   animate();

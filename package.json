@@ -1,0 +1,23 @@
+{
+  "name": "my-fps",
+  "version": "1.0.0",
+  "description": "",
+  "main": "AKS.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Angredth/my-fps.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Angredth/my-fps/issues"
+  },
+  "homepage": "https://github.com/Angredth/my-fps#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.0.1"
+  }
+}

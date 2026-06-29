@@ -131,7 +131,8 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
     }
   }
   </script>
@@ -143,7 +144,7 @@
   <aside id="panel">
     <div>
       <h1>Gun ADS Pose Tuner</h1>
-      <div class="hint">1 M4A1 · 2 MP-153 · 3 FN 5-7 · 4 AKS-74U · V 근접무기 · H/J/K Hip/ADS/Scope · 우클릭 ADS · Q/E Lean</div>
+      <div class="hint">1 M4A1 · 2 MP-153 · 3 FN 5-7 · 4 AKS-74U · 5 DVL-10 · V 근접무기 · H/J/K Hip/ADS/Scope · 우클릭 ADS · Q/E Lean · 마우스휠 사격</div>
     </div>
 
     <div class="tabs">
@@ -151,6 +152,7 @@
       <button data-weapon="MP153">2 MP-153</button>
       <button data-weapon="FN57">3 FN 5-7</button>
       <button data-weapon="AKS74U">4 AKS-74U</button>
+      <button data-weapon="DVL10">5 DVL-10</button>
       <button data-weapon="MELEE">V Knife</button>
       <button id="aimButton">ADS</button>
     </div>
@@ -167,6 +169,7 @@
 
         <div class="metric" id="nearMetric"><span>nearest weapon z</span><strong>-</strong></div>
         <div class="metric" id="scopeMetric"><span>M4 scope length</span><strong>-</strong></div>
+        <div class="metric" id="fireMetric"><span>wheel fire preview</span><strong>ready</strong></div>
         <div class="metric"><span>camera.near</span><strong>0.03</strong></div>
 
         <pre id="configOutput"></pre>
@@ -182,23 +185,43 @@
 
   <script type="module">
     import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     const app = document.getElementById('app');
     const hud = document.getElementById('hud');
     const controlsRoot = document.getElementById('controls');
+    const dvl10PivotPanel = document.createElement('div');
     const configOutput = document.getElementById('configOutput');
     const nearMetric = document.getElementById('nearMetric');
     const scopeMetric = document.getElementById('scopeMetric');
+    const fireMetric = document.getElementById('fireMetric');
+
+    dvl10PivotPanel.id = 'dvl10PivotPanel';
+    dvl10PivotPanel.style.display = 'none';
+    dvl10PivotPanel.style.border = '1px solid var(--line)';
+    dvl10PivotPanel.style.padding = '8px';
+    dvl10PivotPanel.style.background = 'rgba(0,0,0,0.35)';
+    dvl10PivotPanel.style.fontSize = '12px';
+    controlsRoot.after(dvl10PivotPanel);
 
     const FPS_CAMERA_NEAR = 0.03;
     const WORLD_UNITS_PER_METER = 1;
     const M4A1_REAL_LENGTH = 0.838 * WORLD_UNITS_PER_METER;
     const MP153_REAL_LENGTH = 1.25 * WORLD_UNITS_PER_METER;
     const AKS74U_REAL_LENGTH = 0.730 * WORLD_UNITS_PER_METER;
+    const DVL10_REAL_LENGTH = 1.13 * WORLD_UNITS_PER_METER;
     const WEAPON_MODEL_CDN_BASE = 'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/5.28/index/';
     const FN57_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}57.js`;
     const ER_FULCRUM_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}er-fulcrum.js`;
-    const AKS74U_MODEL_CDN_URL = `${WEAPON_MODEL_CDN_BASE}AKS.js`;
+    const AKS74U_MODEL_URLS = [
+      'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/Suck/low-poly_aks-74u.glb',
+      'https://raw.githubusercontent.com/Angredth/my-fps/main/Suck/low-poly_aks-74u.glb'
+    ];
+    const DVL10_MODEL_URLS = [
+      '../../dvl-10.glb',
+      'https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/Suck/dvl-10.glb',
+      'https://raw.githubusercontent.com/Angredth/my-fps/main/Suck/dvl-10.glb'
+    ];
     const POSE_BRIDGE_STORAGE_KEY = 'skov.weaponPose.v1';
     const FN57_MODEL_SCALE = 0.355 / 9.285;
     const KNIFE_MODEL_SCALE = 0.310 / 11.679;
@@ -261,6 +284,12 @@
       });
     }
 
+    function loadGLTF(loader, url) {
+      return new Promise((resolve, reject) => {
+        loader.load(url, resolve, undefined, reject);
+      });
+    }
+
     let createRemoteFN57Model = null;
     try {
       await loadClassicScript(FN57_MODEL_CDN_URL);
@@ -277,15 +306,6 @@
       if (typeof createRemoteKnifeModel !== 'function') throw new Error('createTacticalBayonetModel export not found');
     } catch (error) {
       console.error('ER Fulcrum CDN 모델을 불러오지 못했습니다. 내장 근접무기 모델을 사용합니다.', error);
-    }
-
-    let createRemoteAKS74UModel = null;
-    try {
-      await loadClassicScript(AKS74U_MODEL_CDN_URL);
-      createRemoteAKS74UModel = window.createAKS74U;
-      if (typeof createRemoteAKS74UModel !== 'function') throw new Error('createAKS74U global not found');
-    } catch (error) {
-      console.error('AKS-74U CDN 모델을 불러오지 못했습니다. fallback 모델을 사용합니다.', error);
     }
 
     function normalizeWeaponLength(model, targetLength) {
@@ -447,19 +467,26 @@
       return mp153;
     }
 
-    function createAKS74UModel() {
-      if (typeof createRemoteAKS74UModel === 'function') {
+    async function createAKS74UModel() {
+      const loader = new GLTFLoader();
+      for (const url of AKS74U_MODEL_URLS) {
         try {
-          const aks = createRemoteAKS74UModel();
-          aks.name = 'AKS-74U CDN';
+          const gltf = await loadGLTF(loader, url);
+          const aks = gltf.scene || gltf.scenes?.[0];
+          if (!aks) throw new Error('AKS-74U scene not found');
+          aks.name = 'AKS-74U GLB';
           setShadows(aks);
           normalizeWeaponLength(aks, AKS74U_REAL_LENGTH);
-          aks.rotation.y = Math.PI / 2;
-          return centerModelOnPivot(aks, 'AKS-74U Pivot');
+          aks.rotation.y = -Math.PI / 2;
+          const pivot = centerModelOnPivot(aks, 'AKS-74U Pivot');
+          pivot.userData.recoilPivot = 'center-after-forward-axis-fix';
+          pivot.userData.modelSource = url;
+          return pivot;
         } catch (error) {
-          console.error('AKS-74U CDN 모델 생성에 실패했습니다. fallback 모델을 사용합니다.', error);
+          console.error(`AKS-74U GLB를 불러오지 못했습니다: ${url}`, error);
         }
       }
+      console.error('AKS-74U GLB fallback까지 실패했습니다. 내장 AKS-74U 모델을 사용합니다.');
       return createFallbackAKS74UModel();
     }
 
@@ -480,7 +507,540 @@
       setShadows(aks);
       normalizeWeaponLength(aks, AKS74U_REAL_LENGTH);
       aks.rotation.y = -Math.PI / 2;
+      aks.userData.recoilPivot = 'center-after-forward-axis-fix';
       return aks;
+    }
+
+    const dvl10State = {
+      chambered: true,
+      needsBolt: false,
+      cyclingBolt: false,
+      ammoInMag: 5,
+      cycleTime: 0,
+      autoBoltPending: false,
+      autoBoltDelay: 0.12,
+      autoBoltTimer: 0
+    };
+    const DVL10_BOLT_ACTION = {
+      duration: 0.95,
+      travel: 65.0,
+      travelAxis: 'x',
+      travelSign: 1
+    };
+    const DVL10_BOLT_PIVOT = {
+      // Debug starting value. Tune this after checking the red pivot marker in the scene.
+      offset: new THREE.Vector3(40.0000, 13.6290, 17.5620),
+      rotateAxis: 'x',
+      liftSign: 0.9,
+      liftAngle: THREE.MathUtils.degToRad(70),
+    };
+    const DVL10_BOLT_DEBUG = {
+      visible: true,
+      axisLineLength: 0.36,
+      axisLineColor: 0x00ffff,
+      pivotColor: 0xff0000,
+      axesSize: 0.08
+    };
+    const dvl10ActionWeaponOffsetPos = new THREE.Vector3();
+    const dvl10ActionWeaponOffsetRot = new THREE.Euler();
+    const DVL10_ACTION_POSE = {
+      yawAmount: THREE.MathUtils.degToRad(4.5),
+      yawSign: 1,
+      pitchAmount:THREE.MathUtils.degToRad(3.0),
+      pitchSign: 2,
+      rollAmount: THREE.MathUtils.degToRad(5.5),
+      rollSign: 1,
+      screenSideAmount: 0.018,
+      screenSideSign: -1,
+      down: -0.018,
+      back: 0.025,
+      poseAmount: 1.0
+    };
+    let dvl10BoltMesh = null;
+    let dvl10BoltSlide = null;
+    let dvl10BoltRotate = null;
+    let dvl10BoltOriginalParent = null;
+    const dvl10BoltBasePosition = new THREE.Vector3();
+    const dvl10BoltBaseRotation = new THREE.Euler();
+    const dvl10BoltRawPivotLocal = new THREE.Vector3();
+    const dvl10BoltCurrentPivotLocal = new THREE.Vector3();
+
+    function clamp01(value) {
+      return THREE.MathUtils.clamp(value, 0, 1);
+    }
+
+    function smooth01(value) {
+      const x = clamp01(value);
+      return x * x * (3 - 2 * x);
+    }
+
+    function segmentProgress(t, start, end) {
+      return smooth01((t - start) / (end - start));
+    }
+
+    function normalizeDVL10NodeName(name) {
+      return String(name || '')
+        .replace(/_/g, '.')
+        .replace(/^Cylinder(\d{3})(?=\.|$)/, 'Cylinder.$1');
+    }
+
+    function findDVL10BoltNode(dvl10Root) {
+      const exact = dvl10Root.getObjectByName('Cylinder.006');
+      if (exact) return exact;
+
+      let materialChildMatch = null;
+      let sanitizedMatch = null;
+      dvl10Root.traverse((object) => {
+        const normalizedName = normalizeDVL10NodeName(object.name);
+        if (!sanitizedMatch && normalizedName === 'Cylinder.006') {
+          sanitizedMatch = object;
+        }
+        if (!materialChildMatch && normalizedName.startsWith('Cylinder.006.Material')) {
+          materialChildMatch = object.parent || object;
+        }
+      });
+      return sanitizedMatch || materialChildMatch;
+    }
+
+    function getDVL10BoltChildMeshNames(bolt) {
+      const names = [];
+      bolt.traverse((object) => {
+        if (object.isMesh) names.push(normalizeDVL10NodeName(object.name) || '(unnamed mesh)');
+      });
+      return names;
+    }
+
+    function getDVL10BoltBodyMeshes(bolt) {
+      const bodyMeshes = [];
+
+      bolt.traverse((object) => {
+        if (!object.isMesh) return;
+
+        const normalizedName = normalizeDVL10NodeName(object.name);
+        if (
+          normalizedName.includes('Cylinder.006') &&
+          (
+            normalizedName.includes('Material.003') ||
+            normalizedName.includes('Material.004')
+          ) &&
+          !normalizedName.includes('Material.005')
+        ) {
+          bodyMeshes.push(object);
+        }
+      });
+
+      return bodyMeshes;
+    }
+
+    function computeDVL10BoltAxisPivotWorld(bolt) {
+      const bodyMeshes = getDVL10BoltBodyMeshes(bolt);
+
+      if (bodyMeshes.length === 0) {
+        console.warn(
+          '[DVL-10] 볼트 원통 몸체 mesh를 찾지 못했습니다. 전체 Box3 fallback을 사용합니다.',
+          getDVL10BoltChildMeshNames(bolt)
+        );
+        const fallbackBox = new THREE.Box3().setFromObject(bolt);
+        return fallbackBox.getCenter(new THREE.Vector3());
+      }
+
+      const bodyBox = new THREE.Box3();
+      bodyMeshes.forEach((mesh) => {
+        mesh.updateWorldMatrix(true, false);
+        bodyBox.expandByObject(mesh);
+      });
+
+      console.log('[DVL-10] 볼트 원통 몸체 pivot 후보 mesh', bodyMeshes.map((mesh) => normalizeDVL10NodeName(mesh.name)));
+      return bodyBox.getCenter(new THREE.Vector3());
+    }
+
+    function createDVL10BoltXAxisLine() {
+      const half = DVL10_BOLT_DEBUG.axisLineLength * 0.5;
+      const start = new THREE.Vector3(-half, 0, 0);
+      const end = new THREE.Vector3(half, 0, 0);
+      const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+      const material = new THREE.LineBasicMaterial({
+        color: DVL10_BOLT_DEBUG.axisLineColor,
+        depthTest: false,
+        depthWrite: false
+      });
+      const line = new THREE.Line(geometry, material);
+      line.name = 'DVL10_BoltPivot_XAxisLine';
+      line.renderOrder = 999;
+      return line;
+    }
+
+    function disposeDVL10DebugObject(object) {
+      if (object.geometry) object.geometry.dispose();
+      if (Array.isArray(object.material)) {
+        object.material.forEach((material) => material.dispose());
+      } else if (object.material) {
+        object.material.dispose();
+      }
+    }
+
+    function addDVL10BoltPivotDebug() {
+      if (!dvl10BoltRotate) return;
+
+      const oldNames = [
+        'DVL10_BoltPivot_DebugSphere',
+        'DVL10_BoltPivot_DebugAxes',
+        'DVL10_BoltPivot_XAxisLine'
+      ];
+
+      oldNames.forEach((name) => {
+        const existing = dvl10BoltRotate.getObjectByName(name);
+        if (!existing) return;
+        dvl10BoltRotate.remove(existing);
+        disposeDVL10DebugObject(existing);
+      });
+
+      if (!DVL10_BOLT_DEBUG.visible) return;
+
+      const marker = new THREE.Mesh(
+        new THREE.SphereGeometry(0.008, 8, 8),
+        new THREE.MeshBasicMaterial({
+          color: DVL10_BOLT_DEBUG.pivotColor,
+          depthTest: false,
+          depthWrite: false
+        })
+      );
+      marker.name = 'DVL10_BoltPivot_DebugSphere';
+      marker.renderOrder = 1000;
+
+      const axes = new THREE.AxesHelper(DVL10_BOLT_DEBUG.axesSize);
+      axes.name = 'DVL10_BoltPivot_DebugAxes';
+      axes.renderOrder = 999;
+
+      const xAxisLine = createDVL10BoltXAxisLine();
+
+      dvl10BoltRotate.add(marker);
+      dvl10BoltRotate.add(axes);
+      dvl10BoltRotate.add(xAxisLine);
+    }
+
+    function setupDVL10BoltRig(dvl10Root) {
+      if (!dvl10Root) return;
+
+      const bolt = findDVL10BoltNode(dvl10Root);
+      if (!bolt) {
+        const dvlNames = [];
+        dvl10Root.traverse((object) => {
+          if (object.name) dvlNames.push(object.name);
+        });
+        console.warn('[DVL-10] Cylinder.006 볼트 메쉬를 찾지 못했습니다.', dvlNames);
+        return;
+      }
+
+      dvl10BoltMesh = bolt;
+      dvl10BoltMesh.userData.dvl10BoltName = 'Cylinder.006';
+      bolt.updateWorldMatrix(true, false);
+
+      const oldParent = bolt.parent;
+      if (!oldParent) {
+        console.warn('[DVL-10] Cylinder.006 parent가 없습니다.');
+        return;
+      }
+
+      oldParent.updateWorldMatrix(true, false);
+
+      const pivotWorld = computeDVL10BoltAxisPivotWorld(bolt);
+      const rawPivotLocal = pivotWorld.clone();
+      oldParent.worldToLocal(rawPivotLocal);
+
+      dvl10BoltOriginalParent = oldParent;
+      dvl10BoltRawPivotLocal.copy(rawPivotLocal);
+
+      const pivotLocal = rawPivotLocal.clone().add(DVL10_BOLT_PIVOT.offset);
+      dvl10BoltCurrentPivotLocal.copy(pivotLocal);
+
+      dvl10BoltSlide = new THREE.Group();
+      dvl10BoltSlide.name = 'DVL10_BoltSlide';
+      dvl10BoltSlide.position.copy(pivotLocal);
+
+      dvl10BoltRotate = new THREE.Group();
+      dvl10BoltRotate.name = 'DVL10_BoltRotate';
+
+      oldParent.add(dvl10BoltSlide);
+      dvl10BoltSlide.add(dvl10BoltRotate);
+      dvl10BoltRotate.attach(bolt);
+
+      dvl10BoltBasePosition.copy(dvl10BoltSlide.position);
+      dvl10BoltBaseRotation.copy(dvl10BoltRotate.rotation);
+
+      bolt.userData.isDVL10Bolt = true;
+      addDVL10BoltPivotDebug();
+      console.log('[DVL-10] Cylinder.006 볼트 리그 구성 완료', {
+        bolt,
+        slide: dvl10BoltSlide,
+        rotate: dvl10BoltRotate
+      });
+    }
+
+    function applyDVL10BoltPivotOffsetFromUI() {
+      if (!dvl10BoltMesh || !dvl10BoltSlide || !dvl10BoltRotate || !dvl10BoltOriginalParent) return;
+      if (dvl10State.cyclingBolt || dvl10State.autoBoltPending) {
+        DVL10_BOLT_PIVOT.offset.copy(dvl10BoltBasePosition).sub(dvl10BoltRawPivotLocal);
+        syncDVL10BoltPivotControls();
+        return;
+      }
+
+      dvl10BoltMesh.updateWorldMatrix(true, false);
+      dvl10BoltOriginalParent.attach(dvl10BoltMesh);
+
+      dvl10BoltCurrentPivotLocal
+        .copy(dvl10BoltRawPivotLocal)
+        .add(DVL10_BOLT_PIVOT.offset);
+
+      dvl10BoltSlide.position.copy(dvl10BoltCurrentPivotLocal);
+      dvl10BoltBasePosition.copy(dvl10BoltSlide.position);
+      dvl10BoltRotate.rotation.copy(dvl10BoltBaseRotation);
+
+      dvl10BoltOriginalParent.updateWorldMatrix(true, true);
+      dvl10BoltSlide.updateWorldMatrix(true, true);
+      dvl10BoltRotate.updateWorldMatrix(true, true);
+
+      dvl10BoltRotate.attach(dvl10BoltMesh);
+      addDVL10BoltPivotDebug();
+      syncDVL10BoltPivotControls();
+    }
+
+    function canFireCurrentWeapon() {
+      if (currentWeaponKey === 'DVL10') {
+        return (
+          dvl10State.chambered &&
+          !dvl10State.needsBolt &&
+          !dvl10State.cyclingBolt &&
+          !dvl10State.autoBoltPending
+        );
+      }
+      return true;
+    }
+
+    function onDVL10Fired() {
+      dvl10State.chambered = false;
+      dvl10State.needsBolt = true;
+      dvl10State.autoBoltPending = true;
+      dvl10State.autoBoltTimer = 0;
+    }
+
+    function startDVL10BoltCycle() {
+      if (currentWeaponKey !== 'DVL10') return;
+      if (!dvl10State.needsBolt) return;
+      if (dvl10State.cyclingBolt) return;
+      if (!dvl10BoltSlide || !dvl10BoltRotate) return;
+
+      dvl10State.cyclingBolt = true;
+      dvl10State.cycleTime = 0;
+    }
+
+    function updateDVL10AutoBolt(delta) {
+      if (currentWeaponKey !== 'DVL10') return;
+      if (!dvl10State.autoBoltPending) return;
+      if (!dvl10State.needsBolt) {
+        dvl10State.autoBoltPending = false;
+        dvl10State.autoBoltTimer = 0;
+        return;
+      }
+      if (dvl10State.cyclingBolt) return;
+
+      dvl10State.autoBoltTimer += delta;
+
+      if (dvl10State.autoBoltTimer >= dvl10State.autoBoltDelay) {
+        dvl10State.autoBoltPending = false;
+        dvl10State.autoBoltTimer = 0;
+        startDVL10BoltCycle();
+      }
+    }
+
+    function updateDVL10ActionWeaponPoseFromBoltT(t) {
+      if (!dvl10State.cyclingBolt) {
+        dvl10ActionWeaponOffsetPos.set(0, 0, 0);
+        dvl10ActionWeaponOffsetRot.set(0, 0, 0);
+        return;
+      }
+
+      const enter = segmentProgress(t, 0.00, 0.18);
+      const exit = segmentProgress(t, 0.78, 1.00);
+      const hold = enter * (1 - exit);
+      const amount = hold * DVL10_ACTION_POSE.poseAmount;
+
+      dvl10ActionWeaponOffsetPos.set(
+        DVL10_ACTION_POSE.screenSideAmount * DVL10_ACTION_POSE.screenSideSign * amount,
+        DVL10_ACTION_POSE.down * amount,
+        DVL10_ACTION_POSE.back * amount
+      );
+
+      dvl10ActionWeaponOffsetRot.set(
+        0,
+        DVL10_ACTION_POSE.yawAmount * DVL10_ACTION_POSE.yawSign * amount,
+        DVL10_ACTION_POSE.rollAmount * DVL10_ACTION_POSE.rollSign * amount
+      );
+    }
+
+    function applyDVL10BoltTravel(travel01) {
+      if (!dvl10BoltSlide) return;
+
+      dvl10BoltSlide.position.copy(dvl10BoltBasePosition);
+      const offset = DVL10_BOLT_ACTION.travel * DVL10_BOLT_ACTION.travelSign * travel01;
+
+      if (DVL10_BOLT_ACTION.travelAxis === 'x') {
+        dvl10BoltSlide.position.x += offset;
+      } else if (DVL10_BOLT_ACTION.travelAxis === 'y') {
+        dvl10BoltSlide.position.y += offset;
+      } else {
+        dvl10BoltSlide.position.z += offset;
+      }
+    }
+
+    function updateDVL10Bolt(delta) {
+      if (!dvl10BoltSlide || !dvl10BoltRotate) return;
+
+      if (!dvl10State.cyclingBolt) {
+        applyDVL10BoltTravel(0);
+        dvl10BoltRotate.rotation.copy(dvl10BoltBaseRotation);
+        dvl10ActionWeaponOffsetPos.set(0, 0, 0);
+        dvl10ActionWeaponOffsetRot.set(0, 0, 0);
+        return;
+      }
+
+      dvl10State.cycleTime += delta;
+
+      const t = clamp01(dvl10State.cycleTime / DVL10_BOLT_ACTION.duration);
+      updateDVL10ActionWeaponPoseFromBoltT(t);
+
+      const liftUp = segmentProgress(t, 0.18, 0.34);
+      const pullBack = segmentProgress(t, 0.34, 0.56);
+      const pushForward = segmentProgress(t, 0.56, 0.74);
+      const liftDown = segmentProgress(t, 0.74, 0.88);
+
+      let lift = 0;
+      let travel = 0;
+
+      if (t < 0.18) {
+        lift = 0;
+        travel = 0;
+      } else if (t < 0.34) {
+        lift = liftUp;
+        travel = 0;
+      } else if (t < 0.56) {
+        lift = 1;
+        travel = pullBack;
+      } else if (t < 0.74) {
+        lift = 1;
+        travel = 1 - pushForward;
+      } else if (t < 0.88) {
+        lift = 1 - liftDown;
+        travel = 0;
+      } else {
+        lift = 0;
+        travel = 0;
+      }
+
+      applyDVL10BoltTravel(travel);
+
+      dvl10BoltRotate.rotation.copy(dvl10BoltBaseRotation);
+      const angle =
+        DVL10_BOLT_PIVOT.liftAngle *
+        DVL10_BOLT_PIVOT.liftSign *
+        lift;
+
+      if (DVL10_BOLT_PIVOT.rotateAxis === 'x') {
+        dvl10BoltRotate.rotation.x += angle;
+      } else if (DVL10_BOLT_PIVOT.rotateAxis === 'y') {
+        dvl10BoltRotate.rotation.y += angle;
+      } else {
+        dvl10BoltRotate.rotation.z += angle;
+      }
+
+      if (t >= 1) {
+        dvl10State.cyclingBolt = false;
+        dvl10State.cycleTime = 0;
+        dvl10State.needsBolt = false;
+
+        applyDVL10BoltTravel(0);
+        dvl10BoltRotate.rotation.copy(dvl10BoltBaseRotation);
+        dvl10ActionWeaponOffsetPos.set(0, 0, 0);
+        dvl10ActionWeaponOffsetRot.set(0, 0, 0);
+
+        if (dvl10State.ammoInMag > 0) {
+          dvl10State.ammoInMag -= 1;
+          dvl10State.chambered = true;
+        } else {
+          dvl10State.chambered = false;
+        }
+      }
+    }
+
+    async function createDVL10Model() {
+      const loader = new GLTFLoader();
+      for (const url of DVL10_MODEL_URLS) {
+        try {
+          const gltf = await loadGLTF(loader, url);
+          const rifle = gltf.scene || gltf.scenes?.[0];
+          if (!rifle) throw new Error('DVL-10 scene not found');
+          rifle.name = 'DVL-10 GLB';
+          setShadows(rifle);
+          normalizeWeaponLength(rifle, DVL10_REAL_LENGTH);
+          rifle.rotation.y = Math.PI / 2;
+          const pivot = centerModelOnPivot(rifle, 'DVL-10 Pivot');
+          setupDVL10BoltRig(pivot);
+          pivot.userData.modelSource = url;
+          return pivot;
+        } catch (error) {
+          console.error(`DVL-10 GLB를 불러오지 못했습니다: ${url}`, error);
+        }
+      }
+      console.error('DVL-10 GLB fallback까지 실패했습니다. 내장 DVL-10 모델을 사용합니다.');
+      return createFallbackDVL10Model();
+    }
+
+    function createFallbackDVL10Model() {
+      const rifle = new THREE.Group();
+      rifle.name = 'DVL-10 Fallback';
+
+      const suppressor = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.54, 28), bodyMaterial);
+      suppressor.rotation.z = Math.PI / 2;
+      suppressor.position.set(0.34, 0.13, 0);
+
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.34, 20), steelMaterial);
+      barrel.rotation.z = Math.PI / 2;
+      barrel.position.set(0.0, 0.13, 0);
+
+      const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.17, 0.16), bodyMaterial);
+      receiver.position.set(-0.27, 0.11, 0);
+
+      const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.15), bodyMaterial);
+      handguard.position.set(0.02, 0.02, 0);
+
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.035, 0.09), steelMaterial);
+      rail.position.set(-0.16, 0.225, 0);
+
+      const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.34, 24), darkPlasticMaterial);
+      scope.rotation.z = Math.PI / 2;
+      scope.position.set(-0.22, 0.31, 0);
+
+      const stockTube = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 18), bodyMaterial);
+      stockTube.rotation.z = Math.PI / 2;
+      stockTube.position.set(-0.58, 0.12, 0);
+
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.14), bodyMaterial);
+      stock.position.set(-0.79, 0.05, 0);
+
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.28, 0.11), darkPlasticMaterial);
+      grip.position.set(-0.36, -0.11, 0);
+      grip.rotation.z = -0.24;
+
+      const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.24, 0.12), darkPlasticMaterial);
+      magazine.position.set(-0.16, -0.12, 0);
+      magazine.rotation.z = -0.06;
+
+      rifle.add(suppressor, barrel, receiver, handguard, rail, scope, stockTube, stock, grip, magazine);
+      setShadows(rifle);
+      normalizeWeaponLength(rifle, DVL10_REAL_LENGTH);
+      rifle.rotation.y = -Math.PI / 2;
+      setupDVL10BoltRig(rifle);
+      return rifle;
     }
 
     function createFN57Model() {
@@ -611,19 +1171,21 @@
     const m4a1 = createM4A1Model();
     const mp153 = createMP153Model();
     const fn57 = createFN57Model();
-    const aks74u = createAKS74UModel();
+    const aks74u = await createAKS74UModel();
+    const dvl10 = await createDVL10Model();
     const knife = createKnifeModel();
     const fullScope = createScopeGroup();
     const m4Anchor = m4a1.getObjectByName('M4_CARRY_HANDLE_TOP_ANCHOR');
     (m4Anchor || m4a1).add(fullScope);
 
-    weaponGroup.add(m4a1, mp153, fn57, aks74u, knife);
+    weaponGroup.add(m4a1, mp153, fn57, aks74u, dvl10, knife);
 
     const WEAPONS = {
       M4A1: { name: 'M4A1', mesh: m4a1 },
       MP153: { name: 'MP-153', mesh: mp153 },
       FN57: { name: 'FN 5-7', mesh: fn57 },
       AKS74U: { name: 'AKS-74U', mesh: aks74u },
+      DVL10: { name: 'DVL-10', mesh: dvl10 },
       MELEE: { name: '근접무기', mesh: knife }
     };
 
@@ -642,7 +1204,11 @@
       },
       AKS74U: {
         hip: { position: new THREE.Vector3(0.12, -0.18, -0.32), rotation: new THREE.Euler(-0.025, -0.08, 0.01) },
-        ads: { position: new THREE.Vector3(0.006, -0.105, -0.265), rotation: new THREE.Euler(0.012, -0.004, 0.0) }
+        ads: { position: new THREE.Vector3(0.010, -0.128, -0.200), rotation: new THREE.Euler(0.021, 0.000, 0.000) }
+      },
+      DVL10: {
+        hip: { position: new THREE.Vector3(0.088, -0.131, -0.295), rotation: new THREE.Euler(0.038, 0.000, 0.000) },
+        ads: { position: new THREE.Vector3(0.012, -0.107, -0.232), rotation: new THREE.Euler(0.029, -0.002, 0.000) }
       },
       MELEE: {
         hip: { position: new THREE.Vector3(0.28, -0.32, -0.42), rotation: new THREE.Euler(-0.12, -0.18, 0.22) },
@@ -672,8 +1238,18 @@
       rotation: DEFAULT_SCOPE_POSE.rotation.clone(),
       scale: DEFAULT_SCOPE_POSE.scale.clone()
     };
+    const FIRE_PREVIEW_PROFILES = {
+      M4A1: { recoil: 0.018, maxRecoil: 0.11, back: 0.026, lift: 0.018, pitch: 0.09, yaw: 0.012, roll: 0.018, recover: 13 },
+      MP153: { recoil: 0.1, maxRecoil: 0.24, back: 0.075, lift: 0.055, pitch: 0.22, yaw: 0.018, roll: 0.05, recover: 8 },
+      FN57: { recoil: 0.035, maxRecoil: 0.14, back: 0.038, lift: 0.025, pitch: 0.12, yaw: 0.014, roll: 0.035, recover: 11 },
+      AKS74U: { recoil: 0.032, maxRecoil: 0.15, back: 0.04, lift: 0.03, pitch: 0.13, yaw: 0.016, roll: 0.035, recover: 11 },
+      DVL10: { recoil: 0.14, maxRecoil: 0.28, back: 0.11, lift: 0.075, pitch: 0.28, yaw: 0.014, roll: 0.048, recover: 7 },
+      MELEE: { recoil: 0, maxRecoil: 0, back: 0.012, lift: 0.008, pitch: 0.03, yaw: 0.005, roll: 0.02, recover: 12 }
+    };
     const currentLocalPos = new THREE.Vector3();
     const targetLocalPos = new THREE.Vector3();
+    const fireWeaponOffsetPos = new THREE.Vector3();
+    const fireWeaponOffsetRot = new THREE.Euler();
     const cameraBasePosition = camera.position.clone();
     const appliedLeanOffset = new THREE.Vector3();
     const leanWeaponOffsetPos = new THREE.Vector3();
@@ -691,6 +1267,11 @@
     let leanAmount = 0;
     let cameraRollZ = 0;
     let lastNearestZ = null;
+    let recoilTargetY = 0;
+    let fireKickAmount = 0;
+    let fireMotionTime = 0;
+    let fireCount = 0;
+    let fireSide = 1;
     const keys = { q: false, e: false };
     const clock = new THREE.Clock();
 
@@ -705,6 +1286,11 @@
       { group: 'scale', key: 'y', label: 'scale y', min: 0.02, max: 0.8, step: 0.001, scopeOnly: true },
       { group: 'scale', key: 'z', label: 'scale z', min: 0.02, max: 0.8, step: 0.001, scopeOnly: true }
     ];
+    const dvl10PivotControlDefs = [
+      { key: 'x', label: 'pivot x', min: -80.0, max: 80.0, step: 0.001 },
+      { key: 'y', label: 'pivot y', min: -80.0, max: 80.0, step: 0.001 },
+      { key: 'z', label: 'pivot z', min: -80.0, max: 80.0, step: 0.001 }
+    ];
 
     function getActivePose() {
       if (activePoseKey === 'scope') return SCOPE_POSE;
@@ -715,14 +1301,32 @@
       return WEAPON_VIEW_POSES[currentWeaponKey][isAiming ? 'ads' : 'hip'];
     }
 
+    function isDVL10ActionLocked() {
+      return currentWeaponKey === 'DVL10' && (dvl10State.autoBoltPending || dvl10State.cyclingBolt);
+    }
+
+    function getDVL10FireBlockedReason() {
+      if (dvl10State.cyclingBolt) return 'cycling bolt';
+      if (dvl10State.autoBoltPending) return 'auto bolt pending';
+      if (dvl10State.needsBolt) return 'bolt needed';
+      return 'empty chamber';
+    }
+
     function setWeapon(key) {
+      if (key !== currentWeaponKey && isDVL10ActionLocked()) {
+        fireMetric.querySelector('strong').textContent = dvl10State.cyclingBolt ? 'cycling bolt' : 'auto bolt pending';
+        return;
+      }
+
       currentWeaponKey = key;
+      resetFirePreview();
       Object.entries(WEAPONS).forEach(([weaponKey, weapon]) => {
         weapon.mesh.visible = weaponKey === currentWeaponKey;
       });
       fullScope.visible = currentWeaponKey === 'M4A1';
       document.querySelectorAll('[data-weapon]').forEach((button) => button.classList.toggle('active', button.dataset.weapon === key));
       syncControls();
+      syncDVL10BoltPivotControls();
       updateOutput();
     }
 
@@ -739,6 +1343,37 @@
       document.getElementById('aimButton').classList.toggle('active', isAiming);
       camera.fov = isAiming ? 60 : 75;
       camera.updateProjectionMatrix();
+    }
+
+    function getFirePreviewProfile() {
+      return FIRE_PREVIEW_PROFILES[currentWeaponKey] || FIRE_PREVIEW_PROFILES.M4A1;
+    }
+
+    function resetFirePreview() {
+      recoilTargetY = 0;
+      fireKickAmount = 0;
+      fireMotionTime = 0;
+      fireWeaponOffsetPos.set(0, 0, 0);
+      fireWeaponOffsetRot.set(0, 0, 0);
+    }
+
+    function triggerFirePreview(direction = 1) {
+      if (!canFireCurrentWeapon()) {
+        const blockedReason = currentWeaponKey === 'DVL10' ? getDVL10FireBlockedReason() : 'blocked';
+        fireMetric.querySelector('strong').textContent = blockedReason;
+        return false;
+      }
+
+      const profile = getFirePreviewProfile();
+      fireCount += 1;
+      fireSide = direction >= 0 ? 1 : -1;
+      const aimScale = isAiming ? 0.68 : 1;
+      recoilTargetY = Math.min(profile.maxRecoil, recoilTargetY + profile.recoil * aimScale);
+      fireKickAmount = Math.min(1.4, fireKickAmount + 1);
+      fireMotionTime = 0;
+      fireMetric.querySelector('strong').textContent = `shot ${fireCount}`;
+      if (currentWeaponKey === 'DVL10') onDVL10Fired();
+      return true;
     }
 
     function buildControls() {
@@ -774,10 +1409,132 @@
         }
 
         range.addEventListener('input', () => applyValue(range.value));
+        range.addEventListener('change', () => applyValue(range.value));
         number.addEventListener('input', () => applyValue(number.value));
+        number.addEventListener('change', () => applyValue(number.value));
         row.append(label, range, number);
         controlsRoot.append(row);
       });
+    }
+
+    function buildDVL10BoltPivotControls() {
+      dvl10PivotPanel.innerHTML = '';
+
+      const title = document.createElement('div');
+      title.textContent = 'DVL-10 Bolt Pivot Offset';
+      title.style.fontWeight = '800';
+      title.style.marginBottom = '6px';
+      dvl10PivotPanel.append(title);
+
+      const hint = document.createElement('div');
+      hint.textContent = '회전축 방향은 X축 고정. 슬라이더는 회전축 위치만 조정한다.';
+      hint.style.color = 'var(--muted)';
+      hint.style.marginBottom = '8px';
+      dvl10PivotPanel.append(hint);
+
+      dvl10PivotControlDefs.forEach((def) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        const label = document.createElement('label');
+        label.textContent = def.label;
+
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.min = String(def.min);
+        range.max = String(def.max);
+        range.step = String(def.step);
+        range.dataset.dvl10PivotKey = def.key;
+
+        const number = document.createElement('input');
+        number.type = 'number';
+        number.min = String(def.min);
+        number.max = String(def.max);
+        number.step = String(def.step);
+        number.dataset.dvl10PivotKey = def.key;
+
+        function applyValue(raw) {
+          const value = Number(raw);
+          if (!Number.isFinite(value)) return;
+          DVL10_BOLT_PIVOT.offset[def.key] = value;
+          applyDVL10BoltPivotOffsetFromUI();
+        }
+
+        range.addEventListener('input', () => applyValue(range.value));
+        range.addEventListener('change', () => applyValue(range.value));
+        number.addEventListener('input', () => applyValue(number.value));
+        number.addEventListener('change', () => applyValue(number.value));
+
+        row.append(label, range, number);
+        dvl10PivotPanel.append(row);
+      });
+
+      const table = document.createElement('table');
+      table.id = 'dvl10PivotValueTable';
+      table.style.width = '100%';
+      table.style.marginTop = '8px';
+      table.style.borderCollapse = 'collapse';
+      table.innerHTML = `
+        <tbody>
+          <tr><td>rotate axis</td><td id="dvl10PivotAxisValue"></td></tr>
+          <tr><td>offset x</td><td id="dvl10PivotOffsetX"></td></tr>
+          <tr><td>offset y</td><td id="dvl10PivotOffsetY"></td></tr>
+          <tr><td>offset z</td><td id="dvl10PivotOffsetZ"></td></tr>
+          <tr><td>raw pivot x</td><td id="dvl10RawPivotX"></td></tr>
+          <tr><td>raw pivot y</td><td id="dvl10RawPivotY"></td></tr>
+          <tr><td>raw pivot z</td><td id="dvl10RawPivotZ"></td></tr>
+          <tr><td>final pivot x</td><td id="dvl10FinalPivotX"></td></tr>
+          <tr><td>final pivot y</td><td id="dvl10FinalPivotY"></td></tr>
+          <tr><td>final pivot z</td><td id="dvl10FinalPivotZ"></td></tr>
+        </tbody>
+      `;
+
+      table.querySelectorAll('td').forEach((td) => {
+        td.style.borderTop = '1px solid rgba(170,186,190,0.18)';
+        td.style.padding = '3px 2px';
+        td.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+      });
+
+      dvl10PivotPanel.append(table);
+      syncDVL10BoltPivotControls();
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function syncDVL10BoltPivotControls() {
+      if (!dvl10PivotPanel) return;
+
+      dvl10PivotPanel.style.display = currentWeaponKey === 'DVL10' ? 'block' : 'none';
+
+      dvl10PivotControlDefs.forEach((def) => {
+        const value = DVL10_BOLT_PIVOT.offset[def.key];
+        const formatted = value.toFixed(3);
+        dvl10PivotPanel
+          .querySelectorAll(`[data-dvl10-pivot-key="${def.key}"]`)
+          .forEach((input) => {
+            if (input.value !== formatted) input.value = formatted;
+          });
+      });
+
+      dvl10BoltCurrentPivotLocal
+        .copy(dvl10BoltRawPivotLocal)
+        .add(DVL10_BOLT_PIVOT.offset);
+
+      setText('dvl10PivotAxisValue', 'X');
+      setText('dvl10PivotOffsetX', DVL10_BOLT_PIVOT.offset.x.toFixed(4));
+      setText('dvl10PivotOffsetY', DVL10_BOLT_PIVOT.offset.y.toFixed(4));
+      setText('dvl10PivotOffsetZ', DVL10_BOLT_PIVOT.offset.z.toFixed(4));
+
+      setText('dvl10RawPivotX', dvl10BoltRawPivotLocal.x.toFixed(4));
+      setText('dvl10RawPivotY', dvl10BoltRawPivotLocal.y.toFixed(4));
+      setText('dvl10RawPivotZ', dvl10BoltRawPivotLocal.z.toFixed(4));
+
+      setText('dvl10FinalPivotX', dvl10BoltCurrentPivotLocal.x.toFixed(4));
+      setText('dvl10FinalPivotY', dvl10BoltCurrentPivotLocal.y.toFixed(4));
+      setText('dvl10FinalPivotZ', dvl10BoltCurrentPivotLocal.z.toFixed(4));
     }
 
     function syncControls() {
@@ -791,6 +1548,7 @@
           if (input.value !== formatted) input.value = formatted;
         });
       });
+      syncDVL10BoltPivotControls();
     }
 
     function formatVec(vec) {
@@ -880,6 +1638,42 @@ const M4_SCOPE_POSE = {
       }));
     }
 
+    function getWeaponForwardScreenPoint(model, camera) {
+      if (!model || !camera) return null;
+      model.updateWorldMatrix(true, true);
+      camera.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(model);
+      const points = [
+        new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+      ];
+
+      let forwardPoint = null;
+      let forwardCameraZ = Infinity;
+      points.forEach((point) => {
+        const cameraLocal = point.clone();
+        camera.worldToLocal(cameraLocal);
+        if (cameraLocal.z < forwardCameraZ) {
+          forwardCameraZ = cameraLocal.z;
+          forwardPoint = point;
+        }
+      });
+
+      if (!forwardPoint) return null;
+      const projected = forwardPoint.clone().project(camera);
+      return {
+        x: (projected.x + 1) * 0.5 * window.innerWidth,
+        y: (1 - projected.y) * 0.5 * window.innerHeight,
+        cameraZ: forwardCameraZ
+      };
+    }
+
     function updateMetrics() {
       const weapon = WEAPONS[currentWeaponKey];
       lastNearestZ = getNearestWeaponZInCameraSpace(weapon.mesh, camera);
@@ -931,11 +1725,21 @@ const M4_SCOPE_POSE = {
       if (event.code === 'Digit2') setWeapon('MP153');
       if (event.code === 'Digit3') setWeapon('FN57');
       if (event.code === 'Digit4') setWeapon('AKS74U');
+      if (event.code === 'Digit5') setWeapon('DVL10');
       if (event.code === 'KeyV') setWeapon('MELEE');
       if (event.code === 'KeyF') setAiming(!isAiming);
       if (event.code === 'KeyH') setPoseMode('hip');
       if (event.code === 'KeyJ') setPoseMode('ads');
       if (event.code === 'KeyK') setPoseMode('scope');
+      if (event.code === 'KeyR') {
+        if (currentWeaponKey === 'DVL10' && dvl10State.needsBolt) {
+          event.preventDefault();
+          dvl10State.autoBoltPending = false;
+          dvl10State.autoBoltTimer = 0;
+          startDVL10BoltCycle();
+          return;
+        }
+      }
       if (event.code === 'KeyQ' || event.code === 'KeyE') {
         event.preventDefault();
         if (event.repeat) return;
@@ -958,11 +1762,23 @@ const M4_SCOPE_POSE = {
     window.addEventListener('contextmenu', (event) => event.preventDefault());
     window.addEventListener('mousedown', (event) => {
       if (event.button === 2) setAiming(true);
-      if (event.button === 0 && event.target === renderer.domElement) renderer.domElement.requestPointerLock?.();
+      if (event.button === 1 && event.target === renderer.domElement) {
+        event.preventDefault();
+        triggerFirePreview(1);
+      }
+      if (event.button === 0 && event.target === renderer.domElement) {
+        renderer.domElement.requestPointerLock?.();
+        triggerFirePreview(1);
+      }
     });
     window.addEventListener('mouseup', (event) => {
       if (event.button === 2) setAiming(false);
     });
+    window.addEventListener('wheel', (event) => {
+      if (event.target?.closest?.('#panel')) return;
+      event.preventDefault();
+      triggerFirePreview(event.deltaY >= 0 ? 1 : -1);
+    }, { passive: false });
     window.addEventListener('mousemove', (event) => {
       if (document.pointerLockElement !== renderer.domElement) return;
       yaw -= event.movementX * 0.002;
@@ -978,6 +1794,33 @@ const M4_SCOPE_POSE = {
     function animate() {
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
+      updateDVL10AutoBolt(delta);
+      updateDVL10Bolt(delta);
+      const fireProfile = getFirePreviewProfile();
+      if (recoilTargetY > 0.0001) {
+        const nextRecoil = THREE.MathUtils.lerp(recoilTargetY, 0, Math.min(1, delta * fireProfile.recover));
+        pitch += (recoilTargetY - nextRecoil) * 0.55;
+        recoilTargetY = nextRecoil;
+      } else {
+        recoilTargetY = 0;
+      }
+      pitch = THREE.MathUtils.clamp(pitch, -Math.PI / 2.2, Math.PI / 2.2);
+      fireMotionTime += delta;
+      fireKickAmount = THREE.MathUtils.lerp(fireKickAmount, 0, Math.min(1, delta * fireProfile.recover));
+      if (fireKickAmount < 0.001) fireKickAmount = 0;
+      const fireShake = Math.sin(fireMotionTime * 58) * fireKickAmount;
+      const aimRecoilScale = isAiming ? 0.34 : 0.5;
+      fireWeaponOffsetPos.set(
+        fireSide * fireShake * fireProfile.yaw * 0.22,
+        recoilTargetY * aimRecoilScale + fireProfile.lift * fireKickAmount,
+        fireProfile.back * fireKickAmount
+      );
+      fireWeaponOffsetRot.set(
+        fireProfile.pitch * fireKickAmount + recoilTargetY * 0.55,
+        fireSide * fireProfile.yaw * fireKickAmount,
+        -fireSide * fireProfile.roll * fireKickAmount
+      );
+
       leanTarget = keys.q === keys.e ? 0 : keys.q ? -1 : 1;
       leanAmount = THREE.MathUtils.lerp(leanAmount, leanTarget, Math.min(1, delta * 10));
       cameraRollZ = -leanAmount * LEAN_CAMERA_ROLL;
@@ -991,6 +1834,10 @@ const M4_SCOPE_POSE = {
 
       const pose = getRenderPose();
       targetLocalPos.copy(pose.position);
+      targetLocalPos.add(fireWeaponOffsetPos);
+      if (currentWeaponKey === 'DVL10') {
+        targetLocalPos.add(dvl10ActionWeaponOffsetPos);
+      }
       currentLocalPos.lerp(targetLocalPos, isAiming ? 0.28 : 0.22);
 
       const leanWeaponScale = isAiming ? 0.2 : 1;
@@ -1006,24 +1853,63 @@ const M4_SCOPE_POSE = {
       );
 
       weaponGroup.position.copy(currentLocalPos).add(leanWeaponOffsetPos).applyQuaternion(camera.quaternion).add(camera.position);
+      const actionQuat =
+        currentWeaponKey === 'DVL10'
+          ? new THREE.Quaternion().setFromEuler(dvl10ActionWeaponOffsetRot)
+          : new THREE.Quaternion();
       const combinedQuat = camera.quaternion.clone()
         .multiply(new THREE.Quaternion().setFromEuler(pose.rotation))
+        .multiply(new THREE.Quaternion().setFromEuler(fireWeaponOffsetRot))
+        .multiply(actionQuat)
         .multiply(new THREE.Quaternion().setFromEuler(leanWeaponOffsetRot));
       weaponGroup.quaternion.copy(combinedQuat).multiply(r180Y);
 
       updateMetrics();
+      let fireMetricValue = fireKickAmount > 0 || recoilTargetY > 0
+        ? `recoil ${recoilTargetY.toFixed(3)}`
+        : 'ready';
+      if (currentWeaponKey === 'DVL10' && fireKickAmount <= 0 && recoilTargetY <= 0) {
+        fireMetricValue = dvl10State.cyclingBolt
+          ? 'cycling bolt'
+          : dvl10State.autoBoltPending
+            ? 'auto bolt pending'
+            : dvl10State.needsBolt
+            ? 'bolt needed'
+            : dvl10State.chambered
+              ? 'ready'
+              : 'empty chamber';
+      }
+      fireMetric.querySelector('strong').textContent = fireMetricValue;
       const activeEdit = getActivePose();
+      const forwardScreenPoint = currentWeaponKey === 'DVL10'
+        ? getWeaponForwardScreenPoint(WEAPONS[currentWeaponKey].mesh, camera)
+        : null;
+      const dvl10Hud = currentWeaponKey === 'DVL10' ? `
+DVL bolt: ${dvl10State.cyclingBolt ? 'cycling' : dvl10State.needsBolt ? 'needed' : 'ready'}
+autoBoltPending: ${dvl10State.autoBoltPending}
+autoBoltTimer: ${dvl10State.autoBoltTimer.toFixed(2)}
+chambered: ${dvl10State.chambered}
+ammoInMag: ${dvl10State.ammoInMag}
+bolt mesh: ${dvl10BoltMesh ? dvl10BoltMesh.userData.dvl10BoltName || dvl10BoltMesh.name : 'missing'}
+bolt axis: X
+bolt travel: ${DVL10_BOLT_ACTION.travelAxis}${DVL10_BOLT_ACTION.travelSign >= 0 ? '+' : '-'} ${DVL10_BOLT_ACTION.travel.toFixed(3)}
+bolt pivot offset: ${DVL10_BOLT_PIVOT.offset.x.toFixed(4)}, ${DVL10_BOLT_PIVOT.offset.y.toFixed(4)}, ${DVL10_BOLT_PIVOT.offset.z.toFixed(4)}
+action rot: ${dvl10ActionWeaponOffsetRot.x.toFixed(3)}, ${dvl10ActionWeaponOffsetRot.y.toFixed(3)}, ${dvl10ActionWeaponOffsetRot.z.toFixed(3)}
+action signs: yaw ${DVL10_ACTION_POSE.yawSign}, roll ${DVL10_ACTION_POSE.rollSign}
+forward screen: ${forwardScreenPoint ? `${forwardScreenPoint.x.toFixed(1)}, ${forwardScreenPoint.y.toFixed(1)}` : '-'}` : '';
       hud.innerHTML = `<strong>${WEAPONS[currentWeaponKey].name}</strong>
 mode: ${isAiming ? 'ADS' : 'HIP'} / editing: ${activePoseKey.toUpperCase()}
 lean: ${leanAmount.toFixed(2)} / camera roll: ${cameraRollZ.toFixed(3)}
+fire: ${fireMetricValue} / wheel shots: ${fireCount}
 ${activePoseKey === 'scope' ? 'scope' : 'pose'} position: ${formatVec(activeEdit.position)}
 ${activePoseKey === 'scope' ? 'scope' : 'pose'} rotation: ${formatVec(activeEdit.rotation)}
-${activePoseKey === 'scope' ? `scope scale: ${formatVec(activeEdit.scale)}\n` : ''}nearest z: ${lastNearestZ == null ? '-' : lastNearestZ.toFixed(4)}`;
+${activePoseKey === 'scope' ? `scope scale: ${formatVec(activeEdit.scale)}\n` : ''}nearest z: ${lastNearestZ == null ? '-' : lastNearestZ.toFixed(4)}${dvl10Hud}`;
 
       renderer.render(scene, camera);
     }
 
     buildControls();
+    buildDVL10BoltPivotControls();
     applyScopePose();
     setWeapon('M4A1');
     setPoseMode('hip');

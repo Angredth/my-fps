@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "source": "SCOPEPOSE.html",
+  "updatedAt": "2026-07-01T14:15:21.003Z",
+  "units": {
+    "worldUnit": "meter",
+    "unitsPerMeter": 1,
+    "cameraHeight": 1.8
+  },
+  "weapon": "DVL-10",
+  "scope": "Eotech Vudu 1-6x24",
+  "scopeEquipped": true,
+  "hip": {
+    "position": [
+      0.072,
+      -0.13,
+      -0.295
+    ],
+    "rotation": [
+      0.038,
+      0,
+      0
+    ]
+  },
+  "adsNoScope": {
+    "position": [
+      0.012,
+      -0.107,
+      -0.232
+    ],
+    "rotation": [
+      0.029,
+      -0.002,
+      0
+    ]
+  },
+  "adsWithScope": {
+    "position": [
+      0.0135,
+      -0.1365,
+      -0.228
+    ],
+    "rotation": [
+      0.029,
+      -0.0036,
+      0
+    ]
+  },
+  "vudu": {
+    "modelUrls": {
+      "primary": "https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/assets/mods/eotech_vudu_1-6x24%202.glb",
+      "fallback": "https://raw.githubusercontent.com/Angredth/my-fps/main/assets/mods/eotech_vudu_1-6x24%202.glb"
+    },
+    "modelSource": "https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/assets/mods/eotech_vudu_1-6x24%202.glb",
+    "actualCorrectedLengthUnit": 0.265,
+    "targetLength": 0.265,
+    "lengthAxis": "z",
+    "lengthAxisSelection": "auto",
+    "naturalSize": {
+      "x": 2.1171,
+      "y": 1.881168,
+      "z": 6.720032
+    },
+    "measuredLengthBeforeCorrection": 6.720032,
+    "scaleCorrection": 0.039434,
+    "correctedLength": 0.265
+  },
+  "opticMount": {
+    "position": [
+      0,
+      0.1295,
+      -0.0565
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ]
+  },
+  "opticRoot": {
+    "position": [
+      0.013,
+      -0.044,
+      0.002
+    ],
+    "rotation": [
+      0,
+      3.141407,
+      0
+    ],
+    "scale": [
+      1.11,
+      1.11,
+      1.11
+    ]
+  },
+  "lensPlane": {
+    "position": [
+      0.0001,
+      0.0503,
+      0.101
+    ],
+    "rotation": [
+      0,
+      3.141407,
+      0
+    ]
+  },
+  "pipCameraMesh": {
+    "position": [
+      0,
+      0.052,
+      -0.145
+    ],
+    "rotation": [
+      -0.0316,
+      0.0034,
+      0
+    ],
+    "selfRotation": [
+      0,
+      0,
+      0
+    ]
+  },
+  "pip": {
+    "enabled": true,
+    "activeMagnification": 1,
+    "magnifications": {
+      "1": {
+        "fov": 42,
+        "reticle": "https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/assets/mods/EotechVudu/reticles/upper_reticle_transparent_1x1.png"
+      },
+      "6": {
+        "fov": 7,
+        "reticle": "https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/assets/mods/EotechVudu/reticles/lower_reticle_transparent_1x1.png"
+      }
+    }
+  },
+  "reticle": {
+    "urls": {
+      "1": "https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/assets/mods/EotechVudu/reticles/upper_reticle_transparent_1x1.png",
+      "6": "https://cdn.jsdelivr.net/gh/Angredth/my-fps@main/assets/mods/EotechVudu/reticles/lower_reticle_transparent_1x1.png"
+    },
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "scale": [
+      0.55,
+      0.55
+    ],
+    "activeMagnification": 1
+  }
+}

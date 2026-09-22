@@ -1,0 +1,39 @@
+﻿File,Src_Start(s),Src_End(s),Length(s),Note
+DVL10_Fire_01,0.191,2.351,2.160,onset 0.199s / amb floor -54.3 dB reached 2.001s
+DVL10_Fire_02,5.412,7.572,2.160,onset 5.420s / amb floor -44.6 dB reached 6.197s
+DVL10_Bolt_Cycle_FULL,2.760,3.950,1.190,"hand→up→back(eject)→forward→down→return, cue markers"
+DVL10_Bolt_B01_Hand_To_Bolt,2.790,2.960,0.170,오른손이 그립→볼트 손잡이로 이동(마찰)
+DVL10_Bolt_B02_Bolt_Up,2.960,3.160,0.200,볼트 손잡이 들어올림(잠금 해제)
+DVL10_Bolt_B03_Bolt_Back_Eject,3.165,3.420,0.255,볼트 후퇴 + 탄피 배출
+DVL10_Bolt_B04_Bolt_Forward,3.440,3.560,0.120,볼트 전진(급탄)
+DVL10_Bolt_B05_Bolt_Down,3.565,3.745,0.180,볼트 손잡이 내림(잠금)
+DVL10_Bolt_B06_Hand_Return,3.745,3.880,0.135,손 그립 복귀
+DVL10_Bolt_Cycle_FULL_ref2,8.200,9.300,1.100,"2nd cycle = same sample as 1st (+5.336 s, corr 0.98); reference only"
+DVL10_Reload_Empty_FULL,10.900,16.100,5.200,"잔탄0: 볼트 개방→탄창 교체→볼트 폐쇄, cue markers"
+DVL10_Reload_Empty_E01_Hand_To_Bolt,10.950,11.090,0.140,오른손 볼트로 이동
+DVL10_Reload_Empty_E02_Bolt_Up,11.090,11.220,0.130,볼트 손잡이 올림
+DVL10_Reload_Empty_E03_Bolt_Back_Open,11.260,11.545,0.285,"볼트 후퇴 후 개방 유지(빈 약실, 탄피 없음)"
+DVL10_Reload_Empty_E04_Hand_Return_Rustle,11.760,12.020,0.260,오른손 그립 복귀 / 총 기울임(마찰)
+DVL10_Reload_Empty_E05_Mag_Release,12.240,12.360,0.120,탄창멈치/탄창 잡기
+DVL10_Reload_Empty_E06_Mag_Out,12.580,12.860,0.280,탄창 이탈
+DVL10_Reload_Empty_E07_Mag_Pouch,13.060,13.240,0.180,빈 탄창 처리 / 파우치
+DVL10_Reload_Empty_E08_New_Mag_Pull,13.620,13.820,0.200,새 탄창 인출
+DVL10_Reload_Empty_E09_Mag_Insert_Contact,14.050,14.300,0.250,탄창 삽입 시작(맞물림)
+DVL10_Reload_Empty_E10_Mag_Seat,14.300,14.460,0.160,탄창 체결
+DVL10_Reload_Empty_E11_Hand_Leave_Rustle,14.800,14.980,0.180,왼손 복귀 마찰
+DVL10_Reload_Empty_E12_Hand_To_Bolt,15.020,15.270,0.250,오른손 볼트로 이동
+DVL10_Reload_Empty_E13_Bolt_Forward,15.270,15.385,0.115,볼트 전진(첫 탄 급탄)
+DVL10_Reload_Empty_E14_Bolt_Down,15.385,15.640,0.255,볼트 손잡이 내림(잠금)
+DVL10_Reload_Empty_E15_Hand_Return,15.640,16.060,0.420,손 그립 복귀/안정
+DVL10_Reload_Tactical_FULL,16.780,20.400,3.620,"잔탄1이상: 탄창만 교체(볼트 조작 없음), cue markers"
+DVL10_Reload_Tactical_T01_Grip_Release,16.800,16.950,0.150,손이 총에서 떨어짐
+DVL10_Reload_Tactical_T02_Hand_Move_Rustle,17.020,17.300,0.280,손 이동 마찰
+DVL10_Reload_Tactical_T03_Mag_Release,17.530,17.670,0.140,탄창멈치/탄창 잡기
+DVL10_Reload_Tactical_T04_Mag_Out,17.860,18.140,0.280,탄창 이탈
+DVL10_Reload_Tactical_T05_Mag_Pouch_New_Mag,18.310,18.500,0.190,탄창 파우치 / 새 탄창 인출
+DVL10_Reload_Tactical_T06_Mag_Bring_Up,18.840,19.020,0.180,새 탄창 가져옴
+DVL10_Reload_Tactical_T07_Mag_Insert_Contact,19.340,19.595,0.255,탄창 삽입 시작
+DVL10_Reload_Tactical_T08_Mag_Seat,19.595,19.770,0.175,탄창 체결
+DVL10_Reload_Tactical_T09_Hand_Return,19.800,20.260,0.460,손 복귀 마찰
+DVL10_Casing_01,3.980,4.280,0.300,볼트 1회차 배출 탄피 착지 (배출 3.30s → 착지 +0.72s)
+DVL10_Casing_02,9.330,9.620,0.290,볼트 2회차 배출 탄피 착지

@@ -1,0 +1,43 @@
+﻿File,Src_Start(s),Src_End(s),Length(s),Note
+VPO215_Fire_01,0.538,3.223,2.685,onset 0.546s / amb floor -46.3 dB reached 2.873s 
+VPO215_Fire_02,5.819,8.680,2.861,onset 5.827s / amb floor -52.9 dB reached 8.330s 
+VPO215_Fire_03,14.738,17.695,2.957,onset 14.746s / amb floor -48.9 dB reached 17.389s 
+VPO215_Fire_04,19.612,21.445,1.833,onset 19.620s / amb floor -42.5 dB reached 21.256s 
+VPO215_Fire_Bolt_Combined_ref,12.122,14.280,2.158,"shot → bolt starts +0.30s, casing 13.2-13.5 in the tail; reference only"
+VPO215_Bolt_Cycle_FULL,9.455,10.705,1.250,"hand→up→back(eject)→forward→down→return, cue markers"
+VPO215_Bolt_B01_Hand_To_Bolt,9.475,9.615,0.140,오른손 그립→볼트 손잡이
+VPO215_Bolt_B02_Bolt_Up,9.615,9.815,0.200,손잡이 들어올림(잠금 해제)
+VPO215_Bolt_B03_Bolt_Back_Eject,9.815,10.100,0.285,볼트 후퇴 + 탄피 배출
+VPO215_Bolt_B04_Bolt_Forward,10.100,10.250,0.150,볼트 전진(급탄)
+VPO215_Bolt_B05_Bolt_Down,10.250,10.395,0.145,손잡이 내림(잠금)
+VPO215_Bolt_B06_Hand_Return,10.495,10.700,0.205,손 그립 복귀 (탄피 착지 10.72s 직전에서 자름)
+VPO215_Bolt_Cycle_FULL_ref2,21.400,22.340,0.940,cycle #5 (corr 0.93); reference only
+VPO215_Bolt_Cycle_FULL_ref3,17.660,18.620,0.960,cycle #4 — a different variant (corr 0.66); reference only
+VPO215_Reload_Empty_FULL,23.700,28.800,5.100,"잔탄0: 볼트 개방→탄창 교체→볼트 폐쇄, cue markers"
+VPO215_Reload_Empty_E01_Hand_To_Bolt,23.740,23.850,0.110,오른손 볼트로 이동
+VPO215_Reload_Empty_E02_Bolt_Up,23.850,24.040,0.190,손잡이 올림
+VPO215_Reload_Empty_E03_Bolt_Back_Open,24.040,24.380,0.340,"볼트 후퇴 후 개방 유지(빈 약실, 탄피 없음)"
+VPO215_Reload_Empty_E04_Hand_Move_Rustle,24.480,24.700,0.220,손 이동/총 기울임 마찰
+VPO215_Reload_Empty_E05_Mag_Release,24.920,25.030,0.110,탄창멈치/탄창 잡기
+VPO215_Reload_Empty_E06_Mag_Out,25.030,25.300,0.270,탄창 이탈
+VPO215_Reload_Empty_E07_Mag_Pouch,25.900,26.080,0.180,빈 탄창 처리 / 파우치
+VPO215_Reload_Empty_E08_New_Mag_Pull,26.400,26.620,0.220,새 탄창 인출
+VPO215_Reload_Empty_E09_Mag_Insert_Contact,27.020,27.235,0.215,탄창 삽입 시작(맞물림)
+VPO215_Reload_Empty_E10_Mag_Seat,27.235,27.450,0.215,탄창 체결
+VPO215_Reload_Empty_E11_Hand_To_Bolt,27.820,28.070,0.250,오른손 볼트로 이동(마찰)
+VPO215_Reload_Empty_E12_Bolt_Forward,28.070,28.250,0.180,볼트 전진(첫 탄 급탄)
+VPO215_Reload_Empty_E13_Bolt_Down,28.250,28.420,0.170,손잡이 내림(잠금)
+VPO215_Reload_Empty_E14_Hand_Return,28.540,28.760,0.220,손 그립 복귀
+VPO215_Reload_Tactical_FULL,29.200,32.800,3.600,"잔탄1이상: 탄창만 교체(볼트 조작 없음), cue markers"
+VPO215_Reload_Tactical_T01_Hand_Move,29.240,29.380,0.140,손 이동(마찰)
+VPO215_Reload_Tactical_T02_Mag_Release,29.570,29.685,0.115,탄창멈치/탄창 잡기
+VPO215_Reload_Tactical_T03_Mag_Out,29.685,29.920,0.235,탄창 이탈
+VPO215_Reload_Tactical_T04_Mag_Pouch,30.540,30.680,0.140,탄창 파우치
+VPO215_Reload_Tactical_T05_New_Mag_Pull,30.800,31.000,0.200,새 탄창 인출
+VPO215_Reload_Tactical_T06_Mag_Bring_Up,31.040,31.220,0.180,새 탄창 가져옴
+VPO215_Reload_Tactical_T07_Mag_Insert_Contact,31.640,31.860,0.220,탄창 삽입 시작
+VPO215_Reload_Tactical_T08_Mag_Seat,31.860,32.060,0.200,탄창 체결
+VPO215_Reload_Tactical_T09_Hand_Return,32.080,32.680,0.600,손 복귀 마찰
+VPO215_Casing_01,10.690,10.960,0.270,볼트 2회차 탄피 착지 — 가장 선명
+VPO215_Casing_02,22.330,22.700,0.370,"볼트 5회차 탄피 착지 — 여러 번 튕김, 작음"
+VPO215_Casing_03,18.720,18.930,0.210,볼트 4회차 탄피 착지 — 작음(풀밭)

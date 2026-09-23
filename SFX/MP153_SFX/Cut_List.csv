@@ -1,0 +1,54 @@
+﻿File,Src_Start(s),Src_End(s),Length(s),Note
+MP153_Fire_Single_01,0.345,2.345,2.000,"onset 0.353 / floor -47.6 dB at 1.995 / hull hits in tail: +0.67s(14dB), +0.98s(22dB)"
+MP153_Fire_Single_01_NoCasing,0.345,2.345,2.000,>1.2 kHz band ducked over every hull hit (2)
+MP153_Fire_Single_02,2.764,4.401,1.637,"onset 2.772 / floor -42.2 dB at 4.051 / hull hits in tail: +0.64s(15dB), +0.98s(21dB)"
+MP153_Fire_Single_02_NoCasing,2.764,4.401,1.637,>1.2 kHz band ducked over every hull hit (2)
+MP153_Fire_Single_03,5.256,7.335,2.079,"onset 5.264 / floor -45.2 dB at 6.985 / hull hits in tail: +0.65s(11dB), +1.02s(26dB)"
+MP153_Fire_Single_03_NoCasing,5.256,7.335,2.079,>1.2 kHz band ducked over every hull hit (2)
+MP153_Fire_Single_04,7.445,9.269,1.825,"onset 7.453 / floor -46.1 dB at 8.919 / hull hits in tail: +0.67s(14dB), +0.98s(22dB)"
+MP153_Fire_Single_04_NoCasing,7.445,9.269,1.825,>1.2 kHz band ducked over every hull hit (2)
+MP153_Fire_Single_05,9.779,12.346,2.567,"onset 9.787 / floor -48.4 dB at 11.996 / hull hits in tail: +0.65s(15dB), +0.98s(23dB)"
+MP153_Fire_Single_05_NoCasing,9.779,12.346,2.567,>1.2 kHz band ducked over every hull hit (2)
+MP153_Hull_01,5.901,6.366,0.465,"hull: both hits, from Single shot @ 5.292s, HP 400 Hz"
+MP153_Hull_02,10.425,10.860,0.435,"hull: both hits, from Single shot @ 9.797s, HP 400 Hz"
+MP153_Hull_03,1.012,1.426,0.414,"hull: both hits, from Single shot @ 0.364s, HP 400 Hz"
+MP153_Hull_04,8.110,8.513,0.403,"hull: both hits, from Single shot @ 7.461s, HP 400 Hz"
+MP153_Hull_05,3.399,3.843,0.444,"hull: both hits, from Single shot @ 2.780s, HP 400 Hz"
+MP153_Fire_Rapid6_ref,20.940,23.495,2.555,"6 rds, 181 ms apart (fast semi-auto clicking); cue per shot; reference only"
+MP153_Reload_A_FULL,12.950,20.000,7.050,잔탄0: 약실 1발(배출구) → 튜브 4발 (EF5: chamber → enter → tube×N → exit)
+MP153_Chamber_Hand_To_Belt_01,13.000,13.330,0.330,오른손 벨트로 → 탄 집기
+MP153_Chamber_Shell_Into_Port_01,13.400,13.700,0.300,탄을 배출구로 약실에 넣음
+MP153_Chamber_Hand_To_Catch_01,14.060,14.210,0.150,노리쇠 멈치로 손 이동/누름
+MP153_Chamber_Bolt_Release_01,14.210,14.470,0.260,노리쇠 해제 → 전진(쾅)
+MP153_Tube_Enter_01,14.660,15.370,0.710,튜브 장전 자세로 전환(총 뒤집기/장비 달그락)
+MP153_Tube_Grab_01,15.380,15.620,0.240,손이 파우치에서 탄 집기(마찰)
+MP153_Tube_Handle_01,15.620,15.860,0.240,탄을 쥐고 총 아래로 가져옴
+MP153_Tube_Gate_01,15.870,15.990,0.120,탄이 급탄구(게이트)에 닿음
+MP153_Tube_Insert_01,15.990,16.090,0.100,탄을 튜브로 밀어 넣음(철컥)
+MP153_Tube_Grab_02,16.460,16.690,0.230,손이 파우치에서 탄 집기(마찰)
+MP153_Tube_Handle_02,16.800,16.910,0.110,탄을 쥐고 총 아래로 가져옴
+MP153_Tube_Gate_02,17.020,17.125,0.105,탄이 급탄구(게이트)에 닿음
+MP153_Tube_Insert_02,17.125,17.240,0.115,탄을 튜브로 밀어 넣음(철컥)
+MP153_Tube_Grab_03,17.620,17.870,0.250,손이 파우치에서 탄 집기(마찰)
+MP153_Tube_Handle_03,17.980,18.070,0.090,탄을 쥐고 총 아래로 가져옴
+MP153_Tube_Gate_03,18.180,18.310,0.130,탄이 급탄구(게이트)에 닿음
+MP153_Tube_Insert_03,18.310,18.420,0.110,탄을 튜브로 밀어 넣음(철컥)
+MP153_Tube_Grab_04,18.760,19.050,0.290,손이 파우치에서 탄 집기(마찰)
+MP153_Tube_Handle_04,19.140,19.250,0.110,탄을 쥐고 총 아래로 가져옴
+MP153_Tube_Gate_04,19.340,19.490,0.150,탄이 급탄구(게이트)에 닿음
+MP153_Tube_Insert_04,19.490,19.600,0.110,탄을 튜브로 밀어 넣음(철컥)
+MP153_Tube_Exit_01,19.620,19.880,0.260,마지막 탄 후 손 포엔드 복귀
+MP153_Reload_B_FULL,23.500,28.300,4.800,잔탄0: 약실 1발 → 튜브 2발
+MP153_Chamber_Hand_To_Belt_02,23.580,24.030,0.450,오른손 벨트로 → 탄 집기
+MP153_Chamber_Shell_Into_Port_02,24.060,24.400,0.340,탄을 배출구로 약실에 넣음
+MP153_Chamber_Hand_To_Catch_02,24.790,24.885,0.095,노리쇠 멈치로 손 이동/누름
+MP153_Chamber_Bolt_Release_02,24.885,25.130,0.245,노리쇠 해제 → 전진(쾅)
+MP153_Tube_Grab_05,25.980,26.350,0.370,손이 파우치에서 탄 집기(마찰)
+MP153_Tube_Handle_05,26.355,26.530,0.175,탄을 쥐고 총 아래로 가져옴
+MP153_Tube_Gate_05,26.560,26.745,0.185,탄이 급탄구(게이트)에 닿음
+MP153_Tube_Insert_05,26.745,26.850,0.105,탄을 튜브로 밀어 넣음(철컥)
+MP153_Tube_Grab_06,27.140,27.470,0.330,손이 파우치에서 탄 집기(마찰)
+MP153_Tube_Handle_06,27.490,27.610,0.120,탄을 쥐고 총 아래로 가져옴
+MP153_Tube_Gate_06,27.700,27.855,0.155,탄이 급탄구(게이트)에 닿음
+MP153_Tube_Insert_06,27.855,27.960,0.105,탄을 튜브로 밀어 넣음(철컥)
+MP153_Tube_Exit_02,27.960,28.230,0.270,마지막 탄 후 손 포엔드 복귀
